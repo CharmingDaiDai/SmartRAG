@@ -47,4 +47,6 @@ docs
 .env.local
 .env.production
 .env.development
+
+### others ###
 src/test/java/com/mtmn/smartdoc/SmartDocApplicationTests.java
