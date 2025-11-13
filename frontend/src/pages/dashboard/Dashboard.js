@@ -380,7 +380,7 @@ const Dashboard = () => {
             marginBottom: 0,
           }}
         >
-          智能文档系统帮助您高效管理和分析各类文档
+          智能RAG系统帮助您高效管理和分析各类文档
         </Paragraph>
       </div>
 
@@ -447,72 +447,6 @@ const Dashboard = () => {
             suffix="次"
             description="文档内容润色次数"
           />
-        </Col>
-        <Col xs={24} sm={12} md={12}>
-          <Card
-            title="使用进度"
-            styles={{
-              body: {
-                padding: "20px",
-              },
-            }}
-            style={{
-              height: "100%",
-              borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Statistic
-                title="本月已使用"
-                value={usageProgress}
-                suffix="%"
-                prefix={<BarChartOutlined />}
-              />
-              <div>
-                {currentUser?.isVip ? (
-                  <Tag color="gold" icon={<CrownOutlined />}>
-                    VIP无限制使用
-                  </Tag>
-                ) : (
-                  <Button
-                    type="primary"
-                    ghost
-                    onClick={() => navigate("/vip/membership")}
-                  >
-                    升级VIP
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Progress
-              percent={usageProgress}
-              status={usageProgress >= 80 ? "exception" : "active"}
-              strokeColor={{
-                "0%": "#108ee9",
-                "100%": usageProgress >= 80 ? "#ff4d4f" : "#87d068",
-              }}
-              style={{ marginTop: 16 }}
-            />
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
-              <Text type="secondary">免费额度: {100 - usageProgress}%</Text>
-              <Text type={usageProgress >= 80 ? "danger" : "secondary"}>
-                {usageProgress >= 80 ? "即将达到限制" : "正常使用中"}
-              </Text>
-            </div>
-          </Card>
         </Col>
       </Row>
 
@@ -661,38 +595,6 @@ const Dashboard = () => {
                   <Text strong>新功能发布</Text>
                   <Paragraph style={{ margin: "4px 0 0" }}>
                     现已支持多种格式文档分析，包括PDF、Word、Excel等。
-                  </Paragraph>
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                padding: "12px",
-                background: "#fffbe6",
-                borderRadius: "8px",
-                border: "1px solid #ffe58f",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start" }}>
-                <CrownOutlined
-                  style={{
-                    color: "#faad14",
-                    marginRight: "8px",
-                    marginTop: "4px",
-                  }}
-                />
-                <div>
-                  <Text strong>VIP功能更新</Text>
-                  <Paragraph style={{ margin: "4px 0 0" }}>
-                    VIP用户现可使用批量处理功能，提高工作效率。
-                    <Button
-                      type="link"
-                      size="small"
-                      style={{ padding: "0", display: "block" }}
-                    >
-                      了解更多
-                    </Button>
                   </Paragraph>
                 </div>
               </div>

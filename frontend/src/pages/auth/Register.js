@@ -63,18 +63,18 @@ const Register = () => {
               {/* Use the image from the public folder */}
               <img
                 src="/logo192.png"
-                alt="SmartDoc Logo"
+                alt="SmartRAG Logo"
                 className="brand-logo-img"
               />
               <Title level={3} className="brand-logo-title">
-                SmartDoc
+                SmartRAG
               </Title>
             </div>
             <Title level={2} className="welcome-title">
               加入我们
             </Title>
             <Paragraph className="welcome-subtitle">
-              注册账户以体验智能文档系统的强大功能
+              注册账户以体验智能RAG系统的强大功能
             </Paragraph>
             <img
               src="/register-illustration.svg"

@@ -23,7 +23,7 @@ const { Title, Text } = Typography;
 
 const AppLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [notifications, setNotifications] = useState(3); // 模拟未读通知数量
+  const [notifications, setNotifications] = useState(2); // 模拟未读通知数量
   const { token } = theme.useToken();
   const { currentUser, logout } = useAuth();
   const location = useLocation();
@@ -135,23 +135,23 @@ const AppLayout = () => {
       label: (
         <div>
           <Text strong>系统更新</Text>
-          <div><Text type="secondary">智能文档系统已更新到最新版本</Text></div>
+          <div><Text type="secondary">智能RAG系统已更新到最新版本</Text></div>
           <div><Text type="secondary" style={{ fontSize: '12px' }}>30分钟前</Text></div>
         </div>
       )
     },
+    // {
+    //   key: 'notification-2',
+    //   label: (
+    //     <div>
+    //       <Text strong>文档分析完成</Text>
+    //       <div><Text type="secondary">您的文档"项目计划书"分析已完成</Text></div>
+    //       <div><Text type="secondary" style={{ fontSize: '12px' }}>2小时前</Text></div>
+    //     </div>
+    //   )
+    // },
     {
       key: 'notification-2',
-      label: (
-        <div>
-          <Text strong>文档分析完成</Text>
-          <div><Text type="secondary">您的文档"项目计划书"分析已完成</Text></div>
-          <div><Text type="secondary" style={{ fontSize: '12px' }}>2小时前</Text></div>
-        </div>
-      )
-    },
-    {
-      key: 'notification-3',
       label: (
         <div>
           <Text strong>新功能上线</Text>
@@ -217,40 +217,13 @@ const AppLayout = () => {
         {
           key: '/analysis/security',
           label: '敏感信息检测',
+        },
+        {
+          key: '/analysis/',
+          label: '文档查重',
         }
       ],
-    },
-    ...(currentUser?.isVip ? [
-      {
-        key: 'vip',
-        icon: <CrownOutlined style={{ color: '#faad14' }} />,
-        label: (
-          <span>
-            VIP专区
-            <Badge
-              count="NEW"
-              style={{
-                marginLeft: 8,
-                backgroundColor: '#52c41a',
-                fontSize: '10px',
-                padding: '0 4px',
-                fontWeight: 'bold'
-              }}
-            />
-          </span>
-        ),
-        children: [
-          {
-            key: '/vip/advanced-analysis',
-            label: '高级分析',
-          },
-          {
-            key: '/vip/batch-processing',
-            label: '批量处理',
-          },
-        ],
-      }
-    ] : []),
+    }
   ];
 
   return (
@@ -269,8 +242,8 @@ const AppLayout = () => {
             <div className="logo-small">SD</div>
           ) : (
             <div className="logo-full">
-              <Title level={3} style={{ margin: 0, color: '#1890ff' }}>SmartDoc</Title>
-              <div className="logo-subtitle">智能文档系统</div>
+              <Title level={3} style={{ margin: 0, color: '#1890ff' }}>SmartRAG</Title>
+              <div className="logo-subtitle">智能RAG系统</div>
             </div>
           )}
         </div>
@@ -287,7 +260,7 @@ const AppLayout = () => {
           />
         </div>
         
-        {!collapsed && (
+        {/* {!collapsed && (
           <div className="sider-bottom">
             {currentUser?.isVip ? (
               <div className="vip-badge">
@@ -306,7 +279,7 @@ const AppLayout = () => {
               </Button>
             )}
           </div>
-        )}
+        )} */}
       </Sider>
       
       <Layout>

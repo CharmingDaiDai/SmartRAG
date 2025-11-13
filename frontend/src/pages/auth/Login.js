@@ -70,12 +70,12 @@ const Login = () => {
           <div className="login-left-content">
             <div className="brand-logo">
               {/* Use the image from the public folder */}
-              <img src="/logo192.png" alt="SmartDoc Logo" className="brand-logo-img" />
-              <Title level={3} className="brand-title">SmartDoc</Title>
+              <img src="/logo192.png" alt="SmartRAG Logo" className="brand-logo-img" />
+              <Title level={3} className="brand-title">SmartRAG</Title>
             </div>
             <Title level={2} className="welcome-title">欢迎回来</Title>
             <Paragraph className="welcome-subtitle">
-              登录您的账户以使用智能文档系统的全部功能
+              登录您的账户以使用智能RAG系统的全部功能
             </Paragraph>
             <img
               src="/login-illustration.svg"

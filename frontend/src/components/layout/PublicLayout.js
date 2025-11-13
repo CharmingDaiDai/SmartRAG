@@ -78,7 +78,7 @@ const PublicLayout = () => {
       </Content>
       
       <Footer style={{ textAlign: 'center' }}>
-        智能文档系统 V1.0 ©2025 Created by SmartDoc Team
+        智能RAG系统 V1.0 ©2025 Created by NCUT
       </Footer>
       
       <style jsx="true">{`

@@ -39,7 +39,7 @@ const HomePage = () => {
       <div className="hero-section">
         <div className="hero-content">
           <Title className="main-title">
-            SmartDoc
+            SmartRAG
           </Title>
           <div className="sub-title">智能文档检索与分析的新境界</div>
           
@@ -142,7 +142,7 @@ const HomePage = () => {
           <Divider style={{ margin: '24px 0', borderColor: '#e8e8e8' }} />
           
           <div className="copyright">
-            <span>© 2025 智能文档系统 V1.0 版权所有</span>
+            <span>© 2025 智能RAG系统 V1.0 版权所有</span>
           </div>
         </div>
       </footer>

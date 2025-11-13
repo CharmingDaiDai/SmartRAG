@@ -229,7 +229,7 @@ const VipMembership = () => {
             如有任何疑问，请联系我们的客服团队
           </Paragraph>
           <Paragraph type="secondary">
-            邮箱: support@smartdoc.com | 电话: 400-123-4567
+            邮箱: support@smartrag.com | 电话: 400-123-4567
           </Paragraph>
         </Col>
       </Row>
