@@ -33,6 +33,7 @@ spring:
 
 server:
   port: 8080
+  address: 0.0.0.0
 
 logging:
   level:
@@ -60,7 +61,7 @@ models:
   llm:
     glm:
       api-key: ${GLM_API_KEY:your_glm_api_key}
-      base-url: https://open.bigmodel.cn/api/paas/v4
+      base-url: https://open.bigmodel.cn/api/paas/v4/
       model-name: glm-4-flash
     glm-250414:
       api-key: ${GLM_API_KEY:your_glm_api_key}
