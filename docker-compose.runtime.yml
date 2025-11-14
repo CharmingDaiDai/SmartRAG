@@ -1,0 +1,146 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smartdoc-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-123456}
+      MYSQL_DATABASE: ${DB_NAME:-smart_doc}
+    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - smartdoc-net
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-05T22-17-24Z
+    container_name: smartdoc-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-root}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-12345678}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - smartdoc-net
+
+  milvus-etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: smartdoc-milvus-etcd
+    restart: always
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd
+      --name default
+      --data-dir /etcd
+      --advertise-client-urls http://milvus-etcd:2379
+      --listen-client-urls http://0.0.0.0:2379
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-advertise-peer-urls http://milvus-etcd:2380
+      --initial-cluster default=http://milvus-etcd:2380
+    volumes:
+      - milvus_etcd:/etcd
+    networks:
+      - smartdoc-net
+
+  milvus-minio:
+    image: minio/minio:RELEASE.2024-01-05T22-17-24Z
+    container_name: smartdoc-milvus-minio
+    restart: always
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: server /data
+    volumes:
+      - milvus_minio:/data
+    networks:
+      - smartdoc-net
+
+  milvus-standalone:
+    image: milvusdb/milvus:v2.4.0
+    container_name: smartdoc-milvus
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: milvus-etcd:2379
+      MINIO_ADDRESS: milvus-minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: ["milvus", "run", "standalone"]
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - milvus-etcd
+      - milvus-minio
+    volumes:
+      - milvus_data:/var/lib/milvus
+    networks:
+      - smartdoc-net
+
+  backend:
+    image: smartdoc-backend
+    container_name: smartdoc-backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-smart_doc}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      MILVUS_HOST: milvus-standalone
+      MILVUS_PORT: 19530
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-root}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-12345678}
+      JWT_ISSUER_URI: http://backend:8080
+    depends_on:
+      - mysql
+      - minio
+      - milvus-standalone
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_doc_data:/app/doc_data
+      - backend_processed_docs:/app/processed_docs
+    networks:
+      - smartdoc-net
+
+  frontend:
+    image: smartdoc-frontend
+    container_name: smartdoc-frontend
+    restart: always
+    environment:
+      - REACT_APP_API_BASE=http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - smartdoc-net
+
+networks:
+  smartdoc-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  minio_data:
+  milvus_etcd:
+  milvus_minio:
+  milvus_data:
+  backend_doc_data:
+  backend_processed_docs:
