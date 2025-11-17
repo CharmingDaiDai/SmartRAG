@@ -31,12 +31,12 @@ export const ragMethods = [
         label: "查询重写",
         description: "智能重写用户查询以提高检索效果（开启后会增加响应时间）",
       },
-      "query-decomposition": {
-        default: false,
-        type: "boolean",
-        label: "查询分解",
-        description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
-      },
+      // "query-decomposition": {
+      //   default: false,
+      //   type: "boolean",
+      //   label: "查询分解",
+      //   description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
+      // },
     },
   },
   {
@@ -46,7 +46,7 @@ export const ragMethods = [
     indexParams: {
       "chunk-size": 2048,
       "title-enhance": true,
-      abstract: false,
+      // abstract: false,
     },
     searchParams: {
       "max-res": {
@@ -68,51 +68,51 @@ export const ragMethods = [
         label: "查询重写",
         description: "智能重写用户查询以提高检索效果（开启后会增加响应时间）",
       },
-      "query-decomposition": {
-        default: false,
-        type: "boolean",
-        label: "查询分解",
-        description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
-      },
+      // "query-decomposition": {
+      //   default: false,
+      //   type: "boolean",
+      //   label: "查询分解",
+      //   description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
+      // },
     },
   },
-  {
-    id: "hisem-tree",
-    name: "HiSem-RAG-Tree",
-    description: "层级语义驱动的RAG方法（构建树），适合处理结构化文档问答",
-    indexParams: {
-      "chunk-size": 2048,
-      "title-enhance": true,
-      abstract: true,
-    },
-    searchParams: {
-      "max-res": {
-        default: 10,
-        type: "integer",
-        min: 1,
-        max: 15,
-        label: "最大结果数",
-      },
-      "intent-recognition": {
-        default: false,
-        type: "boolean",
-        label: "意图识别",
-        description: "判断用户查询的意图类型，决定是否需要检索（开启后会增加响应时间）",
-      },
-      "query-rewriting": {
-        default: false,
-        type: "boolean",
-        label: "查询重写",
-        description: "智能重写用户查询以提高检索效果（开启后会增加响应时间）",
-      },
-      "query-decomposition": {
-        default: false,
-        type: "boolean",
-        label: "查询分解",
-        description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
-      },
-    },
-  },
+  // {
+  //   id: "hisem-tree",
+  //   name: "HiSem-RAG-Tree",
+  //   description: "层级语义驱动的RAG方法（构建树），适合处理结构化文档问答",
+  //   indexParams: {
+  //     "chunk-size": 2048,
+  //     "title-enhance": true,
+  //     abstract: true,
+  //   },
+  //   searchParams: {
+  //     "max-res": {
+  //       default: 10,
+  //       type: "integer",
+  //       min: 1,
+  //       max: 15,
+  //       label: "最大结果数",
+  //     },
+  //     "intent-recognition": {
+  //       default: false,
+  //       type: "boolean",
+  //       label: "意图识别",
+  //       description: "判断用户查询的意图类型，决定是否需要检索（开启后会增加响应时间）",
+  //     },
+  //     "query-rewriting": {
+  //       default: false,
+  //       type: "boolean",
+  //       label: "查询重写",
+  //       description: "智能重写用户查询以提高检索效果（开启后会增加响应时间）",
+  //     },
+  //     "query-decomposition": {
+  //       default: false,
+  //       type: "boolean",
+  //       label: "查询分解",
+  //       description: "将复杂查询分解为多个简单查询（开启后会增加响应时间）",
+  //     },
+  //   },
+  // },
 ];
 
 /**
@@ -146,12 +146,12 @@ export const paramConstraints = {
     displayName: "标题增强",
     example: "适用于有明确标题层次的文档，如论文、报告等",
   },
-  abstract: {
-    type: "boolean",
-    description: "是否提取摘要，用于概括文档内容",
-    displayName: "摘要提取",
-    example: "开启此功能可以提升对文档主题的理解",
-  },
+  // abstract: {
+  //   type: "boolean",
+  //   description: "是否提取摘要，用于概括文档内容",
+  //   displayName: "摘要提取",
+  //   example: "开启此功能可以提升对文档主题的理解",
+  // },
   "intent-recognition": {
     default: false,
     type: "boolean",

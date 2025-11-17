@@ -23,7 +23,7 @@ const { Title, Text } = Typography;
 
 const AppLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [notifications, setNotifications] = useState(2); // 模拟未读通知数量
+  const [notifications, setNotifications] = useState(0); // 模拟未读通知数量
   const { token } = theme.useToken();
   const { currentUser, logout } = useAuth();
   const location = useLocation();
@@ -78,17 +78,17 @@ const AppLayout = () => {
       icon: <UserOutlined />,
       onClick: () => navigate('/profile')
     },
-    {
-      key: 'vip',
-      label: (
-        <span>
-          VIP会员中心
-          {currentUser?.isVip && <Badge dot style={{ marginLeft: 4 }} />}
-        </span>
-      ),
-      icon: <CrownOutlined style={{ color: currentUser?.isVip ? '#faad14' : undefined }} />,
-      onClick: () => navigate('/vip/membership')
-    },
+    // {
+    //   key: 'vip',
+    //   label: (
+    //     <span>
+    //       VIP会员中心
+    //       {currentUser?.isVip && <Badge dot style={{ marginLeft: 4 }} />}
+    //     </span>
+    //   ),
+    //   icon: <CrownOutlined style={{ color: currentUser?.isVip ? '#faad14' : undefined }} />,
+    //   onClick: () => navigate('/vip/membership')
+    // },
     {
       key: 'settings',
       label: '账户设置',
@@ -118,52 +118,52 @@ const AppLayout = () => {
 
   // 通知菜单
   const notificationItems = [
-    {
-      key: 'notification-header',
-      label: (
-        <div style={{ padding: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text strong>通知中心</Text>
-            <Button type="link" size="small">全部标为已读</Button>
-          </div>
-        </div>
-      ),
-      type: 'group'
-    },
-    {
-      key: 'notification-1',
-      label: (
-        <div>
-          <Text strong>系统更新</Text>
-          <div><Text type="secondary">智能RAG系统已更新到最新版本</Text></div>
-          <div><Text type="secondary" style={{ fontSize: '12px' }}>30分钟前</Text></div>
-        </div>
-      )
-    },
+    // {
+    //   key: 'notification-header',
+    //   label: (
+    //     <div style={{ padding: '8px' }}>
+    //       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    //         <Text strong>通知中心</Text>
+    //         <Button type="link" size="small">全部标为已读</Button>
+    //       </div>
+    //     </div>
+    //   ),
+    //   type: 'group'
+    // },
+    // {
+    //   key: 'notification-1',
+    //   label: (
+    //     <div>
+    //       <Text strong>系统更新</Text>
+    //       <div><Text type="secondary">智能RAG系统已更新到最新版本</Text></div>
+    //       <div><Text type="secondary" style={{ fontSize: '12px' }}>30分钟前</Text></div>
+    //     </div>
+    //   )
+    // },
+    // // {
+    // //   key: 'notification-2',
+    // //   label: (
+    // //     <div>
+    // //       <Text strong>文档分析完成</Text>
+    // //       <div><Text type="secondary">您的文档"项目计划书"分析已完成</Text></div>
+    // //       <div><Text type="secondary" style={{ fontSize: '12px' }}>2小时前</Text></div>
+    // //     </div>
+    // //   )
+    // // },
     // {
     //   key: 'notification-2',
     //   label: (
     //     <div>
-    //       <Text strong>文档分析完成</Text>
-    //       <div><Text type="secondary">您的文档"项目计划书"分析已完成</Text></div>
-    //       <div><Text type="secondary" style={{ fontSize: '12px' }}>2小时前</Text></div>
+    //       <Text strong>新功能上线</Text>
+    //       <div><Text type="secondary">批量处理功能已上线，立即体验</Text></div>
+    //       <div><Text type="secondary" style={{ fontSize: '12px' }}>1天前</Text></div>
     //     </div>
     //   )
     // },
-    {
-      key: 'notification-2',
-      label: (
-        <div>
-          <Text strong>新功能上线</Text>
-          <div><Text type="secondary">批量处理功能已上线，立即体验</Text></div>
-          <div><Text type="secondary" style={{ fontSize: '12px' }}>1天前</Text></div>
-        </div>
-      )
-    },
-    {
-      key: 'view-all',
-      label: <div style={{ textAlign: 'center' }}>查看所有通知</div>,
-    }
+    // {
+    //   key: 'view-all',
+    //   label: <div style={{ textAlign: 'center' }}>查看所有通知</div>,
+    // }
   ];
 
   // 主侧边栏菜单项配置
@@ -218,10 +218,10 @@ const AppLayout = () => {
           key: '/analysis/security',
           label: '敏感信息检测',
         },
-        {
-          key: '/analysis/',
-          label: '文档查重',
-        }
+        // {
+        //   key: '/analysis/',
+        //   label: '文档查重',
+        // }
       ],
     }
   ];
@@ -239,7 +239,7 @@ const AppLayout = () => {
       >
         <div className={`logo-container ${collapsed ? 'collapsed' : ''}`}>
           {collapsed ? (
-            <div className="logo-small">SD</div>
+            <div className="logo-small">SR</div>
           ) : (
             <div className="logo-full">
               <Title level={3} style={{ margin: 0, color: '#1890ff' }}>SmartRAG</Title>

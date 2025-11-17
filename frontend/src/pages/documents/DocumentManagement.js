@@ -512,7 +512,7 @@ const DocumentManagement = () => {
                   />
                 </Card>
               </Col>
-              <Col xs={24} md={8}>
+              {/* <Col xs={24} md={8}>
                 <Card
                   bordered={false}
                   style={{
@@ -558,7 +558,7 @@ const DocumentManagement = () => {
                     </Text>
                   </div>
                 </Card>
-              </Col>
+              </Col> */}
             </Row>
           </Card>
         </Col>

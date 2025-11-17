@@ -1,8 +1,8 @@
 import axios from 'axios';
 import {message} from 'antd';
 
-// const BASE_URL = 'http://localhost:8080';
-const BASE_URL = 'http://10.5.83.175:8080';
+// 优先使用环境变量，其次回退到默认值
+const BASE_URL = process.env.REACT_APP_API_BASE || 'http://localhost:8080';
 // const BASE_URL = 'http://3s62k66540.51vip.biz:59292';
 
 // 创建一个axios实例

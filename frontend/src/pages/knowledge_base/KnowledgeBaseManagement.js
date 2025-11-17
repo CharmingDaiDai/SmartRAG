@@ -340,7 +340,7 @@ const KnowledgeBaseManagement = () => {
           params.hasOwnProperty("abstract") &&
           params["chunk-size"] === 2048
         ) {
-          method = "hisem";
+          method = "Hisem";
         } else if (
           params["chunk-size"] === 512 &&
           params["chunk-overlap"] === 100
@@ -359,9 +359,9 @@ const KnowledgeBaseManagement = () => {
         case "hisem":
           displayName = "HiSem-RAG-Fast";
           break;
-        case "hisemTree":
-          displayName = "HiSem-RAG-Tree";
-          break;
+        // case "hisemTree":
+        //   displayName = "HiSem-RAG-Tree";
+        //   break;
         default:
           // 如果有传入的值就显示，否则显示默认
           displayName = method || "默认方法";
@@ -421,9 +421,9 @@ const KnowledgeBaseManagement = () => {
           case "hisem":
             displayName = "HiSem-RAG-Fast";
             break;
-          case "hisemTree":
-            displayName = "HiSem-RAG-Tree";
-            break;
+          // case "hisemTree":
+          //   displayName = "HiSem-RAG-Tree";
+          //   break;
           default:
             // 如果有传入的值就显示，否则显示默认
             displayName = text || "默认方法";
@@ -771,7 +771,7 @@ const KnowledgeBaseManagement = () => {
             label="知识库名称"
             rules={[{ required: true, message: "请输入知识库名称" }]}
           >
-            <Input placeholder="请输入知识库名称" />
+            <Input placeholder="请输入知识库名称（目前仅支持英文）" />
           </Form.Item>
 
           {/* 添加知识库描述字段 */}
