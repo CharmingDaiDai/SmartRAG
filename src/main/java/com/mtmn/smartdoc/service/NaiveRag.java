@@ -149,7 +149,7 @@ public class NaiveRag implements BaseRag {
                     continue;
                 }
 
-                List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+                List<Embedding> embeddings = EmbeddingService.embedInBatches(embeddingModel, segments, 10);
 
                 embeddingStore.addAll(embeddings, segments);
 

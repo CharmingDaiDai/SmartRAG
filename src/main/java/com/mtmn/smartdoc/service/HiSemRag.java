@@ -125,7 +125,7 @@ public class HiSemRag implements BaseRag {
                         return new TextSegment(node.getTitle() + '\n' + node.getPageContent(), new Metadata(node.getMetadata()));
                     }).toList();
 
-                    List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+                    List<Embedding> embeddings = EmbeddingService.embedInBatches(embeddingModel, segments, 10);
 
                     embeddingStore.addAll(embeddings, segments);
                 }

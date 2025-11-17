@@ -15,6 +15,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -148,10 +149,35 @@ public class EmbeddingService {
 
         DocumentSplitter splitter = new DocumentByParagraphSplitter(2048, 100);
         List<TextSegment> segments = splitter.split(document);
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+        List<Embedding> embeddings = embedInBatches(embeddingModel, segments, 10);
         embeddingStore.addAll(embeddings);
 
         return embeddingStore;
+    }
+
+    /**
+     * 按批次对文本片段进行嵌入，解决在线模型单次最大批量限制问题
+     *
+     * @param embeddingModel 嵌入模型
+     * @param segments       文本片段列表
+     * @param batchSize      每批最大片段数
+     * @return 所有片段对应的嵌入向量，顺序与输入segments一致
+     */
+    public static List<Embedding> embedInBatches(EmbeddingModel embeddingModel, List<TextSegment> segments, int batchSize) {
+        if (segments == null || segments.isEmpty()) {
+            return List.of();
+        }
+        if (batchSize <= 0) {
+            batchSize = 10;
+        }
+        List<Embedding> result = new ArrayList<>(segments.size());
+        for (int i = 0; i < segments.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, segments.size());
+            List<TextSegment> batch = segments.subList(i, end);
+            List<Embedding> batchEmbeddings = embeddingModel.embedAll(batch).content();
+            result.addAll(batchEmbeddings);
+        }
+        return result;
     }
 
     /**
