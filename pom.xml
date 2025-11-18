@@ -12,6 +12,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>3.2.2</spring-boot.version>
+        <langchain4j.version>1.8.0-beta15</langchain4j.version>
+        <io.jsonwebtoken.version>0.12.5</io.jsonwebtoken.version>
     </properties>
     <dependencies>
         <dependency>
@@ -65,6 +67,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- WireMock 用于 HTTP 接口模拟测试 -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.3.1</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
@@ -78,89 +88,123 @@
             <version>8.5.6</version>
         </dependency>
 
-        <!--        &lt;!&ndash; LangChain4j 核心依赖 &ndash;&gt;-->
-        <!--        <dependency>-->
-        <!--            <groupId>dev.langchain4j</groupId>-->
-        <!--            <artifactId>langchain4j</artifactId>-->
-        <!--            <version>1.0.0-rc1</version>-->
-        <!--        </dependency>-->
-
-        <!--        &lt;!&ndash; LangChain4j OpenAI 集成 &ndash;&gt;-->
-        <!--        <dependency>-->
-        <!--            <groupId>dev.langchain4j</groupId>-->
-        <!--            <artifactId>langchain4j-open-ai</artifactId>-->
-        <!--            <version>1.0.0-rc1</version>-->
-        <!--        </dependency>-->
-
         <!--LangChain4j Spring boot 依赖-->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-spring-boot-starter</artifactId>
-<!--            <version>1.0.0-beta4</version>-->
-            <version>1.5.0-beta11</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${langchain4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-document-parser-apache-tika</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${langchain4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-document-parser-apache-poi</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-parser-markdown</artifactId>
+            <version>${langchain4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-milvus</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${langchain4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-reactor</artifactId>
-            <version>1.5.0-beta11</version>
+            <version>${langchain4j.version}</version>
         </dependency>
-<!--        &lt;!&ndash; Milvus 客户端 &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>io.milvus</groupId>-->
-<!--            <artifactId>milvus-sdk-java</artifactId>-->
-<!--            <version>2.5.2</version>-->
-<!--        </dependency>-->
+
+        <!-- 智谱AI依赖：排除JDK HTTP客户端 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-zhipu-ai</artifactId>
+            <version>${langchain4j.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-http-client-jdk</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!--  Xinference依赖：排除JDK HTTP客户端 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-xinference</artifactId>
+            <version>${langchain4j.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-jdk-http-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- 通义千问依赖：排除JDK HTTP客户端 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-community-dashscope-spring-boot-starter</artifactId>
+            <version>${langchain4j.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-jdk-http-client</artifactId>
+                </exclusion>
+                <!-- 新增：排除 logback-classic -->
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai-official</artifactId>
+            <version>${langchain4j.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>dev.langchain4j</groupId>
+                    <artifactId>langchain4j-jdk-http-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <!-- JsonWebToken 支持 -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.11.5</version>
+            <version>${io.jsonwebtoken.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.11.5</version>
+            <version>${io.jsonwebtoken.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.11.5</version>
+            <version>${io.jsonwebtoken.version}</version>
             <scope>runtime</scope>
         </dependency>
-
-<!--        &lt;!&ndash; Apache Commons IO &ndash;&gt;-->
-<!--        <dependency>-->
-<!--            <groupId>commons-io</groupId>-->
-<!--            <artifactId>commons-io</artifactId>-->
-<!--            <version>2.11.0</version>-->
-<!--        </dependency>-->
 
         <!-- 排除 SpringBoot 默认的 Logback 日志 -->
         <dependency>
@@ -193,6 +237,20 @@
             <artifactId>dotenv-java</artifactId>
             <version>3.0.0</version>
         </dependency>
+
+        <!-- Caffeine 缓存 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.1.8</version>
+        </dependency>
+
+        <!-- Reactor Test -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -202,6 +260,13 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- 新增 jsonschema-generator 版本管理 -->
+            <dependency>
+                <groupId>com.github.victools</groupId>
+                <artifactId>jsonschema-generator</artifactId>
+                <version>4.38.0</version> <!-- 统一使用该版本 -->
             </dependency>
         </dependencies>
     </dependencyManagement>
