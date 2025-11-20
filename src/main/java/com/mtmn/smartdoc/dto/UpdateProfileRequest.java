@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 更新用户个人资料请求DTO
+ *
  * @author charmingdaidai
  */
 @Data

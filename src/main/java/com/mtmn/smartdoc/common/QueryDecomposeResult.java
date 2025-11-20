@@ -18,27 +18,27 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QueryDecomposeResult {
-    
+
     /**
      * 分解后的查询项列表
      */
     private List<QueryItem> queries;
-    
+
     /**
      * 解析是否成功
      */
     private boolean success;
-    
+
     /**
      * 原始响应
      */
     private String rawResponse;
-    
+
     /**
      * 解析失败原因
      */
     private String reason;
-    
+
     /**
      * 查询项
      */
@@ -51,7 +51,7 @@ public class QueryDecomposeResult {
          * 查询类型：检索、回答等
          */
         private String type;
-        
+
         /**
          * 查询内容
          */

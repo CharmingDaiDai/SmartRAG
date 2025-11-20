@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 修改密码请求DTO
+ *
  * @author charmingdaidai
  */
 @Data

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * GitHub用户信息响应
+ *
  * @author charmingdaidai
  */
 @Data
@@ -19,25 +20,25 @@ public class GitHubUserInfoResponse {
     private String login;
     private String name;
     private String email;
-    
+
     @JsonProperty("avatar_url")
     private String avatarUrl;
-    
+
     private String location;
     private String bio;
-    
+
     @JsonProperty("public_repos")
     private Integer publicRepos;
-    
+
     @JsonProperty("public_gists")
     private Integer publicGists;
-    
+
     private Integer followers;
     private Integer following;
-    
+
     @JsonProperty("created_at")
     private String createdAt;
-    
+
     @JsonProperty("updated_at")
     private String updatedAt;
 }
