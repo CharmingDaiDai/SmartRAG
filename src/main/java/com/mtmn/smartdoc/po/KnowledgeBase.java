@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.po;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.mtmn.smartdoc.enums.IndexStrategyType;
+import com.mtmn.smartdoc.enums.KnowledgeBaseStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,52 +11,71 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
+ * 知识库实体类 v2.0
+ *
  * @author charmingdaidai
- * @version 1.0
- * @description 知识库实体类
- * @date 2025/5/4 17:00
+ * @version 2.0
+ * @date 2025-11-19
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "knowledge_base")
-@JsonIgnoreProperties({"user"})
+@Table(name = "knowledge_bases")
 public class KnowledgeBase {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    // 添加冗余字段存储用户ID，方便查询和返回
-    @Column(name = "user_id", insertable = false, updatable = false)
-    private Long userId;
-
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "rag", nullable = true)
-    private String rag;
-
-    @Column(name = "description")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "embedding_model", nullable = true)
-    private String embeddingModel;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "index_strategy_type", nullable = false)
+    private IndexStrategyType indexStrategyType;
 
-    @Column(name = "index_param", columnDefinition = "TEXT")
-    private String indexParam;
+    @Column(name = "index_strategy_config", columnDefinition = "JSON")
+    private String indexStrategyConfig;
+
+    @Column(name = "embedding_model_id", nullable = false)
+    private String embeddingModelId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private KnowledgeBaseStatus status;
+
+    @Column(name = "storage_metadata", columnDefinition = "JSON")
+    private String storageMetadata;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = KnowledgeBaseStatus.CREATING;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
