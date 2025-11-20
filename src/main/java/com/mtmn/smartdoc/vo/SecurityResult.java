@@ -23,7 +23,7 @@ public class SecurityResult {
     private int originalLength;
     // 敏感信息总数
     private int totalCount;
-    
+
     // 内部类：敏感信息
     @Data
     @Builder
@@ -39,7 +39,7 @@ public class SecurityResult {
         // 敏感信息在文档中的位置
         private Position position;
     }
-    
+
     // 内部类：敏感信息位置
     @Data
     @Builder

@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.aspect;
 
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.AfterThrowing;
@@ -17,11 +17,12 @@ import java.util.Arrays;
 /**
  * REST API 日志切面
  * 用于记录所有 REST API 的请求与响应信息
+ *
  * @author charmingdaidai
  */
 @Aspect
 @Component
-@Log4j2
+@Slf4j
 public class RestApiLogAspect {
 
     /**
@@ -37,12 +38,12 @@ public class RestApiLogAspect {
     @Around("apiPointcut()")
     public Object logAroundApi(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
-        
+
         // 获取请求信息
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
-            
+
             // 记录HTTP方法、URL和IP地址
             log.info("请求开始 - 方法: {}, URL: {}, IP: {}, 类方法: {}.{}",
                     request.getMethod(),
@@ -50,7 +51,7 @@ public class RestApiLogAspect {
                     request.getRemoteAddr(),
                     joinPoint.getSignature().getDeclaringTypeName(),
                     joinPoint.getSignature().getName());
-            
+
             // 记录请求参数，但不记录敏感信息
             String params = Arrays.toString(joinPoint.getArgs());
             if (params.contains("password")) {
@@ -58,14 +59,14 @@ public class RestApiLogAspect {
             }
             log.debug("请求参数: {}", params);
         }
-        
+
         // 执行方法，获取返回值
         Object result = joinPoint.proceed();
-        
+
         // 计算执行时间
         long executionTime = System.currentTimeMillis() - startTime;
         log.info("请求结束 - 执行时间: {}ms", executionTime);
-        
+
         return result;
     }
 

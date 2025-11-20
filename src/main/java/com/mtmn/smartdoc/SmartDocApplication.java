@@ -17,7 +17,7 @@ public class SmartDocApplication {
                     .directory(".")
                     .ignoreIfMissing()
                     .load();
-            
+
             // 将 .env 文件中的变量设置为系统属性
             dotenv.entries().forEach(entry -> {
                 System.setProperty(entry.getKey(), entry.getValue());
@@ -25,7 +25,7 @@ public class SmartDocApplication {
         } catch (Exception e) {
             System.err.println("Warning: Failed to load .env file: " + e.getMessage());
         }
-        
+
         SpringApplication.run(SmartDocApplication.class, args);
     }
 

@@ -10,7 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,7 +25,7 @@ import java.io.IOException;
  * @author charmingdaidai
  */
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -40,29 +40,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
-        
+
         // 判断是否为流式响应请求
-        boolean isStreamRequest = request.getRequestURI().contains("/api/kb/chat/") && 
-            ("text/event-stream".equals(request.getHeader("Accept")) || 
-             request.getRequestURI().endsWith(".stream"));
-        
+        boolean isStreamRequest = request.getRequestURI().contains("/api/kb/chat/") &&
+                ("text/event-stream".equals(request.getHeader("Accept")) ||
+                        request.getRequestURI().endsWith(".stream"));
+
         // 如果没有Authorization头或不是Bearer token，则直接放行
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
-        
+
         // 解析JWT
         jwt = authHeader.substring(7);
-        
+
         try {
             // 尝试提取用户名
             username = jwtService.extractUsername(jwt);
-            
+
             // 如果获取到用户名且尚未认证
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-                
+
                 // 检查token是否有效
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -74,7 +74,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    
+
                     // 对于流式请求，记录额外日志
                     if (isStreamRequest) {
                         log.debug("流式请求认证成功: {}", request.getRequestURI());
@@ -110,14 +110,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return; // 不继续处理发生异常的流式请求
             }
         }
-        
+
         filterChain.doFilter(request, response);
     }
-    
+
     /**
      * 处理流式请求的认证错误
-     * 
-     * @param response HttpServletResponse
+     *
+     * @param response     HttpServletResponse
      * @param errorMessage 错误消息
      * @throws IOException 如果写入响应时发生错误
      */

@@ -41,57 +41,57 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .authorizeHttpRequests(auth -> auth
-                // 不需要认证的路径
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers("/api/kb/chat/**").permitAll()
-                // // 流式响应接口 - 需要提前进行验证，避免在流式输出过程中进行安全检查
-                // .requestMatchers(request -> 
-                //     request.getRequestURI().contains("/api/kb/chat/") && 
-                //     (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) ||
-                //      request.getRequestURI().endsWith(".stream")))
-                // .authenticated() // 仅执行基本身份验证，不做额外权限检查
-                // 要求认证的路径
-                .requestMatchers("/api/users/**").authenticated()
-                .requestMatchers("/api/documents/**").authenticated()
-                // VIP功能
-                .requestMatchers("/api/vip/**").hasAuthority("ROLE_VIP")
-                // 其他请求都需要认证
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-            // 禁用响应提交后的异常处理，防止流式响应中断
-            .exceptionHandling(exceptionHandling -> 
-                exceptionHandling.authenticationEntryPoint((request, response, authException) -> {
-                    // 针对流式响应的特殊处理
-                    boolean isStreamRequest = request.getRequestURI().contains("/api/kb/chat/") && 
-                        (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) || 
-                         request.getRequestURI().endsWith(".stream"));
-                    
-                    if (response.isCommitted()) {
-                        // 响应已经提交，不要尝试写入错误信息
-                        return;
-                    } else if (isStreamRequest && !response.isCommitted()) {
-                        // 流式请求但响应尚未提交，发送401状态但不终止连接
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                        response.getWriter().write("event: error\ndata: Unauthorized\n\n");
-                        response.flushBuffer();
-                    } else {
-                        // 普通请求，发送标准401响应
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-                    }
-                })
-            );
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        // 不需要认证的路径
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/kb/chat/**").permitAll()
+                        // // 流式响应接口 - 需要提前进行验证，避免在流式输出过程中进行安全检查
+                        // .requestMatchers(request ->
+                        //     request.getRequestURI().contains("/api/kb/chat/") &&
+                        //     (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) ||
+                        //      request.getRequestURI().endsWith(".stream")))
+                        // .authenticated() // 仅执行基本身份验证，不做额外权限检查
+                        // 要求认证的路径
+                        .requestMatchers("/api/users/**").authenticated()
+                        .requestMatchers("/api/documents/**").authenticated()
+                        // VIP功能
+                        .requestMatchers("/api/vip/**").hasAuthority("ROLE_VIP")
+                        // 其他请求都需要认证
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                // 禁用响应提交后的异常处理，防止流式响应中断
+                .exceptionHandling(exceptionHandling ->
+                        exceptionHandling.authenticationEntryPoint((request, response, authException) -> {
+                            // 针对流式响应的特殊处理
+                            boolean isStreamRequest = request.getRequestURI().contains("/api/kb/chat/") &&
+                                    (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) ||
+                                            request.getRequestURI().endsWith(".stream"));
+
+                            if (response.isCommitted()) {
+                                // 响应已经提交，不要尝试写入错误信息
+                                return;
+                            } else if (isStreamRequest && !response.isCommitted()) {
+                                // 流式请求但响应尚未提交，发送401状态但不终止连接
+                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                response.getWriter().write("event: error\ndata: Unauthorized\n\n");
+                                response.flushBuffer();
+                            } else {
+                                // 普通请求，发送标准401响应
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                            }
+                        })
+                );
 
         return http.build();
     }

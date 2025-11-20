@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.common;
 
 import jakarta.validation.ConstraintViolationException;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,12 +25,13 @@ import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器
+ *
  * @author charmingdaidai
  */
-@Log4j2
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+
     /**
      * 处理参数校验异常
      */
@@ -45,7 +46,7 @@ public class GlobalExceptionHandler {
         log.warn("参数验证失败: {}", message);
         return ApiResponse.badRequest(message);
     }
-    
+
     /**
      * 处理绑定异常
      */
@@ -60,7 +61,7 @@ public class GlobalExceptionHandler {
         log.warn("参数绑定失败: {}", message);
         return ApiResponse.badRequest(message);
     }
-    
+
     /**
      * 处理约束违反异常
      */
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
         log.warn("约束违反: {}", e.getMessage());
         return ApiResponse.badRequest(e.getMessage());
     }
-    
+
     /**
      * 处理请求参数缺失异常
      */
@@ -80,7 +81,7 @@ public class GlobalExceptionHandler {
         log.warn("请求参数缺失: {}", e.getMessage());
         return ApiResponse.badRequest("缺少必要的请求参数: " + e.getParameterName());
     }
-    
+
     /**
      * 处理方法参数类型不匹配异常
      */
@@ -90,7 +91,7 @@ public class GlobalExceptionHandler {
         log.warn("方法参数类型不匹配: {}", e.getMessage());
         return ApiResponse.badRequest("参数类型不匹配: " + e.getName());
     }
-    
+
     /**
      * 处理HTTP消息不可读异常
      */
@@ -100,7 +101,7 @@ public class GlobalExceptionHandler {
         log.warn("HTTP消息不可读: {}", e.getMessage());
         return ApiResponse.badRequest("请求体格式错误或为空");
     }
-    
+
     /**
      * 处理请求方法不支持异常
      */
@@ -110,7 +111,7 @@ public class GlobalExceptionHandler {
         log.warn("请求方法不支持: {}", e.getMessage());
         return ApiResponse.error(405, "不支持的请求方法: " + e.getMethod());
     }
-    
+
     /**
      * 处理资源未找到异常
      */
@@ -120,7 +121,7 @@ public class GlobalExceptionHandler {
         log.warn("资源未找到: {}", e.getMessage());
         return ApiResponse.notFound("请求的资源不存在: " + e.getRequestURL());
     }
-    
+
     /**
      * 处理认证异常
      */
@@ -130,7 +131,7 @@ public class GlobalExceptionHandler {
         log.warn("认证失败: {}", e.getMessage());
         return ApiResponse.unauthorized("认证失败: " + e.getMessage());
     }
-    
+
     /**
      * 处理Bad Credentials异常
      */
@@ -140,7 +141,7 @@ public class GlobalExceptionHandler {
         log.warn("凭证错误: {}", e.getMessage());
         return ApiResponse.unauthorized("用户名或密码错误");
     }
-    
+
     /**
      * 处理访问拒绝异常
      */
@@ -150,7 +151,7 @@ public class GlobalExceptionHandler {
         log.warn("访问被拒绝: {}", e.getMessage());
         return ApiResponse.forbidden("没有权限访问此资源");
     }
-    
+
     /**
      * 处理文件上传大小超出限制异常
      */
@@ -170,7 +171,7 @@ public class GlobalExceptionHandler {
         log.warn("Multipart请求错误: {}", e.getMessage());
         return ApiResponse.badRequest("文件上传请求格式错误，请确保请求类型为multipart/form-data");
     }
-    
+
     /**
      * 处理自定义异常
      */
@@ -180,7 +181,7 @@ public class GlobalExceptionHandler {
         log.warn("自定义异常: {}", e.getMessage());
         return ApiResponse.error(e.getCode(), e.getMessage());
     }
-    
+
     /**
      * 处理其他未捕获的异常
      */
