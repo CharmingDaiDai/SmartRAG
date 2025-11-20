@@ -11,7 +11,7 @@ import com.mtmn.smartdoc.vo.AuthenticationResponse;
 import com.mtmn.smartdoc.vo.GitHubUserInfoResponse;
 import com.mtmn.smartdoc.vo.RegisterRequest;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,37 +31,32 @@ import java.util.UUID;
 /**
  * 认证服务实现
  * 负责用户注册、登录、GitHub OAuth认证和令牌刷新等功能
- * 
+ *
  * @author charmingdaidai
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class AuthenticationServiceImpl implements AuthenticationService {
-
-    @Value("${spring.security.oauth2.client.github.client-id}")
-    private String clientId;
-
-    @Value("${spring.security.oauth2.client.github.client-secret}")
-    private String clientSecret;
-
-    @Value("${spring.security.oauth2.client.github.redirectUri}")
-    private String redirectUri;
-
-    @Value("${spring.security.oauth2.client.github.scope}")
-    private String scope;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-
     private final RestTemplate restTemplate;
     private final MinioService minioService;
+    @Value("${spring.security.oauth2.client.github.client-id}")
+    private String clientId;
+    @Value("${spring.security.oauth2.client.github.client-secret}")
+    private String clientSecret;
+    @Value("${spring.security.oauth2.client.github.redirectUri}")
+    private String redirectUri;
+    @Value("${spring.security.oauth2.client.github.scope}")
+    private String scope;
 
     /**
      * 用户注册
-     * 
+     * <p>
      * 实现思路：
      * 1. 根据注册请求构建新用户对象
      * 2. 使用BCrypt对用户密码进行加密存储
@@ -69,7 +64,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      * 4. 将用户信息保存到数据库
      * 5. 为新注册用户生成JWT访问令牌和刷新令牌
      * 6. 返回包含令牌的认证响应
-     * 
+     *
      * @param request 用户注册请求，包含用户名、邮箱、密码等信息
      * @return 包含JWT令牌的认证响应对象
      */
@@ -101,7 +96,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     /**
      * 用户登录认证
-     * 
+     * <p>
      * 实现思路：
      * 1. 使用Spring Security的AuthenticationManager验证用户凭证
      * 2. 验证用户名和密码的正确性
@@ -110,7 +105,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      * 5. 更新用户的最后登录时间
      * 6. 为认证成功的用户生成JWT访问令牌和刷新令牌
      * 7. 返回包含令牌的认证响应
-     * 
+     *
      * @param request 用户登录请求，包含用户名和密码
      * @return 包含JWT令牌的认证响应对象
      * @throws CustomException 当用户不存在或被禁用时抛出
@@ -149,14 +144,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     /**
      * 创建GitHub OAuth授权URL
-     * 
+     * <p>
      * 实现思路：
      * 1. 生成随机的state参数，用于防止CSRF攻击
      * 2. 使用UriComponentsBuilder构建标准的GitHub OAuth授权URL
      * 3. 设置必要的OAuth参数：client_id、redirect_uri、scope、state
      * 4. 返回完整的授权URL供前端重定向使用
      * 5. state参数应保存到session或缓存中以便后续验证
-     * 
+     *
      * @return GitHub OAuth授权URL字符串
      */
     @Override
@@ -174,7 +169,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     /**
      * GitHub OAuth认证处理
-     * 
+     * <p>
      * 实现思路：
      * 1. 使用授权码向GitHub交换访问令牌
      * 2. 使用访问令牌获取GitHub用户信息
@@ -183,8 +178,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      * 5. 更新用户信息和最后登录时间
      * 6. 为用户生成JWT访问令牌和刷新令牌
      * 7. 处理整个流程中的异常情况
-     * 
-     * @param code GitHub返回的授权码
+     *
+     * @param code  GitHub返回的授权码
      * @param state 防CSRF攻击的状态参数
      * @return 包含JWT令牌的认证响应对象
      * @throws RuntimeException 当GitHub认证流程失败时抛出
@@ -246,7 +241,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             String gitId = githubUser.getId().toString();
             String avatarUrl = githubUser.getAvatarUrl();
             String minioAvatarPath = null;
-            
+
             // 下载并上传GitHub头像到MinIO
             if (avatarUrl != null && !avatarUrl.isEmpty()) {
                 try {
@@ -308,7 +303,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     /**
      * 刷新JWT令牌
-     * 
+     * <p>
      * 实现思路：
      * 1. 从刷新令牌中提取用户名信息
      * 2. 验证刷新令牌的格式和有效性
@@ -316,7 +311,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      * 4. 验证刷新令牌是否为该用户签发且未过期
      * 5. 为用户生成新的访问令牌和刷新令牌
      * 6. 返回包含新令牌的认证响应
-     * 
+     *
      * @param refreshToken 客户端提供的刷新令牌
      * @return 包含新JWT令牌的认证响应对象
      * @throws CustomException 当刷新令牌无效或用户不存在时抛出
