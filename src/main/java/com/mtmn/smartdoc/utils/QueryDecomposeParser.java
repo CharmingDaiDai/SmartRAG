@@ -3,7 +3,7 @@ package com.mtmn.smartdoc.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.common.QueryDecomposeResult;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * @date 2025/8/3 15:10
  */
 @Component
-@Log4j2
+@Slf4j
 public class QueryDecomposeParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -88,7 +88,7 @@ public class QueryDecomposeParser {
         for (JsonNode itemNode : arrayNode) {
             String type = itemNode.path("type").asText("检索");
             String query = itemNode.path("query").asText("");
-            
+
             if (!query.isEmpty()) {
                 queries.add(QueryDecomposeResult.QueryItem.builder()
                         .type(type)
@@ -115,10 +115,10 @@ public class QueryDecomposeParser {
             String[] lines = response.split("\n");
             for (String line : lines) {
                 String trimmedLine = line.trim();
-                if (!trimmedLine.isEmpty() && !trimmedLine.startsWith("{") && !trimmedLine.startsWith("}") 
-                    && !trimmedLine.startsWith("[") && !trimmedLine.startsWith("]")
-                    && !trimmedLine.startsWith("\"type\"") && !trimmedLine.startsWith("\"query\"")) {
-                    
+                if (!trimmedLine.isEmpty() && !trimmedLine.startsWith("{") && !trimmedLine.startsWith("}")
+                        && !trimmedLine.startsWith("[") && !trimmedLine.startsWith("]")
+                        && !trimmedLine.startsWith("\"type\"") && !trimmedLine.startsWith("\"query\"")) {
+
                     // 如果包含中文问号或句号，可能是一个查询
                     if (trimmedLine.contains("？") || trimmedLine.contains("。") || trimmedLine.contains("?")) {
                         queries.add(QueryDecomposeResult.QueryItem.builder()
@@ -151,12 +151,12 @@ public class QueryDecomposeParser {
      */
     private List<QueryDecomposeResult.QueryItem> extractByRegex(String response) {
         List<QueryDecomposeResult.QueryItem> queries = new ArrayList<>();
-        
+
         try {
             // 匹配 "query": "xxx" 格式
             Pattern pattern = Pattern.compile("\"query\"\\s*:\\s*\"([^\"]+)\"");
             Matcher matcher = pattern.matcher(response);
-            
+
             while (matcher.find()) {
                 String query = matcher.group(1);
                 queries.add(QueryDecomposeResult.QueryItem.builder()
@@ -167,7 +167,7 @@ public class QueryDecomposeParser {
         } catch (Exception e) {
             log.debug("正则提取失败", e);
         }
-        
+
         return queries;
     }
 

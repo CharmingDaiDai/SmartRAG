@@ -1,12 +1,10 @@
 package com.mtmn.smartdoc.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.service.LLMService;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -14,18 +12,21 @@ import reactor.core.publisher.Sinks;
 import java.util.*;
 
 /**
+ * SSE 工具类
+ * 提供流式消息推送功能,支持在同一个SSE连接中发送不同类型的消息
+ *
  * @author charmingdaidai
- * @version 1.0
- * @description SSE 工具类
- * @date 2025/5/27 09:19
+ * @version 2.0
+ * @date 2025/11/20
  */
-@Log4j2
+@Slf4j
 @Component
 public class SseUtil {
-    @Autowired
+
+    @Resource
     private ObjectMapper objectMapper;
 
-    @Autowired
+    @Resource
     private LLMService llmService;
 
     /**
@@ -82,15 +83,29 @@ public class SseUtil {
     }
 
     /**
-     * 处理流式聊天响应
+     * 处理流式聊天响应 - 使用默认模型
      *
      * @param prompt      提示词
      * @param docContents 检索到的文档内容列表（可以为null）
      * @return 格式化的SSE消息流
      */
     public Flux<String> handleStreamingChatResponse(String prompt, List<String> docContents) {
-        // 1. 创建流式聊天模型
-        OpenAiStreamingChatModel streamingChatModel = llmService.createStreamingChatModel(null);
+        return handleStreamingChatResponse(prompt, docContents, null);
+    }
+
+    /**
+     * 处理流式聊天响应 - 指定模型
+     *
+     * @param prompt      提示词
+     * @param docContents 检索到的文档内容列表（可以为null）
+     * @param modelId     模型ID（可以为null，使用默认模型）
+     * @return 格式化的SSE消息流
+     */
+    public Flux<String> handleStreamingChatResponse(String prompt, List<String> docContents, String modelId) {
+        // 1. 创建流式聊天客户端
+        LLMClient llmClient = modelId == null ?
+                llmService.createLLMClient() :
+                llmService.createLLMClient(modelId);
 
         // 2. 创建一个只允许单订阅者、带缓冲的 Sink
         Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
@@ -100,30 +115,108 @@ public class SseUtil {
             sink.tryEmitNext(buildJsonSseMessage("", docContents));
         }
 
-        // 4. 调用流式聊天模型接口，传入 prompt 和 自定义回调 Handler
-        streamingChatModel.chat(prompt, new StreamingChatResponseHandler() {
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                // 模型每生成一小段文本，就会触发一次 onPartialResponse 回调
-                // 先把里边的双引号、换行做转义，然后构造 JSON 片段
-                String escapedContent = partialResponse.replace("\"", "\\\"").replace("\n", "\\n");
-                sink.tryEmitNext(buildJsonSseMessage(escapedContent, null));
-            }
-
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                // 当模型整次对话生成完毕后，触发 onCompleteResponse
-                sink.tryEmitComplete(); // 标记当前 Sink 的 Flux 流结束
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                log.error("聊天响应处理出错", error);
-                sink.tryEmitError(error); // 把异常推给下游，Flux 会触发 onError
-            }
-        });
+        // 4. 使用新的 LLMClient 流式调用接口
+        llmClient.streamChat(prompt)
+                .doOnNext(token -> {
+                    // 模型每生成一小段文本（token），就会触发一次
+                    // 先把里边的双引号、换行做转义，然后构造 JSON 片段
+                    String escapedContent = token.replace("\"", "\\\"").replace("\n", "\\n");
+                    sink.tryEmitNext(buildJsonSseMessage(escapedContent, null));
+                })
+                .doOnComplete(() -> {
+                    // 当模型整次对话生成完毕后触发
+                    log.debug("流式聊天响应完成");
+                    sink.tryEmitComplete(); // 标记当前 Sink 的 Flux 流结束
+                })
+                .doOnError(error -> {
+                    // 发生错误时触发
+                    log.error("聊天响应处理出错", error);
+                    sink.tryEmitError(error); // 把异常推给下游，Flux 会触发 onError
+                })
+                .subscribe(); // 订阅启动流式处理
 
         // 5. 返回这个 Sink 对应的 Flux，供外层（Controller）订阅
+        return sink.asFlux();
+    }
+
+    /**
+     * 自定义流式消息推送
+     * 可以在同一个SSE连接中发送多种类型的消息
+     *
+     * @param messageProducer 消息生产者函数，接收sink作为参数，可以向其推送各种消息
+     * @return 格式化的SSE消息流
+     */
+    public Flux<String> createCustomStream(java.util.function.Consumer<Sinks.Many<String>> messageProducer) {
+        Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
+
+        try {
+            // 执行自定义的消息推送逻辑
+            messageProducer.accept(sink);
+        } catch (Exception e) {
+            log.error("自定义流式消息推送失败", e);
+            sink.tryEmitError(e);
+        }
+
+        return sink.asFlux();
+    }
+
+    /**
+     * 高级用法：组合多个数据源的流式推送
+     * 例如：先推送检索文档 -> 再推送思考过程 -> 最后推送AI响应
+     *
+     * @param prompt        提示词
+     * @param docContents   检索到的文档内容
+     * @param thinkingSteps 思考步骤（可选）
+     * @param modelId       模型ID（可选）
+     * @return 格式化的SSE消息流
+     */
+    public Flux<String> handleAdvancedStreamingResponse(
+            String prompt,
+            List<String> docContents,
+            List<String> thinkingSteps,
+            String modelId) {
+
+        Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
+
+        // 步骤1: 推送检索到的文档
+        if (docContents != null && !docContents.isEmpty()) {
+            sink.tryEmitNext(buildJsonSseMessage("", docContents));
+        }
+
+        // 步骤2: 推送思考步骤（如果有）
+        if (thinkingSteps != null && !thinkingSteps.isEmpty()) {
+            for (String step : thinkingSteps) {
+                Map<String, Object> thinkingMessage = new HashMap<>();
+                thinkingMessage.put("type", "thinking");
+                thinkingMessage.put("content", step);
+                try {
+                    sink.tryEmitNext(objectMapper.writeValueAsString(thinkingMessage));
+                } catch (Exception e) {
+                    log.error("推送思考步骤失败", e);
+                }
+            }
+        }
+
+        // 步骤3: 推送AI流式响应
+        LLMClient llmClient = modelId == null ?
+                llmService.createLLMClient() :
+                llmService.createLLMClient(modelId);
+
+        llmClient.streamChat(prompt)
+                .doOnNext(token -> {
+                    String escapedContent = token.replace("\"", "\\\"").replace("\n", "\\n");
+                    sink.tryEmitNext(buildJsonSseMessage(escapedContent, null));
+                })
+                .doOnComplete(() -> {
+                    log.debug("高级流式响应完成");
+                    sink.tryEmitComplete();
+                })
+                .doOnError(error -> {
+                    log.error("高级流式响应处理出错", error);
+                    sink.tryEmitError(error);
+                })
+                .subscribe();
+
         return sink.asFlux();
     }
 }
