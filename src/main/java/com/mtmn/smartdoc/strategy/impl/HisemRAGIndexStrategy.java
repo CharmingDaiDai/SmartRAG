@@ -102,7 +102,7 @@ public class HisemRAGIndexStrategy implements IndexStrategy {
 
         try {
             // 1. 获取文档的树节点
-            List<TreeNode> nodes = treeNodeRepository.findByDocumentIdOrderByPathAsc(document.getId());
+            List<TreeNode> nodes = treeNodeRepository.findByDocumentIdOrderByTitlePathAsc(document.getId());
 
             // 2. 准备向量数据
             List<StorageStrategy.VectorItem> vectorItems = new ArrayList<>();

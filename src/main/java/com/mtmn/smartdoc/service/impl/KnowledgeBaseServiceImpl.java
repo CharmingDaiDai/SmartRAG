@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
  *
  * @author charmingdaidai
  * @version 2.0
- * @date 2025-11-19
  */
 @Slf4j
 @Service
@@ -44,20 +43,45 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public KnowledgeBaseResponse createKnowledgeBase(CreateKnowledgeBaseRequest request, Long userId) {
         log.info("Creating knowledge base for user {}: {}", userId, request.getName());
 
-        // 验证配置
-        validateStrategyConfig(request.getIndexStrategyConfig(), request.getEmbeddingModelId());
+        // 1. 验证 Embedding 模型是否存在
+        if (!modelFactory.isEmbeddingModelAvailable(request.getEmbeddingModelId())) {
+            throw new ConfigValidationException("Embedding model not found: " + request.getEmbeddingModelId());
+        }
 
-        // 创建知识库实体
+        // 2. 获取配置对象(Jackson已自动反序列化并填充默认值)
+        IndexStrategyConfig config = request.getIndexStrategyConfig();
+        if (config == null) {
+            throw new ConfigValidationException("Index strategy configuration is required");
+        }
+
+        // 3. 验证配置
+        try {
+            config.validate();
+        } catch (IllegalArgumentException e) {
+            throw new ConfigValidationException("Invalid strategy configuration: " + e.getMessage(), e);
+        }
+
+        // 4. 序列化配置为JSON字符串存储到数据库
+        String configJson;
+        try {
+            configJson = objectMapper.writeValueAsString(config);
+            log.debug("Serialized config: {}", configJson);
+        } catch (Exception e) {
+            log.error("Failed to serialize strategy config", e);
+            throw new ConfigValidationException("Failed to serialize strategy configuration", e);
+        }
+
+        // 5. 创建知识库实体
         KnowledgeBase kb = KnowledgeBase.builder()
                 .name(request.getName())
                 .description(request.getDescription())
-                .indexStrategyType(request.getIndexStrategyType())
-                .indexStrategyConfig(request.getIndexStrategyConfig())
+                .indexStrategyType(config.getStrategyType())
+                .indexStrategyConfig(configJson)
                 .embeddingModelId(request.getEmbeddingModelId())
                 .userId(userId)
                 .build();
 
-        // 保存到数据库
+        // 6. 保存到数据库
         kb = knowledgeBaseRepository.save(kb);
 
         log.info("Knowledge base created successfully: id={}", kb.getId());
@@ -171,27 +195,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         log.info("Knowledge base deleted successfully: id={}, cleaned {} documents", kbId, documentCount);
     }
 
-    @Override
-    public void validateStrategyConfig(String configJson, String embeddingModelId) {
-        try {
-            // 验证 Embedding 模型是否存在
-            if (!modelFactory.isEmbeddingModelAvailable(embeddingModelId)) {
-                throw new ConfigValidationException("Embedding model not found: " + embeddingModelId);
-            }
-
-            // 解析并验证策略配置
-            IndexStrategyConfig config = objectMapper.readValue(configJson, IndexStrategyConfig.class);
-            config.validate();
-
-            log.debug("Strategy config validation passed");
-        } catch (ConfigValidationException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to validate strategy config", e);
-            throw new ConfigValidationException("Invalid strategy configuration", e);
-        }
-    }
-
     /**
      * 转换为响应 DTO（单个知识库查询使用）
      */
@@ -233,7 +236,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
                 .indexStrategyType(kb.getIndexStrategyType())
                 .indexStrategyConfig(kb.getIndexStrategyConfig())
                 .embeddingModelId(kb.getEmbeddingModelId())
-                .status(kb.getStatus())
                 .userId(kb.getUserId())
                 .documentCount(totalDocs)
                 .indexedDocumentCount(indexedDocs)

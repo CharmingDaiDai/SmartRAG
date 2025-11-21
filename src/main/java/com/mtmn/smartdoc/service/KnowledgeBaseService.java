@@ -57,12 +57,4 @@ public interface KnowledgeBaseService {
      * @param userId 用户 ID
      */
     void deleteKnowledgeBase(Long kbId, Long userId);
-
-    /**
-     * 验证策略配置
-     *
-     * @param configJson       配置 JSON
-     * @param embeddingModelId Embedding 模型 ID
-     */
-    void validateStrategyConfig(String configJson, String embeddingModelId);
 }

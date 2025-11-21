@@ -1,6 +1,5 @@
 package com.mtmn.smartdoc.repository;
 
-import com.mtmn.smartdoc.enums.KnowledgeBaseStatus;
 import com.mtmn.smartdoc.po.KnowledgeBase;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -27,11 +26,6 @@ public interface KnowledgeBaseRepository extends JpaRepository<KnowledgeBase, Lo
      * 根据用户ID和知识库ID查询
      */
     Optional<KnowledgeBase> findByIdAndUserId(Long id, Long userId);
-
-    /**
-     * 根据用户ID和状态查询
-     */
-    List<KnowledgeBase> findByUserIdAndStatus(Long userId, KnowledgeBaseStatus status);
 
     /**
      * 根据用户ID和名称查询

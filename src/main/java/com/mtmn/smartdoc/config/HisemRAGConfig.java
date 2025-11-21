@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.config;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,6 +18,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class HisemRAGConfig extends IndexStrategyConfig {
 
     /**
@@ -55,16 +57,9 @@ public class HisemRAGConfig extends IndexStrategyConfig {
     @Builder.Default
     private Integer maxTreeDepth = 5;
 
-    public HisemRAGConfig(Integer maxLength, Boolean enableTitleEnhancement,
-                          Boolean enableSummary, Boolean enableKeyKnowledge,
-                          String llmModelId, Integer maxTreeDepth) {
-        this.maxLength = maxLength;
-        this.enableTitleEnhancement = enableTitleEnhancement;
-        this.enableSummary = enableSummary;
-        this.enableKeyKnowledge = enableKeyKnowledge;
-        this.llmModelId = llmModelId;
-        this.maxTreeDepth = maxTreeDepth;
-        setStrategyType(IndexStrategyType.HISEM_RAG);
+    @Override
+    public IndexStrategyType getStrategyType() {
+        return IndexStrategyType.HISEM_RAG;
     }
 
     @Override

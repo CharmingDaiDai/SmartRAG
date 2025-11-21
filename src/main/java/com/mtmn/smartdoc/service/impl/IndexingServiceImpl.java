@@ -1,7 +1,6 @@
 package com.mtmn.smartdoc.service.impl;
 
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
-import com.mtmn.smartdoc.enums.KnowledgeBaseStatus;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.po.Document;
 import com.mtmn.smartdoc.repository.DocumentRepository;
@@ -44,9 +43,6 @@ public class IndexingServiceImpl implements IndexingService {
     public void submitBatchIndexingTask(Long kbId, List<Long> documentIds) {
         log.info("Submitting batch indexing task: kbId={}, count={}", kbId, documentIds.size());
 
-        // 更新知识库状态
-        updateKnowledgeBaseStatus(kbId, KnowledgeBaseStatus.INDEXING);
-
         // 异步执行批量索引
         for (Long documentId : documentIds) {
             executeIndexing(documentId, kbId);
@@ -85,9 +81,6 @@ public class IndexingServiceImpl implements IndexingService {
 
             log.info("Indexing completed successfully: documentId={}", documentId);
 
-            // 检查知识库所有文档是否都已索引
-            checkAndUpdateKnowledgeBaseStatus(kbId);
-
         } catch (Exception e) {
             log.error("Indexing failed: documentId={}", documentId, e);
             updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
@@ -102,9 +95,6 @@ public class IndexingServiceImpl implements IndexingService {
         // 验证知识库存在
         knowledgeBaseRepository.findById(kbId)
                 .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
-
-        // 更新知识库状态
-        updateKnowledgeBaseStatus(kbId, KnowledgeBaseStatus.INDEXING);
 
         // TODO: 删除现有索引
         // TODO: 重新索引所有文档
@@ -141,32 +131,5 @@ public class IndexingServiceImpl implements IndexingService {
             documentRepository.save(document);
             log.debug("Document status updated: id={}, status={}", documentId, status);
         });
-    }
-
-    /**
-     * 更新知识库状态
-     */
-    @Transactional
-    protected void updateKnowledgeBaseStatus(Long kbId, KnowledgeBaseStatus status) {
-        knowledgeBaseRepository.findById(kbId).ifPresent(kb -> {
-            kb.setStatus(status);
-            knowledgeBaseRepository.save(kb);
-            log.debug("KnowledgeBase status updated: id={}, status={}", kbId, status);
-        });
-    }
-
-    /**
-     * 检查并更新知识库状态
-     * 如果所有文档都已索引,则更新知识库状态为 INDEXED
-     */
-    @Transactional
-    protected void checkAndUpdateKnowledgeBaseStatus(Long kbId) {
-        long totalDocs = documentRepository.countByKbId(kbId);
-        long indexedDocs = documentRepository.countByKbIdAndIndexStatus(kbId, DocumentIndexStatus.INDEXED);
-
-        if (totalDocs > 0 && totalDocs == indexedDocs) {
-            updateKnowledgeBaseStatus(kbId, KnowledgeBaseStatus.INDEXED);
-            log.info("All documents indexed for KB: {}", kbId);
-        }
     }
 }

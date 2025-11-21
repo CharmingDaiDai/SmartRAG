@@ -1,7 +1,6 @@
 package com.mtmn.smartdoc.po;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
-import com.mtmn.smartdoc.enums.KnowledgeBaseStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,10 +44,6 @@ public class KnowledgeBase {
     @Column(name = "embedding_model_id", nullable = false)
     private String embeddingModelId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private KnowledgeBaseStatus status;
-
     @Column(name = "storage_metadata", columnDefinition = "JSON")
     private String storageMetadata;
 
@@ -68,9 +63,6 @@ public class KnowledgeBase {
         }
         if (updatedAt == null) {
             updatedAt = LocalDateTime.now();
-        }
-        if (status == null) {
-            status = KnowledgeBaseStatus.CREATING;
         }
     }
 

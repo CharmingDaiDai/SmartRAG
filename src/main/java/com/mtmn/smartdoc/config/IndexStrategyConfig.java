@@ -3,7 +3,6 @@ package com.mtmn.smartdoc.config;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.mtmn.smartdoc.enums.IndexStrategyType;
-import lombok.Data;
 
 /**
  * 索引策略配置抽象基类
@@ -12,7 +11,6 @@ import lombok.Data;
  * @version 2.0
  * @date 2025-11-19
  */
-@Data
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = NaiveRAGConfig.class, name = "NAIVE_RAG"),
@@ -21,9 +19,12 @@ import lombok.Data;
 public abstract class IndexStrategyConfig {
 
     /**
-     * 策略类型
+     * 获取策略类型
+     * 由子类实现返回对应的枚举值
+     *
+     * @return 策略类型枚举
      */
-    private IndexStrategyType strategyType;
+    public abstract IndexStrategyType getStrategyType();
 
     /**
      * 验证配置是否有效

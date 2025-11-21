@@ -1,7 +1,6 @@
 package com.mtmn.smartdoc.dto;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
-import com.mtmn.smartdoc.enums.KnowledgeBaseStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,12 +57,6 @@ public class KnowledgeBaseResponse {
      */
     @Schema(description = "Embedding 模型 ID")
     private String embeddingModelId;
-
-    /**
-     * 状态
-     */
-    @Schema(description = "状态")
-    private KnowledgeBaseStatus status;
 
     /**
      * 用户 ID

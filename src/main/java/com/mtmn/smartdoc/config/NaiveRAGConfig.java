@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.config;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,6 +18,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 @Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class NaiveRAGConfig extends IndexStrategyConfig {
 
     /**
@@ -37,11 +39,9 @@ public class NaiveRAGConfig extends IndexStrategyConfig {
     @Builder.Default
     private String separator = "\n\n";
 
-    public NaiveRAGConfig(Integer chunkSize, Integer chunkOverlap, String separator) {
-        this.chunkSize = chunkSize;
-        this.chunkOverlap = chunkOverlap;
-        this.separator = separator;
-        setStrategyType(IndexStrategyType.NAIVE_RAG);
+    @Override
+    public IndexStrategyType getStrategyType() {
+        return IndexStrategyType.NAIVE_RAG;
     }
 
     @Override
