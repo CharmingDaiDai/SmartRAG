@@ -5,6 +5,9 @@ import com.mtmn.smartdoc.dto.CreateKnowledgeBaseRequest;
 import com.mtmn.smartdoc.dto.KnowledgeBaseResponse;
 import com.mtmn.smartdoc.po.User;
 import com.mtmn.smartdoc.service.KnowledgeBaseService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,12 +20,12 @@ import java.util.List;
  *
  * @author charmingdaidai
  * @version 2.0
- * @date 2025-11-19
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/knowledge-bases")
 @RequiredArgsConstructor
+@Tag(name = "Knowledge Base Management", description = "知识库管理相关接口")
 public class KnowledgeBaseController {
 
     private final KnowledgeBaseService knowledgeBaseService;
@@ -31,6 +34,7 @@ public class KnowledgeBaseController {
      * 创建知识库
      */
     @PostMapping
+    @Operation(summary = "创建知识库", description = "根据请求创建新的知识库")
     public ApiResponse<KnowledgeBaseResponse> createKnowledgeBase(
             @RequestBody CreateKnowledgeBaseRequest request,
             @AuthenticationPrincipal User user) {
@@ -47,6 +51,7 @@ public class KnowledgeBaseController {
      * 获取用户的知识库列表
      */
     @GetMapping
+    @Operation(summary = "获取知识库列表", description = "获取当前用户的所有知识库列表")
     public ApiResponse<List<KnowledgeBaseResponse>> listKnowledgeBases(
             @AuthenticationPrincipal User user) {
 
@@ -61,8 +66,9 @@ public class KnowledgeBaseController {
      * 获取知识库详情
      */
     @GetMapping("/{kbId}")
+    @Operation(summary = "获取知识库详情", description = "根据知识库ID获取详细信息")
     public ApiResponse<KnowledgeBaseResponse> getKnowledgeBase(
-            @PathVariable Long kbId,
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
             @AuthenticationPrincipal User user) {
 
         log.debug("Getting knowledge base: {}, user: {}", kbId, user.getId());
@@ -76,8 +82,9 @@ public class KnowledgeBaseController {
      * 删除知识库
      */
     @DeleteMapping("/{kbId}")
+    @Operation(summary = "删除知识库", description = "根据知识库ID删除指定的知识库")
     public ApiResponse<Void> deleteKnowledgeBase(
-            @PathVariable Long kbId,
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
             @AuthenticationPrincipal User user) {
 
         log.info("Deleting knowledge base: {}, user: {}", kbId, user.getId());

@@ -2,7 +2,6 @@ package com.mtmn.smartdoc.factory;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
 import com.mtmn.smartdoc.strategy.IndexStrategy;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,13 +19,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
+// 【修复】删除了 @RequiredArgsConstructor，因为下面已经手动定义了构造函数
 public class IndexStrategyFactory {
 
     private final Map<IndexStrategyType, IndexStrategy> strategies;
 
     /**
      * 构造函数注入所有策略实现
+     * Spring 会自动将所有实现了 IndexStrategy 接口的 Bean 注入到这个 list 中
      */
     public IndexStrategyFactory(List<IndexStrategy> strategyList) {
         this.strategies = strategyList.stream()

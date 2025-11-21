@@ -3,6 +3,8 @@ package com.mtmn.smartdoc.controller;
 import com.mtmn.smartdoc.common.ApiResponse;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
 import com.mtmn.smartdoc.po.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,11 +24,13 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/api/models")
+@Tag(name = "Model Management", description = "模型管理相关接口")
 public class ModelController {
 
     private final ModelFactory modelFactory;
 
     @GetMapping("/llms")
+    @Operation(summary = "获取可用LLM模型列表", description = "返回系统中可用的LLM模型名称列表")
     public ApiResponse<List<String>> getAvailableLLMModels(@AuthenticationPrincipal User user) {
         log.info("User {} is requesting available LLM models", user.getId());
 
@@ -36,6 +40,7 @@ public class ModelController {
     }
 
     @GetMapping("/embeddings")
+    @Operation(summary = "获取可用嵌入模型列表", description = "返回系统中可用的嵌入模型名称列表")
     public ApiResponse<List<String>> getAvailableEmbeddingModels(@AuthenticationPrincipal User user) {
         log.info("User {} is requesting available embedding models", user.getId());
 
@@ -45,6 +50,7 @@ public class ModelController {
     }
 
     @GetMapping("/reranks")
+    @Operation(summary = "获取可用重排序模型列表", description = "返回系统中可用的重排序模型名称列表")
     public ApiResponse<List<String>> getAvailableRerankModels(@AuthenticationPrincipal User user) {
         log.info("User {} is requesting available rerank models", user.getId());
 

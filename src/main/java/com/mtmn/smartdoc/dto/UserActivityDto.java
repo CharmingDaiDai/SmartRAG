@@ -1,5 +1,6 @@
 package com.mtmn.smartdoc.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,21 +17,29 @@ import java.time.temporal.ChronoUnit;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "用户活动数据")
 public class UserActivityDto {
 
+    @Schema(description = "活动ID")
     private Long id;
 
+    @Schema(description = "活动类型")
     private String type;
 
+    @Schema(description = "文档ID")
     private Long documentId;
 
+    @Schema(description = "文档名称")
     private String documentName;
 
+    @Schema(description = "活动描述")
     private String description;
 
+    @Schema(description = "创建时间")
     private LocalDateTime createdAt;
 
     // 友好的时间表示，如"2分钟前"
+    @Schema(description = "友好的时间表示")
     private String timestamp;
 
     /**
