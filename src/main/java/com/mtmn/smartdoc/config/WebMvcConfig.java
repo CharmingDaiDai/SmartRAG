@@ -6,7 +6,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Web MVC 配置
- * 用于配置静态资源映射等
+ * 配置 Knife4j 文档静态资源映射
  *
  * @author CharmingDaiDai
  */
@@ -15,15 +15,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Knife4j 文档资源映射
+        // Knife4j 文档页面
         registry.addResourceHandler("/doc.html")
                 .addResourceLocations("classpath:/META-INF/resources/");
         
+        // Knife4j 和 Swagger UI 的静态资源（JS、CSS 等）
         registry.addResourceHandler("/webjars/**")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/");
-                
-        // Swagger UI 资源映射 (如果需要访问原生 Swagger UI)
-        registry.addResourceHandler("/swagger-ui/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/4.15.5/");
     }
 }
