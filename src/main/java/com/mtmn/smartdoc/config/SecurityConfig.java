@@ -46,8 +46,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 不需要认证的路径
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/doc.html", "/webjars/**", "/v3/api-docs/**").permitAll()
+                        // Knife4j 和 Swagger 文档路径（完整配置）
+                        .requestMatchers("/doc.html", "/doc.html/**").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-resources/**").permitAll()
+                        .requestMatchers("/webjars/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/v3/**").permitAll()
+                        .requestMatchers("/favicon.ico").permitAll()
                         .requestMatchers("/").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/kb/chat/**").permitAll()
