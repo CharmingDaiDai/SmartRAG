@@ -2,6 +2,7 @@ package com.mtmn.smartdoc.model.client;
 
 import com.mtmn.smartdoc.model.dto.EmbeddingRequest;
 import com.mtmn.smartdoc.model.dto.EmbeddingResponse;
+import dev.langchain4j.data.embedding.Embedding;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface EmbeddingClient {
      * @param text 待向量化的文本
      * @return 向量表示, float列表
      */
-    List<Float> embed(String text);
+    Embedding embed(String text);
 
     /**
      * 批量文本向量化
@@ -32,7 +33,7 @@ public interface EmbeddingClient {
      * @param texts 待向量化的文本列表
      * @return 向量列表, 每个元素对应一个输入文本的向量
      */
-    List<List<Float>> embedBatch(List<String> texts);
+    List<Embedding> embedBatch(List<String> texts);
 
     /**
      * 结构化请求向量化

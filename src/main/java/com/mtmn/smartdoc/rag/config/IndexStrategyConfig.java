@@ -1,4 +1,4 @@
-package com.mtmn.smartdoc.config;
+package com.mtmn.smartdoc.rag.config;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

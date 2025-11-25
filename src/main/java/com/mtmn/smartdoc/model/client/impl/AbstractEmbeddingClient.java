@@ -63,12 +63,11 @@ public abstract class AbstractEmbeddingClient implements EmbeddingClient {
     protected abstract DimensionAwareEmbeddingModel buildEmbeddingModel();
 
     @Override
-    public List<Float> embed(String text) {
+    public Embedding embed(String text) {
         log.debug("单文本向量化: text长度={}", text.length());
 
         try {
-            Embedding embedding = embeddingModel.embed(text).content();
-            return embedding.vectorAsList();
+            return embeddingModel.embed(text).content();
         } catch (Exception e) {
             log.error("单文本向量化失败: {}", e.getMessage(), e);
             throw new RuntimeException("Embedding调用失败: " + e.getMessage(), e);
@@ -76,16 +75,16 @@ public abstract class AbstractEmbeddingClient implements EmbeddingClient {
     }
 
     @Override
-    public List<List<Float>> embedBatch(List<String> texts) {
+    public List<Embedding> embedBatch(List<String> texts) {
         log.debug("批量文本向量化: texts数量={}, batchSize={}", texts.size(), batchSize);
 
-        if (texts == null || texts.isEmpty()) {
+        if (texts.isEmpty()) {
             return new ArrayList<>();
         }
 
         try {
             // 分批处理
-            List<List<Float>> allResults = new ArrayList<>();
+            List<Embedding> allResults = new ArrayList<>();
 
             for (int i = 0; i < texts.size(); i += batchSize) {
                 int end = Math.min(i + batchSize, texts.size());
@@ -101,12 +100,7 @@ public abstract class AbstractEmbeddingClient implements EmbeddingClient {
                 // 调用模型
                 List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
 
-                // 转换结果
-                List<List<Float>> batchResults = embeddings.stream()
-                        .map(Embedding::vectorAsList)
-                        .collect(Collectors.toList());
-
-                allResults.addAll(batchResults);
+                allResults.addAll(embeddings);
             }
 
             log.debug("批量向量化完成: 输入{}个文本, 输出{}个向量", texts.size(), allResults.size());
@@ -123,7 +117,7 @@ public abstract class AbstractEmbeddingClient implements EmbeddingClient {
         log.debug("结构化向量化请求: texts数量={}", request.getTexts().size());
 
         try {
-            List<List<Float>> embeddings = embedBatch(request.getTexts());
+            List<Embedding> embeddings = embedBatch(request.getTexts());
 
             return EmbeddingResponse.builder()
                     .embeddings(embeddings)

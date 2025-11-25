@@ -1,5 +1,6 @@
 package com.mtmn.smartdoc.model.dto;
 
+import dev.langchain4j.data.embedding.Embedding;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +25,7 @@ public class EmbeddingResponse {
     /**
      * 向量列表
      */
-    private List<List<Float>> embeddings;
+    private List<Embedding> embeddings;
 
     /**
      * 模型名称

@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.repository;
 
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
-import com.mtmn.smartdoc.po.Document;
+import com.mtmn.smartdoc.po.DocumentPo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,7 +18,7 @@ import java.util.Map;
  * @date 2025-11-19
  */
 @Repository
-public interface DocumentRepository extends JpaRepository<Document, Long> {
+public interface DocumentRepository extends JpaRepository<DocumentPo, Long> {
 
 
     long countByUserId(Long userId);
@@ -26,12 +26,12 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     /**
      * 根据知识库ID查询文档列表
      */
-    List<Document> findByKbId(Long kbId);
+    List<DocumentPo> findByKbId(Long kbId);
 
     /**
      * 根据知识库ID和索引状态查询
      */
-    List<Document> findByKbIdAndIndexStatus(Long kbId, DocumentIndexStatus indexStatus);
+    List<DocumentPo> findByKbIdAndIndexStatus(Long kbId, DocumentIndexStatus indexStatus);
 
     /**
      * 根据知识库ID统计文档数量
@@ -56,7 +56,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      * @return Map<知识库ID, 文档总数>
      */
     @Query("SELECT d.kbId as kbId, COUNT(d) as count " +
-            "FROM Document d " +
+            "FROM DocumentPo d " +
             "WHERE d.kbId IN :kbIds " +
             "GROUP BY d.kbId")
     List<Map<String, Object>> countByKbIdIn(@Param("kbIds") List<Long> kbIds);
@@ -70,7 +70,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      * @return Map<知识库ID, 已索引文档数>
      */
     @Query("SELECT d.kbId as kbId, COUNT(d) as count " +
-            "FROM Document d " +
+            "FROM DocumentPo d " +
             "WHERE d.kbId IN :kbIds AND d.indexStatus = :status " +
             "GROUP BY d.kbId")
     List<Map<String, Object>> countByKbIdInAndIndexStatus(

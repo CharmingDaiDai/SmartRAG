@@ -34,6 +34,11 @@ public class ModelProperties {
     private CacheConfig cache;
 
     /**
+     * 并发控制配置
+     */
+    private ConcurrencyConfig concurrency;
+
+    /**
      * 模型提供商配置
      */
     private Map<String, ProviderConfig> providers;
@@ -79,6 +84,36 @@ public class ModelProperties {
          * 缓存过期时间(如: 1h, 30m, 60s)
          */
         private String expireAfterAccess = "1h";
+    }
+
+    /**
+     * 并发控制配置
+     */
+    @Data
+    public static class ConcurrencyConfig {
+        /**
+         * 是否启用并发控制
+         */
+        private boolean enabled = true;
+
+        /**
+         * LLM 全局默认最大并发数 (默认1,即不并发)
+         * 用于限制同时进行的LLM API调用数量
+         * 可被单个模型的配置覆盖
+         */
+        private int defaultMaxConcurrentLlmRequests = 1;
+
+        /**
+         * Embedding 全局默认最大并发数 (默认1,即不并发)
+         * 可被单个模型的配置覆盖
+         */
+        private int defaultMaxConcurrentEmbeddingRequests = 1;
+
+        /**
+         * 等待超时时间(秒)
+         * 当并发数达到上限时,新请求等待的最大时间
+         */
+        private int acquireTimeout = 30;
     }
 
     /**
@@ -162,6 +197,13 @@ public class ModelProperties {
          * 批量处理大小(Embedding模型专用，默认为8)
          */
         private Integer batchSize = 8;
+
+        /**
+         * 最大并发数(可选)
+         * 如果设置,将覆盖全局默认并发配置
+         * null表示使用全局默认值
+         */
+        private Integer maxConcurrency;
 
         /**
          * 描述信息(可选)

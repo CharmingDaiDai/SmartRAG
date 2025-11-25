@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mtmn.smartdoc.config.IndexStrategyConfig;
+import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.dto.CreateKnowledgeBaseRequest;
 import com.mtmn.smartdoc.dto.KnowledgeBaseResponse;
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;

@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.factory;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
-import com.mtmn.smartdoc.strategy.RetrievalStrategy;
+import com.mtmn.smartdoc.rag.RetrievalStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -30,7 +30,7 @@ public class RetrievalStrategyFactory {
     public RetrievalStrategyFactory(List<RetrievalStrategy> strategies) {
         this.strategyMap = strategies.stream()
                 .collect(Collectors.toMap(
-                        RetrievalStrategy::getStrategyType,
+                        RetrievalStrategy::getType,
                         Function.identity()
                 ));
 

@@ -112,9 +112,9 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
         @Override
         public dev.langchain4j.model.output.Response<Embedding> embed(String text) {
-            List<Float> vector = client.embed(text);
+            Embedding embedding = client.embed(text);
             return dev.langchain4j.model.output.Response.from(
-                    Embedding.from(vector)
+                    embedding
             );
         }
 
@@ -129,10 +129,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                     .map(TextSegment::text)
                     .collect(java.util.stream.Collectors.toList());
 
-            List<List<Float>> vectors = client.embedBatch(texts);
-            List<Embedding> embeddings = vectors.stream()
-                    .map(Embedding::from)
-                    .collect(java.util.stream.Collectors.toList());
+            List<Embedding> embeddings = client.embedBatch(texts);
 
             return dev.langchain4j.model.output.Response.from(embeddings);
         }

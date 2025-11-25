@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.service;
 
 import com.mtmn.smartdoc.dto.DocumentResponse;
-import com.mtmn.smartdoc.po.Document;
+import com.mtmn.smartdoc.po.DocumentPo;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -62,7 +62,7 @@ public interface DocumentService {
      * @param userId     用户 ID
      * @return 文档实体
      */
-    Document getDocumentEntity(Long documentId, Long userId);
+    DocumentPo getDocumentEntity(Long documentId, Long userId);
 
     /**
      * 删除文档

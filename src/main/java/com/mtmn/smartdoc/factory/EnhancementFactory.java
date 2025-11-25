@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.factory;
 
 import com.mtmn.smartdoc.enums.EnhancementType;
-import com.mtmn.smartdoc.strategy.Enhancement;
+import com.mtmn.smartdoc.rag.Enhancement;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

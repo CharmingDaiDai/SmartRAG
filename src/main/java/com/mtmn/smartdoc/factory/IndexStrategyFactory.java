@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.factory;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
-import com.mtmn.smartdoc.strategy.IndexStrategy;
+import com.mtmn.smartdoc.rag.IndexStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
-// 【修复】删除了 @RequiredArgsConstructor，因为下面已经手动定义了构造函数
 public class IndexStrategyFactory {
 
     private final Map<IndexStrategyType, IndexStrategy> strategies;
@@ -31,7 +30,7 @@ public class IndexStrategyFactory {
     public IndexStrategyFactory(List<IndexStrategy> strategyList) {
         this.strategies = strategyList.stream()
                 .collect(Collectors.toMap(
-                        IndexStrategy::getStrategyType,
+                        IndexStrategy::getType,
                         Function.identity()
                 ));
 

@@ -1,14 +1,20 @@
 package com.mtmn.smartdoc.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
-import com.mtmn.smartdoc.po.Document;
+import com.mtmn.smartdoc.po.DocumentPo;
+import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.IndexingService;
-import lombok.RequiredArgsConstructor;
+import com.mtmn.smartdoc.rag.IndexStrategy;
+import com.mtmn.smartdoc.rag.factory.RAGStrategyFactory;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,94 +24,156 @@ import java.util.List;
  * 索引构建服务实现
  *
  * @author charmingdaidai
- * @version 2.0
- * @date 2025-11-19
+ * @version 3.0
+ * @date 2025-11-24
  */
-// TODO 待完善
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class IndexingServiceImpl implements IndexingService {
 
     private final DocumentRepository documentRepository;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
-    // TODO: 注入 IndexStrategyFactory
+    private final RAGStrategyFactory ragStrategyFactory;
+    private final ObjectMapper objectMapper;
+    
+    // 自注入：获取代理对象，用于类内调用事务方法
+    @Resource
+    @Lazy
+    private IndexingService self;
+
+    public IndexingServiceImpl(DocumentRepository documentRepository,
+                               KnowledgeBaseRepository knowledgeBaseRepository,
+                               RAGStrategyFactory ragStrategyFactory,
+                               ObjectMapper objectMapper) {
+        this.documentRepository = documentRepository;
+        this.knowledgeBaseRepository = knowledgeBaseRepository;
+        this.ragStrategyFactory = ragStrategyFactory;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public void submitIndexingTask(Long documentId, Long kbId) {
         log.info("Submitting indexing task: documentId={}, kbId={}", documentId, kbId);
 
-        // 异步执行索引
-        executeIndexing(documentId, kbId);
+        KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
+                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+        IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
+
+        // 使用 self 代理调用，确保事务生效
+        self.executeIndexing(documentId, knowledgeBase, indexConfig);
     }
 
     @Override
     public void submitBatchIndexingTask(Long kbId, List<Long> documentIds) {
         log.info("Submitting batch indexing task: kbId={}, count={}", kbId, documentIds.size());
 
-        // 异步执行批量索引
+        KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
+                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+        IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
+
+        // 使用 self 代理调用，确保每个任务都有独立事务
         for (Long documentId : documentIds) {
-            executeIndexing(documentId, kbId);
+            self.executeIndexing(documentId, knowledgeBase, indexConfig);
         }
     }
 
+    /**
+     * 执行索引构建（带事务）
+     */
     @Override
-    @Async
-    @Transactional
-    public void executeIndexing(Long documentId, Long kbId) {
-        log.info("Executing indexing: documentId={}, kbId={}", documentId, kbId);
+    @Transactional(rollbackFor = Exception.class)
+    public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
+        log.info("Executing indexing with transaction: documentId={}, kbId={}", documentId, kb.getId());
 
         try {
-            // 验证文档和知识库存在
-            documentRepository.findById(documentId)
+            // 加载文档
+            DocumentPo documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
-            knowledgeBaseRepository.findById(kbId)
-                    .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
 
-            // 更新文档状态为 CHUNKING
-            updateDocumentStatus(documentId, DocumentIndexStatus.CHUNKING);
+            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
+            documentRepository.save(documentPo);
 
-            // TODO: 调用 IndexStrategy 进行文档解析和分块
-            // IndexStrategy strategy = indexStrategyFactory.getStrategy(kb.getIndexStrategyType());
-            // strategy.parseDocument(document, kb);
+            // 使用工厂获取对应的索引策略
+            IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
 
-            // 更新状态为 CHUNKED
-            updateDocumentStatus(documentId, DocumentIndexStatus.CHUNKED);
+            // 构建索引（策略内部完成：读取、处理、向量化、存储）
+            strategy.buildIndex(kb, documentPo, indexConfig);
 
-            // TODO: 构建向量索引
-            // updateDocumentStatus(documentId, DocumentIndexStatus.INDEXING);
-            // strategy.buildIndex(document, kb);
+            documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
+            documentRepository.save(documentPo);
 
-            // 更新状态为 INDEXED
-            updateDocumentStatus(documentId, DocumentIndexStatus.INDEXED);
-
-            log.info("Indexing completed successfully: documentId={}", documentId);
+            log.info("✅ Indexing completed successfully: documentId={}", documentId);
 
         } catch (Exception e) {
-            log.error("Indexing failed: documentId={}", documentId, e);
-            updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
+            log.error("❌ Indexing failed: documentId={}", documentId, e);
+            // 直接调用（已在同一事务中）
+            DocumentPo doc = documentRepository.findById(documentId).orElse(null);
+            if (doc != null) {
+                doc.setIndexStatus(DocumentIndexStatus.ERROR);
+                documentRepository.save(doc);
+            }
+            throw new RuntimeException("Indexing failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 解析知识库的索引策略配置（JSON 反序列化）
+     */
+    private IndexStrategyConfig parseIndexStrategyConfig(KnowledgeBase kb) {
+        try {
+            String configJson = kb.getIndexStrategyConfig();
+            if (configJson == null || configJson.trim().isEmpty()) {
+                throw new IllegalStateException("Knowledge base has no index strategy configured");
+            }
+
+            // 使用 Jackson 自动多态反序列化（基于 @JsonTypeInfo）
+            return objectMapper.readValue(configJson, IndexStrategyConfig.class);
+
+        } catch (Exception e) {
+            log.error("Failed to parse index strategy config for kbId={}", kb.getId(), e);
+            throw new RuntimeException("Failed to parse index strategy config: " + e.getMessage(), e);
         }
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void rebuildIndex(Long kbId) {
         log.info("Rebuilding index for KB: {}", kbId);
 
-        // 验证知识库存在
-        knowledgeBaseRepository.findById(kbId)
-                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+        try {
+            // 验证知识库存在
+            KnowledgeBase kb = knowledgeBaseRepository.findById(kbId)
+                    .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
 
-        // TODO: 删除现有索引
-        // TODO: 重新索引所有文档
+            // 获取所有文档
+            List<DocumentPo> documents = documentRepository.findByKbId(kbId);
 
-        // 获取所有文档
-        List<Document> documents = documentRepository.findByKbId(kbId);
+            if (documents.isEmpty()) {
+                log.info("No documents to rebuild for kbId={}", kbId);
+                return;
+            }
 
-        // 重置文档状态并重新索引
-        for (Document document : documents) {
-            updateDocumentStatus(document.getId(), DocumentIndexStatus.UPLOADED);
-            executeIndexing(document.getId(), kbId);
+            // 解析索引策略配置
+            IndexStrategyConfig strategyConfig = parseIndexStrategyConfig(kb);
+            IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(strategyConfig.getStrategyType());
+
+            // 删除现有索引
+            List<Long> documentIds = documents.stream().map(DocumentPo::getId).toList();
+            strategy.deleteIndex(kb, documentIds);
+
+            IndexStrategyConfig indexConfig = parseIndexStrategyConfig(kb);
+
+            // 重置文档状态并重新索引
+            for (DocumentPo document : documents) {
+                self.updateDocumentStatus(document.getId(), DocumentIndexStatus.UPLOADED);
+                self.executeIndexing(document.getId(), kb, indexConfig);
+            }
+
+            log.info("Index rebuild initiated for {} documents", documents.size());
+
+        } catch (Exception e) {
+            log.error("Failed to rebuild index for kbId={}", kbId, e);
+            throw new RuntimeException("Failed to rebuild index: " + e.getMessage(), e);
         }
     }
 
@@ -118,14 +186,15 @@ public class IndexingServiceImpl implements IndexingService {
         // 2. 中断正在执行的任务
         // 3. 清理部分生成的数据
 
-        updateDocumentStatus(documentId, DocumentIndexStatus.UPLOADED);
+        self.updateDocumentStatus(documentId, DocumentIndexStatus.UPLOADED);
     }
 
     /**
      * 更新文档索引状态
      */
-    @Transactional
-    protected void updateDocumentStatus(Long documentId, DocumentIndexStatus status) {
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateDocumentStatus(Long documentId, DocumentIndexStatus status) {
         documentRepository.findById(documentId).ifPresent(document -> {
             document.setIndexStatus(status);
             documentRepository.save(document);

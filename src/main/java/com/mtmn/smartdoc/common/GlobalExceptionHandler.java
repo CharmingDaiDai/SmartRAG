@@ -1,5 +1,8 @@
 package com.mtmn.smartdoc.common;
 
+import com.mtmn.smartdoc.exception.ConfigValidationException;
+import com.mtmn.smartdoc.exception.ResourceNotFoundException;
+import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,6 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -113,13 +117,53 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理资源未找到异常
+     * 处理404异常（Spring 6.0+）
+     */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ApiResponse<String> handleNoResourceFoundException(NoResourceFoundException e) {
+        log.warn("静态资源未找到: {}", e.getResourcePath());
+        return ApiResponse.notFound("请求的资源不存在");
+    }
+
+    /**
+     * 处理资源未找到异常（Spring 5.x及以下）
      */
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NoHandlerFoundException.class)
     public ApiResponse<String> handleNoHandlerFoundException(NoHandlerFoundException e) {
-        log.warn("资源未找到: {}", e.getMessage());
+        log.warn("处理器未找到: {}", e.getMessage());
         return ApiResponse.notFound("请求的资源不存在: " + e.getRequestURL());
+    }
+
+    /**
+     * 处理业务资源未找到异常
+     */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ApiResponse<String> handleResourceNotFoundException(ResourceNotFoundException e) {
+        log.warn("业务资源未找到: {}", e.getMessage());
+        return ApiResponse.notFound(e.getMessage());
+    }
+
+    /**
+     * 处理未授权访问异常
+     */
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ApiResponse<String> handleUnauthorizedAccessException(UnauthorizedAccessException e) {
+        log.warn("未授权访问: {}", e.getMessage());
+        return ApiResponse.forbidden(e.getMessage());
+    }
+
+    /**
+     * 处理配置验证异常
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ConfigValidationException.class)
+    public ApiResponse<String> handleConfigValidationException(ConfigValidationException e) {
+        log.warn("配置验证失败: {}", e.getMessage());
+        return ApiResponse.badRequest(e.getMessage());
     }
 
     /**
@@ -188,7 +232,23 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public ApiResponse<String> handleException(Exception e) {
-        log.error("未捕获的异常: ", e);
-        return ApiResponse.error("服务器内部错误：" + e.getMessage());
+        // 记录完整堆栈信息，但只返回简化的错误消息给客户端
+        log.error("未捕获的异常 [{}]: {}", e.getClass().getName(), e.getMessage(), e);
+        
+        // 生产环境不暴露详细错误信息
+        String message = isProductionEnvironment() 
+            ? "服务器内部错误，请联系管理员" 
+            : "服务器内部错误：" + e.getMessage();
+            
+        return ApiResponse.error(message);
+    }
+
+    /**
+     * 判断是否为生产环境
+     * TODO: 从配置中读取环境变量
+     */
+    private boolean isProductionEnvironment() {
+        // 可以通过 @Value("${spring.profiles.active}") 注入
+        return false; // 开发环境暂时返回详细信息
     }
 }

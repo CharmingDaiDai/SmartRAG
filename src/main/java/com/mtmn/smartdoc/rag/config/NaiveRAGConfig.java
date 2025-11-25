@@ -1,6 +1,7 @@
-package com.mtmn.smartdoc.config;
+package com.mtmn.smartdoc.rag.config;
 
 import com.mtmn.smartdoc.enums.IndexStrategyType;
+import com.mtmn.smartdoc.enums.SplitterType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NaiveRAGConfig extends IndexStrategyConfig {
+
+    /**
+     * 切分器类型
+     */
+    @Builder.Default
+    private SplitterType splitterType = SplitterType.BY_PARAGRAPH;
 
     /**
      * 切分块大小（字符数）

@@ -1,6 +1,6 @@
 package com.mtmn.smartdoc.dto;
 
-import com.mtmn.smartdoc.enums.IndexStrategyType;
+import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,16 +33,19 @@ public class CreateKnowledgeBaseRequest {
     private String description;
 
     /**
-     * 索引策略类型
+     * 索引策略配置对象
+     * <p>前端传递时需包含type字段用于多态识别:</p>
+     * <pre>{@code
+     * {
+     *   "type": "NAIVE_RAG",
+     *   "chunkSize": 1000,
+     *   "chunkOverlap": 100,
+     *   "separator": "\\n\\n"
+     * }
+     * }</pre>
      */
-    @Schema(description = "索引策略类型")
-    private IndexStrategyType indexStrategyType;
-
-    /**
-     * 索引策略配置（JSON 字符串）
-     */
-    @Schema(description = "索引策略配置（JSON 字符串）")
-    private String indexStrategyConfig;
+    @Schema(description = "索引策略配置对象")
+    private IndexStrategyConfig indexStrategyConfig;
 
     /**
      * Embedding 模型 ID

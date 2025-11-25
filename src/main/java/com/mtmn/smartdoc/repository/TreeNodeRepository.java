@@ -37,7 +37,7 @@ public interface TreeNodeRepository extends JpaRepository<TreeNode, Long> {
     /**
      * 根据文档ID查询所有节点（按路径排序）
      */
-    List<TreeNode> findByDocumentIdOrderByPathAsc(Long documentId);
+    List<TreeNode> findByDocumentIdOrderByTitlePathAsc(Long documentId);
 
     /**
      * 根据知识库ID和文档ID查询
