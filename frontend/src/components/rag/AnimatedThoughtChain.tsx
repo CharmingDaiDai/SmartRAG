@@ -7,7 +7,7 @@ import {
     CaretDownOutlined,
     InfoCircleOutlined
 } from '@ant-design/icons';
-import { theme, Typography, Collapse, Space } from 'antd';
+import { theme, Typography, Space } from 'antd';
 import { ThoughtItem } from '../../types';
 import { XMarkdown } from '@ant-design/x-markdown';
 

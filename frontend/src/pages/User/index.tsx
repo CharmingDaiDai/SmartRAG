@@ -136,7 +136,7 @@ const UserProfile: React.FC = () => {
                         <Input disabled />
                     </Form.Item>
 
-                    <Divider orientation="left" plain>安全设置</Divider>
+                    <Divider plain>安全设置</Divider>
 
                     <Form.Item label="新密码" name="password">
                         <Input.Password placeholder="如果不修改请留空" />

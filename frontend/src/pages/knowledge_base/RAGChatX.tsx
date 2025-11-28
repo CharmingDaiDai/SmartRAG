@@ -32,7 +32,7 @@ import { Bubble, ThoughtChain, Sender, XProvider } from "@ant-design/x";
 import { useXChat } from "@ant-design/x-sdk";
 import { XMarkdown } from "@ant-design/x-markdown";
 import { useNavigate, useParams } from "react-router-dom";
-import { kbAPI } from "../../services/api";
+import { kbService } from "../../services/kbService";
 import { getMethodConfig } from "../../config/ragConfig";
 import "../../styles/components/ragChat.css";
 import { useAppStore } from "../../store/useAppStore";
@@ -343,7 +343,7 @@ const RAGChatX = () => {
       }
       setDetailsLoading(true);
       try {
-        const response = await kbAPI.get(id) as any;
+        const response = await kbService.get(id) as any;
         
         if (
           (response.data && response.data.success) ||
@@ -426,7 +426,7 @@ const RAGChatX = () => {
     setListLoading(true);
     setKbSelectLoading(true);
     try {
-      const response = await kbAPI.list({}) as any;
+      const response = await kbService.list({}) as any;
       if (response.data && Array.isArray(response.data)) {
         const kbs = response.data;
         kbs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

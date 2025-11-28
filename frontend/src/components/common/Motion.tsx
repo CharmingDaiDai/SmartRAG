@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence, HTMLMotionProps } from 'framer-motion';
+import { motion, HTMLMotionProps } from 'framer-motion';
 
 // 基础淡入动画
 export const FadeIn: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (

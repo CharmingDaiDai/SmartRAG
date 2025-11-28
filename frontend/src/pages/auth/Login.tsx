@@ -42,7 +42,7 @@ const PasswordStrength: React.FC<{ value?: string }> = ({ value }) => {
   return (
     <div className="pwd-strength">
       <div className={`bar bar-${score}`} />
-      <Text type="secondary" small>
+      <Text type="secondary">
         {score > 0 ? labels[Math.max(0, score - 1)] : '未设置密码'}
       </Text>
     </div>

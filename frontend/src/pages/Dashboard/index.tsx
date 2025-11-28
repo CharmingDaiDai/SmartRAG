@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, message } from 'antd';
+import { Card, Row, Col, Statistic } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design/icons';
 import { dashboardService } from '../../services/dashboardService';
 import { StaggerContainer, StaggerItem } from '../../components/common/Motion';
