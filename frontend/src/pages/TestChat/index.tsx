@@ -18,7 +18,7 @@ import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import { useAppStore } from '../../store/useAppStore';
-import { SmartDocChatProvider } from '../../utils/SmartDocChatProvider';
+import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { ThoughtItem, ReferenceItem } from '../../types';

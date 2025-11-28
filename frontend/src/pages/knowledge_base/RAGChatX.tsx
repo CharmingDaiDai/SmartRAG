@@ -36,7 +36,7 @@ import { kbAPI } from "../../services/api";
 import { getMethodConfig } from "../../config/ragConfig";
 import "../../styles/components/ragChat.css";
 import { useAppStore } from "../../store/useAppStore";
-import { SmartDocChatProvider } from "../../utils/SmartDocChatProvider";
+import { SmartDocChatProvider } from "../../utils/SmartRagChatProvider";
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;

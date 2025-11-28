@@ -21,7 +21,7 @@ import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { KnowledgeBaseItem, ThoughtItem, ReferenceItem } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
-import { SmartDocChatProvider } from '../../utils/SmartDocChatProvider';
+import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 
