@@ -33,18 +33,18 @@ request.interceptors.response.use(
       const { status, data } = error.response;
       
       if (status === 401) {
-        message.error('登录已过期，请重新登录');
+        message.error(data?.message || '登录已过期，请重新登录');
         localStorage.removeItem('token');
         // 可以选择跳转到登录页，或者由组件处理
         if (window.location.pathname !== '/login') {
              window.location.href = '/login';
         }
       } else if (status === 403) {
-        message.error('没有权限访问该资源');
+        message.error(data?.message || '没有权限访问该资源');
       } else if (status === 404) {
-        message.error('请求的资源不存在');
+        message.error(data?.message || '请求的资源不存在');
       } else if (status === 500) {
-        message.error('服务器错误，请稍后重试');
+        message.error(data?.message || '服务器错误，请稍后重试');
       } else {
         message.error(data?.message || '请求失败');
       }
