@@ -1,7 +1,7 @@
-# SmartDoc 前端项目开发指南
+# SmartRag 前端项目开发指南
 
 ## 1. 项目概述 (Project Overview)
-SmartDoc 是一个基于 RAG (检索增强生成) 技术的智能知识库系统。前端采用 React + TypeScript + Ant Design 技术栈构建，核心亮点是集成了 Ant Design X 提供的现代化 AI 对话界面。
+SmartRag 是一个基于 RAG (检索增强生成) 技术的智能知识库系统。前端采用 React + TypeScript + Ant Design 技术栈构建，核心亮点是集成了 Ant Design X 提供的现代化 AI 对话界面。
 
 ### 技术栈 (Tech Stack)
 - **核心框架**: React 18 + Vite (极速构建与热更新)

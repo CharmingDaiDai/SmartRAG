@@ -1,0 +1,190 @@
+import { AbstractChatProvider, XRequest, XRequestOptions } from '@ant-design/x-sdk';
+import { ChatMessage, ThoughtItem } from '../types';
+import { 
+    EditOutlined, 
+    SearchOutlined, 
+    BranchesOutlined, 
+    SortAscendingOutlined, 
+    CheckCircleOutlined, 
+    LoadingOutlined 
+} from '@ant-design/icons';
+import React from 'react';
+
+interface ChatInput {
+  messages: ChatMessage[];
+  kbId?: string;
+  ragMethod?: string;
+  ragParams?: any;
+}
+
+interface ChatOutput {
+  event: string;
+  data: any;
+}
+
+const getIcon = (name: string) => {
+    switch(name) {
+        case 'edit': return React.createElement(EditOutlined);
+        case 'search': return React.createElement(SearchOutlined);
+        case 'merge': return React.createElement(BranchesOutlined);
+        case 'sort': return React.createElement(SortAscendingOutlined);
+        case 'check': return React.createElement(CheckCircleOutlined);
+        default: return React.createElement(LoadingOutlined);
+    }
+};
+
+export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, ChatInput, ChatOutput> {
+  constructor(token?: string) {
+    super({
+      request: XRequest('/api/chat/test/full-rag-emitter', {
+        manual: true,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+    });
+  }
+
+  transformParams(
+    requestParams: Partial<ChatInput>,
+    _options: XRequestOptions<ChatInput, ChatOutput>
+  ): ChatInput {
+    const { messages, kbId, ragMethod, ragParams } = requestParams;
+    const lastMessage = messages?.[messages.length - 1];
+    const history = messages?.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+
+    return {
+        kbId,
+        query: lastMessage?.content,
+        history,
+        ragMethod,
+        ragParams
+    } as any;
+  }
+
+  transformLocalMessage(requestParams: Partial<ChatInput>): ChatMessage {
+    const { messages } = requestParams;
+    return messages?.[messages.length - 1] || {
+      id: Date.now().toString(),
+      role: 'user',
+      content: '',
+      createTime: Date.now()
+    };
+  }
+
+  transformMessage(info: {
+    originMessage?: ChatMessage;
+    chunk: any;
+    chunks: any[];
+    status: 'local' | 'loading' | 'updating' | 'success' | 'error' | 'abort';
+  }): ChatMessage {
+    const { originMessage, chunk, status } = info;
+    
+    const currentMessage: ChatMessage = originMessage || {
+      id: Date.now().toString(),
+      role: 'ai',
+      content: '',
+      thoughts: [],
+      createTime: Date.now(),
+      status: 'loading'
+    };
+
+    // Handle final success state
+    if (status === 'success') {
+        return {
+            ...currentMessage,
+            status: 'success',
+            // Ensure the last thought is marked as success if it exists
+            thoughts: currentMessage.thoughts?.map(t => 
+                t.status === 'processing' ? { ...t, status: 'success' } : t
+            )
+        };
+    }
+
+    if (!chunk) return currentMessage;
+
+    // Handle SSE chunk from XRequest
+    let { event, data } = chunk;
+
+    // Parse data if it's a JSON string
+    if (typeof data === 'string') {
+        try {
+            // Try to parse if it looks like JSON, otherwise treat as raw string
+            if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+                 const parsed = JSON.parse(data);
+                 data = parsed;
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    
+    // Ensure data is a string for concatenation if it's not an object
+    const textData = typeof data === 'string' ? data : (data?.delta || JSON.stringify(data));
+
+    switch (event) {
+      case 'thought':
+        const thoughts = currentMessage.thoughts || [];
+        const lastThought = thoughts[thoughts.length - 1];
+        
+        // Logic optimization: If receiving a new thought, mark the previous one as success
+        let updatedThoughts = [...thoughts];
+        if (lastThought && lastThought.status === 'processing') {
+             updatedThoughts[updatedThoughts.length - 1] = {
+                 ...lastThought,
+                 status: 'success',
+                 duration: 1000 // Mock duration or calculate real duration
+             };
+        }
+
+        // Create new thought
+        const newThought: ThoughtItem = {
+            title: data.title || '思考中...',
+            status: 'processing',
+            content: data.content || '',
+            icon: getIcon(data.icon),
+            duration: 0 
+        };
+        
+        return { 
+            ...currentMessage, 
+            thoughts: [...updatedThoughts, newThought],
+            status: 'updating'
+        };
+
+      case 'ref':
+        // Handle references
+        return {
+            ...currentMessage,
+            references: Array.isArray(data) ? data : [],
+            status: 'updating'
+        };
+
+      case 'message':
+        // If we receive a message, ensure the last thought is finished
+        let currentThoughts = currentMessage.thoughts || [];
+        const lastProcessingThought = currentThoughts[currentThoughts.length - 1];
+        if (lastProcessingThought && lastProcessingThought.status === 'processing') {
+             const finishedThought = { ...lastProcessingThought, status: 'success' as const };
+             currentThoughts = [...currentThoughts.slice(0, -1), finishedThought];
+        }
+
+        return {
+          ...currentMessage,
+          thoughts: currentThoughts,
+          content: (currentMessage.content || '') + textData,
+          status: 'updating'
+        };
+      
+      case 'done':
+        return {
+            ...currentMessage,
+            status: 'success'
+        };
+        
+      default:
+        return currentMessage;
+    }
+  }
+}
