@@ -92,7 +92,7 @@ export default function BasicLayout() {
         }}
       >
         <div className="demo-logo-vertical" style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
-            <img src="https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg" alt="logo" style={{ height: 32 }} />
+            <img src="/logo.png" alt="logo" style={{ height: 32 }} />
             {!collapsed && <span style={{ marginLeft: 8, fontWeight: 'bold', fontSize: 18, color: themeMode === 'dark' ? '#fff' : 'inherit' }}>SmartRAG</span>}
         </div>
         <Menu
