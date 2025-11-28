@@ -3,7 +3,7 @@ import { Modal, Space, Typography, Button } from 'antd';
 import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined } from '@ant-design/icons';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
-import Latex from '@ant-design/x-markdown/plugins/latex';
+import Latex from '@ant-design/x-markdown/plugins/Latex';
 import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
 import { useAppStore } from '../store/useAppStore';
 
@@ -27,7 +27,7 @@ const Code: React.FC<ComponentProps> = (props) => {
   return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
-const MD_PLUGINS = [Latex, Mermaid];
+const MD_PLUGINS = [Latex(), Mermaid];
 const MD_COMPONENTS = {
     code: Code,
 };

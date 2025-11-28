@@ -7,8 +7,8 @@ import {
 import { useXChat } from '@ant-design/x-sdk';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
-import Latex from '@ant-design/x-markdown/plugins/latex';
-import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
+import Latex from '@ant-design/x-markdown/plugins/Latex';
+import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import {
@@ -45,7 +45,7 @@ const Code: React.FC<ComponentProps> = (props) => {
 };
 
 // Define plugins list (static constant to avoid recreation)
-const MD_PLUGINS = [Latex, Mermaid];
+const MD_PLUGINS = [Latex(), Mermaid];
 
 // Define component mapping (placeholder for custom components)
 const MD_COMPONENTS = {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Bubble,
   Sender,
@@ -13,8 +13,8 @@ import {
 import { Layout, Space, Avatar, Typography, Divider, GetProp, theme } from 'antd';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
-import Latex from '@ant-design/x-markdown/plugins/latex';
-import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
+import Latex from '@ant-design/x-markdown/plugins/Latex';
+import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import { useAppStore } from '../../store/useAppStore';
@@ -41,7 +41,7 @@ const Code: React.FC<ComponentProps> = (props) => {
   return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
-const MD_PLUGINS = [Latex, Mermaid];
+const MD_PLUGINS = [Latex(), Mermaid];
 const MD_COMPONENTS = {
     code: Code,
 };
@@ -50,6 +50,7 @@ const TestChatPage = () => {
     const { token } = theme.useToken();
     const { userInfo, token: authToken, currentKbId, themeMode } = useAppStore();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [input, setInput] = useState('');
 
     // 1. Initialize Provider
     const provider = useMemo(() => {
@@ -78,6 +79,7 @@ const TestChatPage = () => {
             ragMethod: 'naive', // Default for test
             ragParams: {}
         });
+        setInput('');
     };
 
     const items: GetProp<typeof Bubble.List, 'items'> = useMemo(() => {
@@ -159,6 +161,8 @@ const TestChatPage = () => {
                     </div>
                     <div style={{ padding: '16px 24px', borderTop: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
                         <Sender
+                            value={input}
+                            onChange={setInput}
                             loading={isRequesting}
                             onSubmit={handleRequest}
                             placeholder="输入问题..."
