@@ -4,7 +4,7 @@ import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined } from '@ant
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
 import Latex from '@ant-design/x-markdown/plugins/Latex';
-import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
+import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import { useAppStore } from '../store/useAppStore';
 
 interface Reference {
