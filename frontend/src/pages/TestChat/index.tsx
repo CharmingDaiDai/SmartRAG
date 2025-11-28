@@ -121,22 +121,37 @@ const TestChatPage = () => {
                             <Bubble.List 
                                 items={items} 
                                 role={{
-                                    assistant: {
-                                        contentRender: (content: string, { status }: any) => (
+                                    user: {
+                                        contentRender: (content: string) => (
                                             <XMarkdown 
                                                 className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                                 // @ts-ignore
                                                 plugins={MD_PLUGINS}
                                                 components={MD_COMPONENTS}
-                                                streaming={{
-                                                    hasNextChunk: status === 'updating' || status === 'loading',
-                                                    enableAnimation: true,
-                                                    animationConfig: { fadeDuration: 400 },
-                                                }}
                                             >
                                                 {content}
                                             </XMarkdown>
-                                        ),
+                                        )
+                                    },
+                                    assistant: {
+                                        contentRender: (content: string, { status }: any) => {
+                                            if (!content) return null;
+                                            return (
+                                                <XMarkdown 
+                                                    className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
+                                                    // @ts-ignore
+                                                    plugins={MD_PLUGINS}
+                                                    components={MD_COMPONENTS}
+                                                    streaming={{
+                                                        hasNextChunk: status === 'updating' || status === 'loading',
+                                                        enableAnimation: true,
+                                                        animationConfig: { fadeDuration: 400 },
+                                                    }}
+                                                >
+                                                    {content}
+                                                </XMarkdown>
+                                            );
+                                        },
                                     },
                                 }}
                             />

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Modal, Space, Typography, Button } from 'antd';
 import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined } from '@ant-design/icons';
-import { XMarkdown } from '@ant-design/x-markdown';
+import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
+import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
+import Latex from '@ant-design/x-markdown/plugins/latex';
+import Mermaid from '@ant-design/x-markdown/plugins/mermaid';
 import { useAppStore } from '../store/useAppStore';
 
 interface Reference {
@@ -14,6 +17,20 @@ interface Reference {
 interface ReferenceViewerProps {
     references: Reference[];
 }
+
+// Define custom Code component for syntax highlighting
+const Code: React.FC<ComponentProps> = (props) => {
+  const { className, children } = props;
+  const lang = className?.match(/language-(\w+)/)?.[1] || '';
+
+  if (typeof children !== 'string') return null;
+  return <HighlightCode lang={lang}>{children}</HighlightCode>;
+};
+
+const MD_PLUGINS = [Latex, Mermaid];
+const MD_COMPONENTS = {
+    code: Code,
+};
 
 const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,7 +130,12 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
             >
                 <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 16px' }}>
                     {currentRef?.content ? (
-                        <XMarkdown className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}>
+                        <XMarkdown 
+                            className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
+                            // @ts-ignore
+                            plugins={MD_PLUGINS}
+                            components={MD_COMPONENTS}
+                        >
                             {currentRef.content}
                         </XMarkdown>
                     ) : (
