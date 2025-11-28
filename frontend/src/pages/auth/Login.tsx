@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Form,
   Input,
@@ -27,32 +27,9 @@ import './login.css';
 
 const { Title, Text } = Typography;
 
-const PasswordStrength: React.FC<{ value?: string }> = ({ value }) => {
-  const score = useMemo(() => {
-    if (!value) return 0;
-    let s = 0;
-    if (value.length >= 8) s += 1;
-    if (/[A-Z]/.test(value)) s += 1;
-    if (/[0-9]/.test(value)) s += 1;
-    if (/[^A-Za-z0-9]/.test(value)) s += 1;
-    return s;
-  }, [value]);
-
-  const labels = ['太弱', '弱', '中等', '强'];
-  return (
-    <div className="pwd-strength">
-      <div className={`bar bar-${score}`} />
-      <Text type="secondary">
-        {score > 0 ? labels[Math.max(0, score - 1)] : '未设置密码'}
-      </Text>
-    </div>
-  );
-};
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [password, setPassword] = useState('');
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -98,7 +75,7 @@ const Login: React.FC = () => {
             <Row gutter={24} align="middle">
               <Col xs={24} sm={10} className="auth-illustration">
                 <div className="illus-box">
-                  <div className="logo">SD</div>
+                  <img src="/logo.png" alt="SmartRAG" style={{ width: 64, height: 64, marginBottom: 12 }} />
                   <Title level={4}>欢迎使用 SmartDoc</Title>
                   <Text type="secondary">安全 · 智能 · 高效的知识检索与问答平台</Text>
                 </div>
@@ -127,11 +104,8 @@ const Login: React.FC = () => {
                         placeholder="密码"
                         size="large"
                         iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-                        onChange={(e) => setPassword(e.target.value)}
                       />
                     </Form.Item>
-
-                    <PasswordStrength value={password} />
 
                     <Form.Item>
                       <div className="form-row">
