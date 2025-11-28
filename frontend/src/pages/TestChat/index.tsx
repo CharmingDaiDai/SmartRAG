@@ -38,10 +38,21 @@ const Code: React.FC<ComponentProps> = (props) => {
   const lang = className?.match(/language-(\w+)/)?.[1] || '';
 
   if (typeof children !== 'string') return null;
+  if (lang === 'mermaid') {
+    return <Mermaid>{children}</Mermaid>;
+  }
   return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
-const MD_PLUGINS = [Latex(), Mermaid];
+const MD_PLUGINS = [
+    Latex({ 
+        katexOptions: { 
+            output: 'html',
+            throwOnError: false,
+        } 
+    }), 
+    Mermaid
+];
 const MD_COMPONENTS = {
     code: Code,
 };
@@ -128,7 +139,16 @@ const TestChatPage = () => {
                                             <XMarkdown 
                                                 className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                                 // @ts-ignore
-                                                plugins={MD_PLUGINS}
+                                                config={{
+                                                    extensions: [
+                                                        ...Latex({ 
+                                                            katexOptions: { 
+                                                                output: 'html',
+                                                                throwOnError: false,
+                                                            } 
+                                                        }),
+                                                    ]
+                                                }}
                                                 components={MD_COMPONENTS}
                                             >
                                                 {content}
@@ -142,12 +162,22 @@ const TestChatPage = () => {
                                                 <XMarkdown 
                                                     className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                                     // @ts-ignore
-                                                    plugins={MD_PLUGINS}
+                                                    config={{
+                                                        extensions: [
+                                                            ...Latex({ 
+                                                                katexOptions: { 
+                                                                    output: 'html',
+                                                                    throwOnError: false,
+                                                                } 
+                                                            }),
+                                                        ]
+                                                    }}
                                                     components={MD_COMPONENTS}
                                                     streaming={{
                                                         hasNextChunk: status === 'updating' || status === 'loading',
                                                         enableAnimation: true,
-                                                        animationConfig: { fadeDuration: 400 },
+                                                        // 在这里调整流式输出的速度（动画时长），单位毫秒
+                                                        animationConfig: { fadeDuration: 800 },
                                                     }}
                                                 >
                                                     {content}

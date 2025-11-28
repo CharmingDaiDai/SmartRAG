@@ -41,11 +41,22 @@ const Code: React.FC<ComponentProps> = (props) => {
   const lang = className?.match(/language-(\w+)/)?.[1] || '';
 
   if (typeof children !== 'string') return null;
+  if (lang === 'mermaid') {
+    return <Mermaid>{children}</Mermaid>;
+  }
   return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
 // Define plugins list (static constant to avoid recreation)
-const MD_PLUGINS = [Latex(), Mermaid];
+const MD_PLUGINS = [
+    Latex({ 
+        katexOptions: { 
+            output: 'html',
+            throwOnError: false,
+        } 
+    }), 
+    Mermaid
+];
 
 // Define component mapping (placeholder for custom components)
 const MD_COMPONENTS = {
@@ -176,7 +187,16 @@ const ChatPage: React.FC = () => {
                                     <XMarkdown 
                                         className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                         // @ts-ignore
-                                        plugins={MD_PLUGINS}
+                                        config={{
+                                            extensions: [
+                                                ...Latex({ 
+                                                    katexOptions: { 
+                                                        output: 'html',
+                                                        throwOnError: false,
+                                                    } 
+                                                }),
+                                            ]
+                                        }}
                                         components={MD_COMPONENTS}
                                     >
                                         {content}
@@ -187,19 +207,29 @@ const ChatPage: React.FC = () => {
                                 contentRender: (content: string, { status }: any) => {
                                     if (!content) return null;
                                     return (
-                                        <XMarkdown 
-                                            className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
-                                            // @ts-ignore
-                                            plugins={MD_PLUGINS}
-                                            components={MD_COMPONENTS}
-                                            streaming={{
-                                                hasNextChunk: status === 'updating' || status === 'loading',
-                                                enableAnimation: true,
-                                                animationConfig: { fadeDuration: 400 },
-                                            }}
-                                        >
-                                            {content}
-                                        </XMarkdown>
+                                    <XMarkdown 
+                                        className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
+                                        // @ts-ignore
+                                        config={{
+                                            extensions: [
+                                                ...Latex({ 
+                                                    katexOptions: { 
+                                                        output: 'html',
+                                                        throwOnError: false,
+                                                    } 
+                                                }),
+                                            ]
+                                        }}
+                                        components={MD_COMPONENTS}
+                                        streaming={{
+                                            hasNextChunk: status === 'updating' || status === 'loading',
+                                            enableAnimation: true,
+                                            // 在这里调整流式输出的速度（动画时长），单位毫秒
+                                            animationConfig: { fadeDuration: 800 },
+                                        }}
+                                    >
+                                        {content}
+                                    </XMarkdown>
                                     );
                                 },
                             },
