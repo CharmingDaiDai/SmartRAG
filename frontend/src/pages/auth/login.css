@@ -1,0 +1,103 @@
+/* 登录页样式：支持响应式与深色模式覆盖 */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--bg-page, #f5f7fa);
+}
+
+.auth-card {
+  width: 900px;
+  max-width: 96%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(19, 21, 26, 0.08);
+}
+
+.auth-illustration {
+  background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.03));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.illus-box {
+  text-align: center;
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.auth-form {
+  padding: 8px 8px 20px 8px;
+}
+
+.form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgot-link {
+  font-size: 14px;
+}
+
+.social-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.pwd-strength {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pwd-strength .bar {
+  width: 72px;
+  height: 6px;
+  background: #e6e6e6;
+  border-radius: 4px;
+  position: relative;
+}
+
+.pwd-strength .bar.bar-1 { background: linear-gradient(90deg,#f87171,#fb923c); }
+.pwd-strength .bar.bar-2 { background: linear-gradient(90deg,#fb923c,#fbbf24); }
+.pwd-strength .bar.bar-3 { background: linear-gradient(90deg,#fbbf24,#34d399); }
+.pwd-strength .bar.bar-4 { background: linear-gradient(90deg,#34d399,#10b981); }
+
+/* Deep color theme overrides */
+html[data-theme='dark'] .auth-page {
+  --bg-page: #0f1724;
+}
+
+html[data-theme='dark'] .auth-card {
+  background: rgba(10, 14, 20, 0.6);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+html[data-theme='dark'] .auth-illustration {
+  background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02));
+}
+
+@media (max-width: 600px) {
+  .auth-illustration { display: none; }
+  .auth-card { width: 96%; }
+}
