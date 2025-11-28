@@ -96,9 +96,17 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
             ...currentMessage,
             status: 'success',
             // Ensure the last thought is marked as success if it exists
-            thoughts: currentMessage.thoughts?.map(t => 
-                t.status === 'processing' ? { ...t, status: 'success' } : t
-            )
+            thoughts: currentMessage.thoughts?.map(t => {
+                if (t.status === 'processing') {
+                    const startTime = (t as any).startTime || Date.now();
+                    return { 
+                        ...t, 
+                        status: 'success',
+                        duration: Date.now() - startTime
+                    };
+                }
+                return t;
+            })
         };
     }
 
@@ -131,20 +139,23 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
         // Logic optimization: If receiving a new thought, mark the previous one as success
         let updatedThoughts = [...thoughts];
         if (lastThought && lastThought.status === 'processing') {
+             const endTime = Date.now();
+             const startTime = (lastThought as any).startTime || (endTime - 1000);
              updatedThoughts[updatedThoughts.length - 1] = {
                  ...lastThought,
                  status: 'success',
-                 duration: 1000 // Mock duration or calculate real duration
+                 duration: endTime - startTime
              };
         }
 
         // Create new thought
-        const newThought: ThoughtItem = {
+        const newThought: ThoughtItem & { startTime: number } = {
             title: data.title || '思考中...',
             status: 'processing',
             content: data.content || '',
             icon: getIcon(data.icon),
-            duration: 0 
+            duration: 0,
+            startTime: Date.now()
         };
         
         return { 
@@ -166,7 +177,13 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
         let currentThoughts = currentMessage.thoughts || [];
         const lastProcessingThought = currentThoughts[currentThoughts.length - 1];
         if (lastProcessingThought && lastProcessingThought.status === 'processing') {
-             const finishedThought = { ...lastProcessingThought, status: 'success' as const };
+             const endTime = Date.now();
+             const startTime = (lastProcessingThought as any).startTime || (endTime - 1000);
+             const finishedThought = { 
+                 ...lastProcessingThought, 
+                 status: 'success' as const,
+                 duration: endTime - startTime
+             };
              currentThoughts = [...currentThoughts.slice(0, -1), finishedThought];
         }
 
