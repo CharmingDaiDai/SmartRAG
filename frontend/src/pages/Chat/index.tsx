@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Bubble,
   Sender,
@@ -16,8 +16,12 @@ import {
   RobotOutlined,
   ClearOutlined,
   QuestionCircleOutlined,
+  PlusOutlined,
+  HistoryOutlined,
+  MessageOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
-import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, InputNumber, Tooltip } from 'antd';
+import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, InputNumber, Tooltip, List, Popconfirm } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
@@ -27,9 +31,10 @@ import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
+import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
 
 const { Sider, Content } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface ExtendedMessageContent {
     role: string;
@@ -66,12 +71,24 @@ const MD_COMPONENTS = {
   code: Code,
 };
 
+// Mock History Data
+const MOCK_HISTORY = [
+    { id: '1', title: '关于 RAG 的原理', date: '2023-11-29' },
+    { id: '2', title: '如何优化检索效果', date: '2023-11-28' },
+    { id: '3', title: '向量数据库对比', date: '2023-11-27' },
+    { id: '4', title: 'LangChain 实践', date: '2023-11-26' },
+    { id: '5', title: '大模型微调指南', date: '2023-11-25' },
+];
+
 const ChatPage: React.FC = () => {
   const { token } = theme.useToken();
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
   const { currentKbId, setCurrentKbId, token: authToken, userInfo, themeMode, localSettings } = useAppStore();
   const [searchParams] = useSearchParams();
   const kbIdParam = searchParams.get('kbId');
+  const [historyList, setHistoryList] = useState(MOCK_HISTORY);
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
       if (kbIdParam) {
@@ -148,6 +165,13 @@ const ChatPage: React.FC = () => {
     provider,
   });
 
+  // Auto scroll to bottom
+  useEffect(() => {
+      if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+  }, [messages]);
+
   // Fetch KBs
   useEffect(() => {
       const fetchKbs = async () => {
@@ -195,6 +219,26 @@ const ChatPage: React.FC = () => {
       setInput('');
   };
 
+  const handleNewChat = () => {
+      setMessages([]);
+      setActiveHistoryId(null);
+      message.success('已开启新对话');
+  };
+
+  const handleHistoryClick = (id: string) => {
+      setActiveHistoryId(id);
+      // Mock loading history
+      setMessages([]);
+      message.info('加载历史对话...');
+      setTimeout(() => {
+          // Mock messages
+          setMessages([
+              { id: '1', status: 'success', message: { role: 'user', content: '你好，什么是 RAG？' } as any },
+              { id: '2', status: 'success', message: { role: 'assistant', content: 'RAG (Retrieval-Augmented Generation) 是一种结合了检索和生成的 AI 技术...' } as any }
+          ]);
+      }, 500);
+  };
+
   const items: GetProp<typeof Bubble.List, 'items'> = useMemo(() => {
     return messages.map((msg) => {
         const { message, status, id } = msg;
@@ -202,7 +246,6 @@ const ChatPage: React.FC = () => {
         
         return {
             key: id,
-            loading: status === 'loading' || status === 'updating',
             role: extendedMsg.role === 'user' ? 'user' : 'assistant',
             status: status,
             placement: extendedMsg.role === 'user' ? 'end' : 'start',
@@ -228,8 +271,80 @@ const ChatPage: React.FC = () => {
   return (
     <XProvider theme={{ token: { colorPrimary: token.colorPrimary } }}>
         <Layout style={{ height: '100%', background: token.colorBgContainer }}>
+        
+        {/* Left Sidebar - History */}
+        <Sider 
+            width={260} 
+            theme={themeMode === 'dark' ? 'dark' : 'light'} 
+            style={{ 
+                borderRight: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0', 
+                background: token.colorBgContainer,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            <div style={{ padding: 16, borderBottom: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
+                <Button type="primary" block icon={<PlusOutlined />} onClick={handleNewChat} size="large">
+                    新建对话
+                </Button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0' }}>
+                <div style={{ padding: '0 16px 8px', color: token.colorTextDescription, fontSize: 12 }}>
+                    历史对话
+                </div>
+                <StaggerContainer>
+                    <List
+                        dataSource={historyList}
+                        split={false}
+                        renderItem={(item) => (
+                            <StaggerItem>
+                                <div 
+                                    className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200`}
+                                    style={{ 
+                                        padding: '10px 16px', 
+                                        background: activeHistoryId === item.id ? (themeMode === 'dark' ? '#1f1f1f' : '#e6f4ff') : 'transparent',
+                                        borderLeft: activeHistoryId === item.id ? `3px solid ${token.colorPrimary}` : '3px solid transparent'
+                                    }}
+                                    onClick={() => handleHistoryClick(item.id)}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                                            <MessageOutlined style={{ marginRight: 8, color: token.colorTextSecondary }} />
+                                            <Text ellipsis style={{ maxWidth: 140, color: token.colorText }}>{item.title}</Text>
+                                        </div>
+                                        {activeHistoryId === item.id && (
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <Popconfirm
+                                                    title="确定删除该对话吗？"
+                                                    onConfirm={() => {
+                                                        message.success('删除成功');
+                                                        setHistoryList(prev => prev.filter(h => h.id !== item.id));
+                                                    }}
+                                                    okText="确定"
+                                                    cancelText="取消"
+                                                >
+                                                    <DeleteOutlined 
+                                                        className="text-gray-400 hover:text-red-500" 
+                                                    />
+                                                </Popconfirm>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: token.colorTextDescription, marginLeft: 24, marginTop: 4 }}>
+                                        {item.date}
+                                    </div>
+                                </div>
+                            </StaggerItem>
+                        )}
+                    />
+                </StaggerContainer>
+            </div>
+        </Sider>
+
         <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+            <FadeIn style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
                 {messages.length === 0 ? (
                     <div style={{ textAlign: 'center', marginTop: 100, color: '#999' }}>
                         <RobotOutlined style={{ fontSize: 48, marginBottom: 16 }} />
@@ -238,6 +353,9 @@ const ChatPage: React.FC = () => {
                 ) : (
                     <Bubble.List 
                         items={items} 
+                        styles={{
+                            bubble: { maxWidth: '95%' }
+                        }}
                         role={{
                             user: {
                                 contentRender: (content: string) => (
@@ -303,6 +421,7 @@ const ChatPage: React.FC = () => {
                     placeholder="输入问题，Shift + Enter 换行"
                 />
             </div>
+            </FadeIn>
         </Content>
 
         <Sider 
@@ -314,6 +433,7 @@ const ChatPage: React.FC = () => {
                 height: '100%'
             }}
         >
+            <SlideInUp style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ flex: 1, overflowY: 'auto', padding: 16, paddingRight: 20 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -427,6 +547,7 @@ const ChatPage: React.FC = () => {
                     </Button>
                 </div>
             </div>
+            </SlideInUp>
         </Sider>
         </Layout>
     </XProvider>
