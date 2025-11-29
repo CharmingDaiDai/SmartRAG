@@ -3,6 +3,7 @@ import request from './api';
 export const documentService = {
   list: (params: any) => request.get('/documents', { params }),
   listAll: (params: any) => request.get('/documents', { params }),
+  listByKb: (kbId: string, params: any) => request.get(`/documents/${kbId}`, { params }),
   get: (id: string) => request.get(`/documents/${id}`),
   upload: (data: FormData) => request.post('/documents/upload', data, {
     headers: { 'Content-Type': 'multipart/form-data' }

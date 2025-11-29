@@ -53,10 +53,9 @@ export default function KnowledgeBaseDetail() {
           const params: any = {
               page: page - 1,
               size: size,
-              kbId: id,
           };
           
-          const res: any = await documentService.listAll(params);
+          const res: any = await documentService.listByKb(id, params);
           if (res.code === 200) {
               if (res.data && Array.isArray(res.data.content)) {
                   setData(res.data.content);
