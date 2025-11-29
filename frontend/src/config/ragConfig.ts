@@ -6,10 +6,10 @@ export const RAG_METHODS = {
 };
 
 export const SPLITTER_TYPES = [
-  { label: 'Paragraph', value: 'paragraph' },
-  { label: 'Line', value: 'line' },
-  { label: 'Sentence', value: 'sentence' },
-  { label: 'Separator', value: 'separator' },
+  { label: '按段落切分', value: 'BY_PARAGRAPH' },
+  { label: '按行切分', value: 'BY_LINE' },
+  { label: '按句子切分', value: 'BY_SENTENCE' },
+  { label: '自定义分隔符', value: 'BY_SEPARATOR' },
 ];
 
 export const getMethodConfig = (method: string) => {
@@ -19,14 +19,14 @@ export const getMethodConfig = (method: string) => {
       label: '分块方式',
       type: 'select',
       options: SPLITTER_TYPES,
-      defaultValue: 'paragraph',
+      defaultValue: 'BY_PARAGRAPH',
     },
     {
       key: 'separator',
       label: '分隔符',
       type: 'input',
       defaultValue: '\\n\\n',
-      dependency: { field: 'splitter_type', value: 'separator' },
+      dependency: { field: 'splitter_type', value: 'BY_SEPARATOR' },
     },
     {
       key: 'chunk_size',

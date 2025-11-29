@@ -9,6 +9,20 @@ import { FadeIn, StaggerContainer, StaggerItem } from '../../components/common/M
 import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 
+const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
+    [RAG_METHODS.NAIVE]: 'NAIVE_RAG',
+    [RAG_METHODS.HISEM_FAST]: 'HISEM_RAG_FAST',
+    [RAG_METHODS.HISEM]: 'HISEM_RAG',
+};
+
+const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
+    NAIVE_RAG: 'Naive RAG',
+    HISEM_RAG_FAST: 'HiSem RAG Fast',
+    HISEM_RAG: 'Graph RAG',
+};
+
+const toCamelCase = (key: string) => key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
+
 export default function KnowledgeBasePage() {
   const navigate = useNavigate();
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -79,17 +93,22 @@ export default function KnowledgeBasePage() {
 
   const handleCreate = async (values: any) => {
       try {
-          const { name, description, ragMethod, ...rest } = values;
+          const { name, description, ragMethod, embedding_model, ...rest } = values;
+          const strategyType = INDEX_STRATEGY_TYPE_MAP[ragMethod] || ragMethod;
           
-          const embeddingModelId = rest.embedding_model;
+          const normalizedIndexConfig = Object.entries(rest).reduce<Record<string, any>>((acc, [key, value]) => {
+              acc[toCamelCase(key)] = value;
+              return acc;
+          }, {});
 
           const payload = {
               name,
               description,
-              embeddingModelId, 
+              embeddingModelId: embedding_model,
               indexStrategyConfig: {
-                  type: ragMethod,
-                  ...rest
+                  type: strategyType,
+                  strategyType,
+                  ...normalizedIndexConfig
               }
           };
 
@@ -153,7 +172,7 @@ export default function KnowledgeBasePage() {
                             >
                                 <div style={{ marginBottom: 16 }}>
                                     <Space size={4}>
-                                        <Tag color="blue">{item.indexStrategyType === 'HISEM_RAG' ? 'HiSem RAG' : 'Naive RAG'}</Tag>
+                                        <Tag color="blue">{INDEX_STRATEGY_LABEL_MAP[item.indexStrategyType || 'NAIVE_RAG'] || item.indexStrategyType}</Tag>
                                         <Tag color="green">{item.embeddingModelId}</Tag>
                                     </Space>
                                 </div>
