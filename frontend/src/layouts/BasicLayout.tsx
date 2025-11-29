@@ -81,7 +81,7 @@ export default function BasicLayout() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider 
         trigger={null} 
         collapsible 
@@ -103,7 +103,7 @@ export default function BasicLayout() {
           style={{ borderRight: 0 }}
         />
       </Sider>
-      <Layout>
+      <Layout style={{ height: '100%', overflow: 'hidden' }}>
         <Header style={{ padding: '0 24px', background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
           {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
             className: 'trigger',
@@ -136,7 +136,8 @@ export default function BasicLayout() {
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
             overflow: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'hidden' : 'auto',
-            height: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'calc(100vh - 64px)' : 'auto',
+            height: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'calc(100vh - 64px)' : undefined,
+            flex: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'none' : 1,
           }}
         >
           <Outlet />

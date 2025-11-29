@@ -214,7 +214,8 @@ const TestChatPage = () => {
                     </Typography.Paragraph>
                     <Divider />
                     <Typography.Text strong>预设问题：</Typography.Text>
-                    <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+                    {/* @ts-ignore */}
+                    <Space orientation="vertical" style={{ width: '100%', marginTop: 16 }}>
                         <Prompts
                             items={[
                                 { key: '1', label: '什么是 RAG 技术？' },

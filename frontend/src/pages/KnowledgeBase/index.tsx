@@ -1,4 +1,4 @@
-import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, List, Card } from 'antd';
+import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin } from 'antd';
 import { useState, useEffect } from 'react';
 import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -89,9 +89,9 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <FadeIn>
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <Typography.Title level={4} style={{ margin: 0 }}>知识库列表</Typography.Title>
             <Button
                 icon={<PlusOutlined />}
@@ -103,55 +103,54 @@ export default function KnowledgeBasePage() {
         </div>
       </FadeIn>
 
-      <StaggerContainer>
-        <List
-            grid={{ gutter: 16, column: 3 }}
-            dataSource={data}
-            loading={loading}
-            renderItem={(item) => (
-            <StaggerItem>
-                <List.Item>
-                    <Card 
-                        title={
-                            <Space>
-                                <DatabaseOutlined className="text-blue-500" style={{ fontSize: 20 }} />
-                                <span style={{ fontSize: 16, fontWeight: 'bold' }}>{item.name}</span>
-                            </Space>
-                        }
-                        actions={[
-                            <Button type="link" key="chat" icon={<MessageOutlined />} onClick={() => navigate(`/chat?kbId=${item.id}`)}>
-                                对话
-                            </Button>,
-                            <Button type="link" key="docs" icon={<FileTextOutlined />} onClick={() => navigate(`/kb/${item.id}`)}>
-                                文档
-                            </Button>,
-                            <Popconfirm
-                                key="delete"
-                                title="确定删除吗?"
-                                onConfirm={() => handleDelete(item.id)}
+      <StaggerContainer style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 24 }}>
+        <Spin spinning={loading}>
+            <Row gutter={[16, 16]} style={{ margin: 0 }}>
+                {data.map((item) => (
+                    <Col span={8} key={item.id}>
+                        <StaggerItem>
+                            <Card 
+                                title={
+                                    <Space>
+                                        <DatabaseOutlined className="text-blue-500" style={{ fontSize: 20 }} />
+                                        <span style={{ fontSize: 16, fontWeight: 'bold' }}>{item.name}</span>
+                                    </Space>
+                                }
+                                actions={[
+                                    <Button type="link" key="chat" icon={<MessageOutlined />} onClick={() => navigate(`/chat?kbId=${item.id}`)}>
+                                        对话
+                                    </Button>,
+                                    <Button type="link" key="docs" icon={<FileTextOutlined />} onClick={() => navigate(`/kb/${item.id}`)}>
+                                        文档
+                                    </Button>,
+                                    <Popconfirm
+                                        key="delete"
+                                        title="确定删除吗?"
+                                        onConfirm={() => handleDelete(item.id)}
+                                    >
+                                        <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
+                                    </Popconfirm>,
+                                ]}
                             >
-                                <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
-                            </Popconfirm>,
-                        ]}
-                    >
-                        <div style={{ marginBottom: 16 }}>
-                            <Space size={4}>
-                                <Tag color="blue">{item.indexStrategyType === 'HISEM_RAG' ? 'HiSem RAG' : 'Naive RAG'}</Tag>
-                                <Tag color="green">{item.embeddingModelId}</Tag>
-                            </Space>
-                        </div>
-                        <div className="h-10 overflow-hidden text-gray-500" style={{ marginBottom: 16 }}>
-                            {item.description || '暂无描述'}
-                        </div>
-                        <div className="flex items-center text-gray-500">
-                            <FileTextOutlined className="mr-2" />
-                            <span>{item.documentCount || 0} 文档</span>
-                        </div>
-                    </Card>
-                </List.Item>
-            </StaggerItem>
-            )}
-        />
+                                <div style={{ marginBottom: 16 }}>
+                                    <Space size={4}>
+                                        <Tag color="blue">{item.indexStrategyType === 'HISEM_RAG' ? 'HiSem RAG' : 'Naive RAG'}</Tag>
+                                        <Tag color="green">{item.embeddingModelId}</Tag>
+                                    </Space>
+                                </div>
+                                <div className="h-10 overflow-hidden text-gray-500" style={{ marginBottom: 16 }}>
+                                    {item.description || '暂无描述'}
+                                </div>
+                                <div className="flex items-center text-gray-500">
+                                    <FileTextOutlined className="mr-2" />
+                                    <span>{item.documentCount || 0} 文档</span>
+                                </div>
+                            </Card>
+                        </StaggerItem>
+                    </Col>
+                ))}
+            </Row>
+        </Spin>
       </StaggerContainer>
 
       <Modal

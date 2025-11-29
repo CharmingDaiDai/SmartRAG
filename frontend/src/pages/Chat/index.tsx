@@ -249,7 +249,7 @@ const ChatPage: React.FC = () => {
         </Content>
 
         <Sider 
-            width={320} 
+            width={350} 
             theme={themeMode === 'dark' ? 'dark' : 'light'} 
             style={{ 
                 borderLeft: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0', 
@@ -260,7 +260,8 @@ const ChatPage: React.FC = () => {
             }}
         >
             <div style={{ flex: 1, overflowY: 'auto' }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                {/* @ts-ignore */}
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div>
                         <Title level={5}>当前知识库</Title>
                         <Select

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent body scroll */
+}
+
 /* Markdown Table Styles */
 .ant-markdown table {
   border-collapse: collapse;

@@ -224,10 +224,10 @@ export default function DocumentsPage() {
   );
 
   return (
-    <FadeIn>
-        <div className="p-6 bg-gray-50 min-h-screen">
+    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <SlideInUp>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <Space>
                     <Input 
                         placeholder="搜索文档" 
@@ -268,7 +268,7 @@ export default function DocumentsPage() {
             </div>
         </SlideInUp>
 
-        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }}>
+        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <Table
                 columns={columns}
                 dataSource={filteredData}
@@ -278,11 +278,13 @@ export default function DocumentsPage() {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
+                scroll={{ y: 'calc(100vh - 280px)' }}
                 pagination={{ 
                     current: currentPage,
                     pageSize: pageSize,
                     total: total,
                     showSizeChanger: true,
+                    position: ['bottomRight'],
                     onChange: (page, size) => {
                         setCurrentPage(page);
                         setPageSize(size);

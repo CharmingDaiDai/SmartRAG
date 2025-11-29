@@ -57,7 +57,8 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
     return (
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>参考文档：</Typography.Text>
-            <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
+            {/* @ts-ignore */}
+            <Space orientation="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
                 {references.slice(0, 5).map((ref, idx) => (
                     <div 
                         key={idx} 
