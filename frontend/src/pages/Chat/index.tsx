@@ -15,15 +15,18 @@ import {
   UserOutlined,
   RobotOutlined,
   ClearOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
-import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp } from 'antd';
+import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, InputNumber, Tooltip } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
+import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem, ThoughtItem, ReferenceItem } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
+import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
 
 const { Sider, Content } = Layout;
 const { Title } = Typography;
@@ -66,7 +69,7 @@ const MD_COMPONENTS = {
 const ChatPage: React.FC = () => {
   const { token } = theme.useToken();
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
-  const { currentKbId, setCurrentKbId, token: authToken, userInfo, themeMode } = useAppStore();
+  const { currentKbId, setCurrentKbId, token: authToken, userInfo, themeMode, localSettings } = useAppStore();
   const [searchParams] = useSearchParams();
   const kbIdParam = searchParams.get('kbId');
 
@@ -76,10 +79,64 @@ const ChatPage: React.FC = () => {
       }
   }, [kbIdParam, setCurrentKbId]);
 
-  const [input, setInput] = useState('');
-  
-  // RAG Config Form
   const [form] = Form.useForm();
+  const [input, setInput] = useState('');
+  const [llmModels, setLlmModels] = useState<string[]>([]);
+  const [rerankModels, setRerankModels] = useState<string[]>([]);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const ragMethod = Form.useWatch('method', form);
+  const enableRerank = Form.useWatch('enable_rerank', form);
+
+  useEffect(() => {
+      const fetchModels = async () => {
+          try {
+              const llmRes: any = await modelService.getLLMs();
+              if (llmRes.code === 200) setLlmModels(llmRes.data);
+              
+              const rerankRes: any = await modelService.getReranks();
+              if (rerankRes.code === 200) setRerankModels(rerankRes.data);
+          } catch (e) {
+              console.error(e);
+          } finally {
+              setModelsLoaded(true);
+          }
+      };
+      fetchModels();
+  }, []);
+
+  // Validate selected models against loaded lists
+  useEffect(() => {
+      if (modelsLoaded) {
+          const currentValues = form.getFieldsValue();
+          
+          // Validate LLM Model
+          if (currentValues.llm_model && llmModels.length > 0 && !llmModels.includes(currentValues.llm_model)) {
+              // If current selection is invalid, try to reset to default or clear
+              if (localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
+                  form.setFieldValue('llm_model', localSettings.defaultModel);
+              } else {
+                  form.setFieldValue('llm_model', undefined);
+              }
+          } else if (!currentValues.llm_model && localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
+              // Auto-select default if empty
+              form.setFieldValue('llm_model', localSettings.defaultModel);
+          }
+
+          // Validate Rerank Model
+          if (currentValues.rerank_model) {
+             if (rerankModels.length > 0 && !rerankModels.includes(currentValues.rerank_model)) {
+                 form.setFieldValue('rerank_model', undefined);
+             } else if (rerankModels.length === 0) {
+                 // If no models available, clear selection
+                 form.setFieldValue('rerank_model', undefined);
+             }
+          } else if (!currentValues.rerank_model && localSettings?.defaultRerank && rerankModels.includes(localSettings.defaultRerank)) {
+              form.setFieldValue('rerank_model', localSettings.defaultRerank);
+          }
+      }
+  }, [modelsLoaded, llmModels, rerankModels, localSettings, form]);
+  
+
 
   // Initialize Provider
   const provider = useMemo(() => {
@@ -253,63 +310,122 @@ const ChatPage: React.FC = () => {
             theme={themeMode === 'dark' ? 'dark' : 'light'} 
             style={{ 
                 borderLeft: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0', 
-                padding: 16, 
-                display: 'flex', 
-                flexDirection: 'column',
-                background: token.colorBgContainer
+                background: token.colorBgContainer,
+                height: '100%'
             }}
         >
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                {/* @ts-ignore */}
-                <Space orientation="vertical" style={{ width: '100%' }} size="large">
-                    <div>
-                        <Title level={5}>当前知识库</Title>
-                        <Select
-                            style={{ width: '100%' }}
-                            value={currentKbId}
-                            onChange={setCurrentKbId}
-                            options={kbs.map(kb => ({ label: kb.name, value: kb.id }))}
-                            placeholder="选择知识库"
-                        />
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: 16, paddingRight: 20 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        <div>
+                            <Title level={5}>当前知识库</Title>
+                            <Select
+                                style={{ width: '100%' }}
+                                value={currentKbId}
+                                onChange={setCurrentKbId}
+                                options={kbs.map(kb => ({ label: kb.name, value: kb.id }))}
+                                placeholder="选择知识库"
+                            />
+                        </div>
+                        
+                        <div>
+                            <Title level={5}>RAG 参数配置</Title>
+                            <Form 
+                                layout="vertical" 
+                                form={form} 
+                                initialValues={{ 
+                                    method: RAG_METHODS.NAIVE,
+                                    top_k: 5,
+                                    score_threshold: 0.5
+                                }}
+                            >
+                                <Form.Item name="method" label="RAG 方法">
+                                    <Select options={[
+                                        { label: 'Naive RAG', value: RAG_METHODS.NAIVE }, 
+                                        { label: 'HiSem RAG Fast', value: RAG_METHODS.HISEM_FAST },
+                                        { label: 'Graph RAG', value: RAG_METHODS.HISEM }
+                                    ]} />
+                                </Form.Item>
+                                
+                                {ragMethod && getMethodConfig(ragMethod).searchConfig.map((item: any) => {
+                                    if (item.dependency) {
+                                        const depValue = item.dependency.field === 'enable_rerank' ? enableRerank : form.getFieldValue(item.dependency.field);
+                                        if (depValue !== item.dependency.value) return null;
+                                    }
+
+                                    let inputNode = <div />;
+                                    let initialValue = item.defaultValue;
+
+                                    if (item.type === 'select') {
+                                        inputNode = (
+                                            <Select>
+                                                {item.options?.map((opt: any) => (
+                                                    <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
+                                                ))}
+                                            </Select>
+                                        );
+                                    } else if (item.type === 'model_select') {
+                                        const models = item.modelType === 'llm' ? llmModels : rerankModels;
+                                        // Only set initial value if models are not loaded yet (to avoid flash) or if we are sure it exists
+                                        // But useEffect will handle validation.
+                                        if (item.modelType === 'llm' && localSettings?.defaultModel) {
+                                            initialValue = localSettings.defaultModel;
+                                        } else if (item.modelType === 'rerank' && localSettings?.defaultRerank) {
+                                            initialValue = localSettings.defaultRerank;
+                                        }
+
+                                        inputNode = (
+                                            <Select placeholder={`请选择 ${item.label}`}>
+                                                {models.map(model => (
+                                                    <Select.Option key={model} value={model}>{model}</Select.Option>
+                                                ))}
+                                            </Select>
+                                        );
+                                    } else if (item.type === 'slider') {
+                                        inputNode = (
+                                            <Slider 
+                                                min={item.min} 
+                                                max={item.max} 
+                                                step={item.step} 
+                                                marks={{ [item.min]: item.min, [item.max]: item.max }} 
+                                                style={{ marginLeft: 8, marginRight: 8 }}
+                                            />
+                                        );
+                                    } else if (item.type === 'switch') {
+                                        inputNode = <Switch checkedChildren="开启" unCheckedChildren="关闭" />;
+                                    }
+
+                                    return (
+                                        <Form.Item 
+                                            key={item.key} 
+                                            name={item.key} 
+                                            label={
+                                                <Space>
+                                                    {item.label}
+                                                    {item.description && (
+                                                        <Tooltip title={item.description}>
+                                                            <QuestionCircleOutlined />
+                                                        </Tooltip>
+                                                    )}
+                                                </Space>
+                                            }
+                                            valuePropName={item.type === 'switch' ? 'checked' : 'value'}
+                                            initialValue={initialValue}
+                                        >
+                                            {inputNode}
+                                        </Form.Item>
+                                    );
+                                })}
+                            </Form>
+                        </div>
                     </div>
-                    
-                    <div>
-                        <Title level={5}>RAG 参数配置</Title>
-                        <Form 
-                            layout="vertical" 
-                            form={form} 
-                            initialValues={{ 
-                                topK: 5, 
-                                threshold: 0.7, 
-                                method: 'naive',
-                                rerank: false 
-                            }}
-                        >
-                            <Form.Item name="method" label="RAG 方法">
-                                <Select options={[
-                                    { label: 'Naive RAG', value: 'naive' }, 
-                                    { label: 'HiSem RAG', value: 'hisem' },
-                                    { label: 'Graph RAG', value: 'graph' }
-                                ]} />
-                            </Form.Item>
-                            <Form.Item name="topK" label="Top K (检索数量)">
-                                <Slider min={1} max={20} marks={{ 1: '1', 10: '10', 20: '20' }} />
-                            </Form.Item>
-                            <Form.Item name="threshold" label="相似度阈值">
-                                <Slider min={0} max={1} step={0.1} marks={{ 0: '0', 0.5: '0.5', 1: '1' }} />
-                            </Form.Item>
-                            <Form.Item name="rerank" label="开启重排序" valuePropName="checked">
-                                <Switch checkedChildren="开启" unCheckedChildren="关闭" />
-                            </Form.Item>
-                        </Form>
-                    </div>
-                </Space>
-            </div>
-            
-            <div style={{ marginTop: 16 }}>
-                <Button block danger icon={<ClearOutlined />} onClick={() => setMessages([])}>
-                    清空对话
-                </Button>
+                </div>
+                
+                <div style={{ padding: 16, borderTop: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
+                    <Button block danger icon={<ClearOutlined />} onClick={() => setMessages([])}>
+                        清空对话
+                    </Button>
+                </div>
             </div>
         </Sider>
         </Layout>

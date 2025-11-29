@@ -1,11 +1,13 @@
-import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin } from 'antd';
+import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin, Slider, InputNumber, Switch, Tooltip } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
 import { FadeIn, StaggerContainer, StaggerItem } from '../../components/common/Motion';
+import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function KnowledgeBasePage() {
   const navigate = useNavigate();
@@ -14,6 +16,20 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<KnowledgeBaseItem[]>([]);
   const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
+  const ragMethod = Form.useWatch('ragMethod', form);
+  const splitterType = Form.useWatch('splitter_type', form);
+  const chunkSize = Form.useWatch('chunk_size', form);
+  const { localSettings } = useAppStore();
+
+  useEffect(() => {
+      if (chunkSize) {
+          const maxOverlap = Math.floor(chunkSize * 0.2);
+          const currentOverlap = form.getFieldValue('chunk_overlap');
+          if (currentOverlap > maxOverlap) {
+              form.setFieldValue('chunk_overlap', maxOverlap);
+          }
+      }
+  }, [chunkSize, form]);
 
   const fetchData = async () => {
       setLoading(true);
@@ -63,14 +79,17 @@ export default function KnowledgeBasePage() {
 
   const handleCreate = async (values: any) => {
       try {
-          // Construct payload based on backend requirements
+          const { name, description, ragMethod, ...rest } = values;
+          
+          const embeddingModelId = rest.embedding_model;
+
           const payload = {
-              name: values.name,
-              description: values.description,
-              embeddingModelId: values.embeddingModel,
+              name,
+              description,
+              embeddingModelId, 
               indexStrategyConfig: {
-                  type: values.ragMethod === 'hisem' ? 'hisem' : 'naive',
-                  // Add other default config if needed
+                  type: ragMethod,
+                  ...rest
               }
           };
 
@@ -158,27 +177,70 @@ export default function KnowledgeBasePage() {
         open={createModalOpen}
         onCancel={() => setCreateModalOpen(false)}
         onOk={() => form.submit()}
+        width={600}
       >
-          <Form form={form} layout="vertical" onFinish={handleCreate}>
+          <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ ragMethod: RAG_METHODS.NAIVE }}>
               <Form.Item name="name" label="名称" rules={[{ required: true }]}>
                   <Input placeholder="请输入知识库名称" />
               </Form.Item>
               <Form.Item name="description" label="描述">
                   <Input.TextArea placeholder="请输入描述" />
               </Form.Item>
-              <Form.Item name="ragMethod" label="RAG 方法" initialValue="naive">
+              <Form.Item name="ragMethod" label="RAG 方法">
                   <Select>
-                      <Select.Option value="naive">Naive RAG</Select.Option>
-                      <Select.Option value="hisem">HiSem RAG</Select.Option>
+                      <Select.Option value={RAG_METHODS.NAIVE}>Naive RAG</Select.Option>
+                      <Select.Option value={RAG_METHODS.HISEM_FAST}>HiSem RAG Fast</Select.Option>
+                      <Select.Option value={RAG_METHODS.HISEM}>Graph RAG</Select.Option>
                   </Select>
               </Form.Item>
-              <Form.Item name="embeddingModel" label="Embedding 模型" rules={[{ required: true }]}>
-                  <Select placeholder="请选择 Embedding 模型">
-                      {embeddingModels.map(model => (
-                          <Select.Option key={model} value={model}>{model}</Select.Option>
-                      ))}
-                  </Select>
-              </Form.Item>
+              
+              {ragMethod && getMethodConfig(ragMethod).indexConfig.map((item: any) => {
+                  if (item.dependency) {
+                      const depValue = item.dependency.field === 'splitter_type' ? splitterType : form.getFieldValue(item.dependency.field);
+                      if (depValue !== item.dependency.value) return null;
+                  }
+
+                  let inputNode = <Input />;
+                  let initialValue = item.defaultValue;
+
+                  if (item.type === 'select') {
+                      inputNode = (
+                          <Select>
+                              {item.options?.map((opt: any) => (
+                                  <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
+                              ))}
+                          </Select>
+                      );
+                  } else if (item.type === 'model_select') {
+                      if (item.modelType === 'embedding' && localSettings?.defaultEmbedding) {
+                          initialValue = localSettings.defaultEmbedding;
+                      }
+                      inputNode = (
+                          <Select placeholder={`请选择 ${item.label}`}>
+                              {embeddingModels.map(model => (
+                                  <Select.Option key={model} value={model}>{model}</Select.Option>
+                              ))}
+                          </Select>
+                      );
+                  } else if (item.type === 'slider') {
+                      const max = item.dynamicMaxRatio ? Math.floor((chunkSize || 512) * item.dynamicMaxRatio) : item.max;
+                      inputNode = <Slider min={item.min} max={max} step={item.step} marks={{ [item.min]: item.min, [max]: max }} />;
+                  } else if (item.type === 'input') {
+                      inputNode = <Input />;
+                  }
+
+                  return (
+                    <Form.Item 
+                        key={item.key} 
+                        name={item.key} 
+                        label={item.label}
+                        rules={[{ required: true, message: `请输入${item.label}` }]}
+                        initialValue={initialValue}
+                    >
+                        {inputNode}
+                    </Form.Item>
+                  );
+              })}
           </Form>
       </Modal>
     </div>
