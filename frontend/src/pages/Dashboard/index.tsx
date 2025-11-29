@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
     return (
         <div className="p-6 bg-gray-50" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
             <StaggerContainer>
-                <Row gutter={16} style={{ marginBottom: 24, margin: 0 }}>
+                <Row gutter={24} style={{ marginBottom: 32 }}>
                     <Col span={8}>
                         <StaggerItem>
                             <Card hoverable>
@@ -143,7 +143,7 @@ const Dashboard: React.FC = () => {
                     </Col>
                 </Row>
 
-                <Row gutter={16} style={{ margin: 0 }}>
+                <Row gutter={24}>
                     <Col span={12}>
                         <StaggerItem>
                             <Card title="近 7 天对话趋势" hoverable style={{ height: '100%' }}>
