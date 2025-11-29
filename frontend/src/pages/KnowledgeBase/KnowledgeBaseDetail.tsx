@@ -1,11 +1,12 @@
-import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions } from 'antd';
+import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, UploadOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined } from '@ant-design/icons';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
+import type { UploadFile } from 'antd/es/upload/interface';
 
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -18,6 +19,24 @@ const getFileIcon = (fileName: string) => {
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#13c2c2' }} />;
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#faad14' }} />;
     return <FileTextOutlined style={{ ...style, color: '#8c8c8c' }} />;
+};
+
+const STRATEGY_LABELS: Record<string, string> = {
+    NAIVE_RAG: 'Naive RAG',
+    HISEM_RAG: 'HiSem RAG',
+    HISEM_RAG_FAST: 'HiSem RAG Fast',
+};
+
+const toNativeFile = (file: UploadFile): File | null => {
+    if (file.originFileObj instanceof File) return file.originFileObj;
+    const possibleFile = file as unknown as File;
+    return possibleFile && typeof possibleFile.size === 'number' ? possibleFile : null;
+};
+
+const formatFileSize = (size: number) => {
+    if (!size) return '0 MB';
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 };
 
 export default function KnowledgeBaseDetail() {
@@ -33,6 +52,8 @@ export default function KnowledgeBaseDetail() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState('');
   const [uploadForm] = Form.useForm();
+    const [fileList, setFileList] = useState<UploadFile[]>([]);
+    const [uploading, setUploading] = useState(false);
 
   const fetchKbInfo = async () => {
       if (!id) return;
@@ -108,32 +129,41 @@ export default function KnowledgeBaseDetail() {
       }
   };
 
-  const handleUpload = async (options: any) => {
-      const { file, onSuccess, onError } = options;
-      
+  const totalSelectedSize = fileList.reduce((sum, file) => sum + (file.size || file.originFileObj?.size || 0), 0);
+
+  const handleBatchUpload = async () => {
       if (!id) {
           message.error('知识库ID不存在');
-          onError(new Error('No KB ID'));
           return;
       }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('kbId', id);
-
+      if (fileList.length === 0) {
+          message.warning('请先选择需要上传的文件');
+          return;
+      }
+      const files = fileList
+          .map(toNativeFile)
+          .filter((file): file is File => !!file);
+      if (files.length === 0) {
+          message.error('文件无效，请重新选择');
+          return;
+      }
+      setUploading(true);
       try {
-          const res: any = await documentService.upload(formData);
+          const titles = fileList.map(file => file.name);
+          const res: any = await documentService.batchUpload(id, files, titles);
           if (res.code === 200) {
-              onSuccess(res.data);
-              message.success(`${file.name} 上传成功`);
+              message.success('文件上传成功');
+              setFileList([]);
+              setIsUploadModalOpen(false);
+              uploadForm.resetFields();
               fetchData();
           } else {
-              onError(new Error(res.message));
-              message.error(`${file.name} 上传失败: ${res.message}`);
+              message.error(res.message || '上传失败');
           }
       } catch (error) {
-          onError(error);
-          message.error(`${file.name} 上传失败`);
+          message.error('上传失败，请稍后再试');
+      } finally {
+          setUploading(false);
       }
   };
 
@@ -211,7 +241,7 @@ export default function KnowledgeBaseDetail() {
                 <Descriptions.Item label="描述">{kbInfo?.description || '暂无描述'}</Descriptions.Item>
                 <Descriptions.Item label="Embedding 模型">{kbInfo?.embeddingModelId}</Descriptions.Item>
                 <Descriptions.Item label="RAG 方法">
-                    <Tag color="blue">{kbInfo?.indexStrategyType === 'HISEM_RAG' ? 'HiSem RAG' : 'Naive RAG'}</Tag>
+                    <Tag color="blue">{STRATEGY_LABELS[kbInfo?.indexStrategyType || 'NAIVE_RAG']}</Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="文档数量">{kbInfo?.documentCount || 0}</Descriptions.Item>
             </Descriptions>
@@ -236,7 +266,10 @@ export default function KnowledgeBaseDetail() {
             )}
             <Button
                 icon={<PlusOutlined />}
-                onClick={() => setIsUploadModalOpen(true)}
+                onClick={() => {
+                    setFileList([]);
+                    setIsUploadModalOpen(true);
+                }}
                 type="primary"
             >
                 上传文档
@@ -268,26 +301,73 @@ export default function KnowledgeBaseDetail() {
       <Modal
         title="上传文档"
         open={isUploadModalOpen}
-        onCancel={() => setIsUploadModalOpen(false)}
+        onCancel={() => {
+            setIsUploadModalOpen(false);
+            setFileList([]);
+        }}
         footer={null}
       >
           <Form form={uploadForm} layout="vertical">
-              <Form.Item label="文件">
+              <Alert
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16, borderRadius: 8 }}
+                  message="支持批量拖拽上传"
+                  description="单个文件最大 200MB，上传前可删除或替换文件"
+              />
+              <Form.Item label="选择文件">
                 <Upload.Dragger
                     multiple
-                    name="file"
-                    customRequest={handleUpload}
-                    showUploadList={true}
+                    showUploadList={false}
+                    fileList={fileList}
+                    beforeUpload={(file) => {
+                        setFileList(prev => {
+                            const exists = prev.some(item => item.uid === file.uid);
+                            if (exists) {
+                                message.warning(`${file.name} 已在列表中`);
+                                return prev;
+                            }
+                            return [...prev, file];
+                        });
+                        return false;
+                    }}
                 >
                     <p className="ant-upload-drag-icon">
-                        <UploadOutlined />
+                        <InboxOutlined />
                     </p>
-                    <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-                    <p className="ant-upload-hint">
-                        支持单次或批量上传。
-                    </p>
+                    <Typography.Title level={5} style={{ marginBottom: 8 }}>拖拽文件或点击上传</Typography.Title>
+                    <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                        支持 PDF、Word、PPT、Markdown 等常见格式
+                    </Typography.Paragraph>
                 </Upload.Dragger>
               </Form.Item>
+              {fileList.length > 0 && (
+                  <div style={{ background: '#fafbff', border: '1px solid #e5e7ff', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <Typography.Text strong>已选择 {fileList.length} 个文件</Typography.Text>
+                          <Typography.Text type="secondary">共 {formatFileSize(totalSelectedSize)}</Typography.Text>
+                      </div>
+                      <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                          {fileList.map(file => (
+                              <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                  <FileTextOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                                  <div style={{ flex: 1 }}>
+                                      <div style={{ fontSize: 14 }}>{file.name}</div>
+                                      <div style={{ fontSize: 12, color: '#999' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
+                                  </div>
+                                  <Button type="text" icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
+                              </div>
+                          ))}
+                      </div>
+                      <div style={{ textAlign: 'right', marginTop: 8 }}>
+                          <Button type="link" onClick={() => setFileList([])}>清空列表</Button>
+                      </div>
+                  </div>
+              )}
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                  <Button onClick={() => setIsUploadModalOpen(false)}>取消</Button>
+                  <Button type="primary" disabled={fileList.length === 0} loading={uploading} onClick={handleBatchUpload}>开始上传</Button>
+              </Space>
           </Form>
       </Modal>
     </div>
