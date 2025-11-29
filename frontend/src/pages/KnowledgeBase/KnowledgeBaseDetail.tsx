@@ -1,6 +1,6 @@
-import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography } from 'antd';
+import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography, Tooltip } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined } from '@ant-design/icons';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
@@ -54,6 +54,8 @@ export default function KnowledgeBaseDetail() {
   const [uploadForm] = Form.useForm();
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [batchIndexLoading, setBatchIndexLoading] = useState(false);
+    const [indexingDocIds, setIndexingDocIds] = useState<Record<string, boolean>>({});
 
   const fetchKbInfo = async () => {
       if (!id) return;
@@ -130,6 +132,44 @@ export default function KnowledgeBaseDetail() {
   };
 
   const totalSelectedSize = fileList.reduce((sum, file) => sum + (file.size || file.originFileObj?.size || 0), 0);
+
+  const handleTriggerKbIndex = async () => {
+      if (!id) return;
+      setBatchIndexLoading(true);
+      try {
+          const res: any = await documentService.triggerBatchIndex(id);
+          if (res.code === 200) {
+              message.success('已触发知识库索引构建');
+          } else {
+              message.error(res.message || '触发索引失败');
+          }
+      } catch (error) {
+          message.error('触发索引失败');
+      } finally {
+          setBatchIndexLoading(false);
+      }
+  };
+
+  const handleTriggerDocIndex = async (docId: string) => {
+      setIndexingDocIds(prev => ({ ...prev, [docId]: true }));
+      try {
+          const res: any = await documentService.triggerIndex(docId);
+          if (res.code === 200) {
+              message.success('已触发文档索引');
+              fetchData();
+          } else {
+              message.error(res.message || '触发索引失败');
+          }
+      } catch (error) {
+          message.error('触发索引失败');
+      } finally {
+          setIndexingDocIds(prev => {
+              const next = { ...prev };
+              delete next[docId];
+              return next;
+          });
+      }
+  };
 
   const handleBatchUpload = async () => {
       if (!id) {
@@ -211,15 +251,31 @@ export default function KnowledgeBaseDetail() {
     {
       title: '操作',
       key: 'option',
-      width: 120,
+      width: 180,
       render: (_, record) => (
         <Space>
-            <a onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}>查看</a>
+            <Tooltip title="查看">
+                <Button
+                    type="text"
+                    icon={<EyeOutlined />}
+                    onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}
+                />
+            </Tooltip>
+            <Tooltip title="索引">
+                <Button
+                    type="text"
+                    icon={<SyncOutlined />}
+                    loading={!!indexingDocIds[record.id]}
+                    onClick={() => handleTriggerDocIndex(record.id)}
+                />
+            </Tooltip>
             <Popconfirm
                 title="确定删除吗?"
                 onConfirm={() => handleDelete(record.id)}
             >
-                <a className="text-red-500">删除</a>
+                <Tooltip title="删除">
+                    <Button type="text" danger icon={<DeleteOutlined />} />
+                </Tooltip>
             </Popconfirm>
         </Space>
       ),
@@ -259,6 +315,9 @@ export default function KnowledgeBaseDetail() {
             />
           </Space>
           <Space>
+            <Button icon={<SyncOutlined />} loading={batchIndexLoading} onClick={handleTriggerKbIndex}>
+                构建知识库索引
+            </Button>
             {selectedRowKeys.length > 0 && (
                 <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
                     <Button danger>批量删除 ({selectedRowKeys.length})</Button>

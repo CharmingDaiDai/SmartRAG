@@ -1,6 +1,6 @@
-import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography } from 'antd';
+import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined } from '@ant-design/icons';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { useAppStore } from '../../store/useAppStore';
@@ -46,9 +46,9 @@ export default function DocumentsPage() {
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
   const [filterKbId, setFilterKbId] = useState<string | undefined>(undefined);
   const { currentKbId, setCurrentKbId } = useAppStore();
-  const [uploadForm] = Form.useForm();
-    const [fileList, setFileList] = useState<UploadFile[]>([]);
-    const [uploading, setUploading] = useState(false);
+    const [uploadForm] = Form.useForm();
+        const [fileList, setFileList] = useState<UploadFile[]>([]);
+        const [uploading, setUploading] = useState(false);
 
   const fetchKbs = async () => {
       try {
@@ -193,7 +193,24 @@ export default function DocumentsPage() {
       width: 150,
       render: (kbId) => {
           const kb = kbs.find(k => k.id === kbId);
-          return kb ? <Tag color="blue">{kb.name}</Tag> : kbId;
+          if (!kb) return kbId;
+          return (
+              <Tooltip title={kb.name}>
+                  <Tag
+                      color="blue"
+                      style={{
+                          maxWidth: 140,
+                          display: 'inline-block',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          margin: 0,
+                      }}
+                  >
+                      {kb.name}
+                  </Tag>
+              </Tooltip>
+          );
       },
     },
     {
@@ -231,12 +248,20 @@ export default function DocumentsPage() {
       width: 120,
       render: (_, record) => (
         <Space>
-            <a onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}>查看</a>
+            <Tooltip title="查看">
+                <Button
+                    type="text"
+                    icon={<EyeOutlined />}
+                    onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}
+                />
+            </Tooltip>
             <Popconfirm
                 title="确定删除吗?"
                 onConfirm={() => handleDelete(record.id)}
             >
-                <a className="text-red-500">删除</a>
+                <Tooltip title="删除">
+                    <Button type="text" danger icon={<DeleteOutlined />} />
+                </Tooltip>
             </Popconfirm>
         </Space>
       ),

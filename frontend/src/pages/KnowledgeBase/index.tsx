@@ -1,6 +1,6 @@
 import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin, Slider, InputNumber, Switch, Tooltip } from 'antd';
-import { useState, useEffect } from 'react';
-import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { useState, useEffect, MouseEvent } from 'react';
+import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined, QuestionCircleOutlined, SyncOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
@@ -8,6 +8,7 @@ import { KnowledgeBaseItem } from '../../types';
 import { FadeIn, StaggerContainer, StaggerItem } from '../../components/common/Motion';
 import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
+import { documentService } from '../../services/documentService';
 
 const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
     [RAG_METHODS.NAIVE]: 'NAIVE_RAG',
@@ -30,6 +31,7 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<KnowledgeBaseItem[]>([]);
   const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
+    const [indexingKbId, setIndexingKbId] = useState<string | null>(null);
   const ragMethod = Form.useWatch('ragMethod', form);
   const splitterType = Form.useWatch('splitter_type', form);
   const chunkSize = Form.useWatch('chunk_size', form);
@@ -126,6 +128,27 @@ export default function KnowledgeBasePage() {
       }
   };
 
+  const handleNavigateDetail = (kbId: string) => {
+      navigate(`/kb/${kbId}`);
+  };
+
+    const handleTriggerBatchIndex = async (kbId: string, e?: MouseEvent) => {
+      e?.stopPropagation();
+      setIndexingKbId(kbId);
+      try {
+          const res: any = await documentService.triggerBatchIndex(kbId);
+          if (res.code === 200) {
+              message.success('已触发知识库索引构建');
+          } else {
+              message.error(res.message || '触发索引失败');
+          }
+      } catch (error) {
+          message.error('触发索引失败');
+      } finally {
+          setIndexingKbId(null);
+      }
+  };
+
   return (
     <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <FadeIn>
@@ -148,40 +171,55 @@ export default function KnowledgeBasePage() {
                     <Col span={8} key={item.id}>
                         <StaggerItem>
                             <Card 
+                                hoverable
+                                className="kb-card"
+                                onClick={() => handleNavigateDetail(item.id)}
+                                bodyStyle={{ padding: 20, minHeight: 190, display: 'flex', flexDirection: 'column', gap: 16 }}
                                 title={
-                                    <Space>
-                                        <DatabaseOutlined className="text-blue-500" style={{ fontSize: 20 }} />
-                                        <span style={{ fontSize: 16, fontWeight: 'bold' }}>{item.name}</span>
-                                    </Space>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Space>
+                                            <DatabaseOutlined className="text-blue-500" style={{ fontSize: 20 }} />
+                                            <span style={{ fontSize: 16, fontWeight: 'bold' }}>{item.name}</span>
+                                        </Space>
+                                        <ArrowRightOutlined style={{ color: '#a0a0a0' }} />
+                                    </div>
                                 }
                                 actions={[
-                                    <Button type="link" key="chat" icon={<MessageOutlined />} onClick={() => navigate(`/chat?kbId=${item.id}`)}>
+                                    <Button type="link" key="chat" icon={<MessageOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/chat?kbId=${item.id}`); }}>
                                         对话
                                     </Button>,
-                                    <Button type="link" key="docs" icon={<FileTextOutlined />} onClick={() => navigate(`/kb/${item.id}`)}>
+                                    <Button type="link" key="docs" icon={<FileTextOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/kb/${item.id}`); }}>
                                         文档
+                                    </Button>,
+                                    <Button type="link" key="index" icon={<SyncOutlined />} loading={indexingKbId === item.id} onClick={(e) => handleTriggerBatchIndex(item.id, e)}>
+                                        构建索引
                                     </Button>,
                                     <Popconfirm
                                         key="delete"
                                         title="确定删除吗?"
-                                        onConfirm={() => handleDelete(item.id)}
+                                        onConfirm={(e) => {
+                                            e?.stopPropagation();
+                                            handleDelete(item.id);
+                                        }}
+                                        onCancel={(e) => e?.stopPropagation()}
                                     >
-                                        <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
+                                        <Button type="link" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()}>删除</Button>
                                     </Popconfirm>,
                                 ]}
                             >
-                                <div style={{ marginBottom: 16 }}>
-                                    <Space size={4}>
-                                        <Tag color="blue">{INDEX_STRATEGY_LABEL_MAP[item.indexStrategyType || 'NAIVE_RAG'] || item.indexStrategyType}</Tag>
-                                        <Tag color="green">{item.embeddingModelId}</Tag>
-                                    </Space>
-                                </div>
-                                <div className="h-10 overflow-hidden text-gray-500" style={{ marginBottom: 16 }}>
+                                <Space size={6} wrap>
+                                    <Tag color="blue">{INDEX_STRATEGY_LABEL_MAP[item.indexStrategyType || 'NAIVE_RAG'] || item.indexStrategyType}</Tag>
+                                    <Tag color="green">{item.embeddingModelId}</Tag>
+                                    <Tag>{`${item.documentCount || 0} 文档`}</Tag>
+                                </Space>
+                                <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ margin: 0 }}>
                                     {item.description || '暂无描述'}
-                                </div>
-                                <div className="flex items-center text-gray-500">
-                                    <FileTextOutlined className="mr-2" />
-                                    <span>{item.documentCount || 0} 文档</span>
+                                </Typography.Paragraph>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Space>
+                                        <FileTextOutlined style={{ color: '#8c8c8c' }} />
+                                        <Typography.Text type="secondary">最新更新：{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}</Typography.Text>
+                                    </Space>
                                 </div>
                             </Card>
                         </StaggerItem>
