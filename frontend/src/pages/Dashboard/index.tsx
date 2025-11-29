@@ -3,7 +3,7 @@ import { Card, Row, Col, Statistic, Typography, message } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design/icons';
 import { Tiny, WordCloud } from '@ant-design/plots';
 import { dashboardService } from '../../services/dashboardService';
-import { StaggerContainer, StaggerItem } from '../../components/common/Motion';
+import { StaggerContainer, StaggerItem, SlideInUp, HoverCard } from '../../components/common/Motion';
 
 const { Title } = Typography;
 
@@ -103,10 +103,14 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="p-6 bg-gray-50" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+            <SlideInUp>
+                <Title level={4} style={{ marginBottom: 24 }}>数据仪表盘</Title>
+            </SlideInUp>
             <StaggerContainer>
                 <Row gutter={24} style={{ marginBottom: 32 }}>
                     <Col span={8}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card hoverable>
                                 <Statistic 
                                     title="知识库数量" 
@@ -115,10 +119,12 @@ const Dashboard: React.FC = () => {
                                     loading={loading}
                                 />
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                     <Col span={8}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card hoverable>
                                 <Statistic 
                                     title="文档总数" 
@@ -127,10 +133,12 @@ const Dashboard: React.FC = () => {
                                     loading={loading}
                                 />
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                     <Col span={8}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card hoverable>
                                 <Statistic 
                                     title="对话总次数" 
@@ -139,6 +147,7 @@ const Dashboard: React.FC = () => {
                                     loading={loading}
                                 />
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                 </Row>
@@ -146,22 +155,26 @@ const Dashboard: React.FC = () => {
                 <Row gutter={24}>
                     <Col span={12}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card title="近 7 天对话趋势" hoverable style={{ height: '100%' }}>
                                 <div style={{ height: 300 }}>
                                     {/* @ts-ignore */}
                                     <Tiny.Area {...areaConfig} />
                                 </div>
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                     <Col span={12}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card title="热门关键词" hoverable style={{ height: '100%' }}>
                                 <div style={{ height: 300 }}>
                                     {/* @ts-ignore */}
                                     <WordCloud {...wordCloudConfig} />
                                 </div>
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                 </Row>

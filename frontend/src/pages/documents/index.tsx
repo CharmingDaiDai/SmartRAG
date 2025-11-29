@@ -7,7 +7,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { FadeIn, SlideInUp } from '../../components/common/Motion';
+import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -351,6 +351,7 @@ export default function DocumentsPage() {
                 setFileList([]);
             }}
             footer={null}
+            modalRender={(modal) => <ScaleIn>{modal}</ScaleIn>}
         >
             <Form form={uploadForm} layout="vertical">
                 <Form.Item name="kbId" label="选择知识库" rules={[{ required: true }]}>

@@ -7,6 +7,7 @@ import { kbService } from '../../services/kbService';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
+import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -287,8 +288,10 @@ export default function KnowledgeBaseDetail() {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div style={{ marginBottom: 24 }}>
+    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <SlideInUp>
+      <div style={{ marginBottom: 24, flexShrink: 0 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/kb')} style={{ marginBottom: 16 }}>
             返回知识库列表
         </Button>
@@ -303,8 +306,10 @@ export default function KnowledgeBaseDetail() {
             </Descriptions>
         </Card>
       </div>
+      </SlideInUp>
 
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
           <Space>
             <Input 
                 placeholder="搜索文档" 
@@ -335,7 +340,9 @@ export default function KnowledgeBaseDetail() {
             </Button>
           </Space>
       </div>
+      </SlideInUp>
 
+      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Table
         columns={columns}
         dataSource={filteredData}
@@ -345,6 +352,7 @@ export default function KnowledgeBaseDetail() {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
         }}
+        scroll={{ y: 'calc(100vh - 350px)' }}
         pagination={{ 
             current: currentPage,
             pageSize: pageSize,
@@ -356,6 +364,7 @@ export default function KnowledgeBaseDetail() {
             }
         }}
       />
+      </SlideInUp>
 
       <Modal
         title="上传文档"
@@ -365,6 +374,7 @@ export default function KnowledgeBaseDetail() {
             setFileList([]);
         }}
         footer={null}
+        modalRender={(modal) => <ScaleIn>{modal}</ScaleIn>}
       >
           <Form form={uploadForm} layout="vertical">
               <Alert
@@ -429,6 +439,7 @@ export default function KnowledgeBaseDetail() {
               </Space>
           </Form>
       </Modal>
-    </div>
+      </div>
+    </FadeIn>
   );
 }

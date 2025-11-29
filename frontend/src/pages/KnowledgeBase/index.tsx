@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
-import { FadeIn, StaggerContainer, StaggerItem } from '../../components/common/Motion';
+import { FadeIn, StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
 import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
@@ -151,7 +151,7 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <FadeIn>
+      <SlideInUp>
         <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <Typography.Title level={4} style={{ margin: 0 }}>知识库列表</Typography.Title>
             <Button
@@ -162,7 +162,7 @@ export default function KnowledgeBasePage() {
                 新建知识库
             </Button>
         </div>
-      </FadeIn>
+      </SlideInUp>
 
       <StaggerContainer style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 24 }}>
         <Spin spinning={loading}>
@@ -170,11 +170,13 @@ export default function KnowledgeBasePage() {
                 {data.map((item) => (
                     <Col span={8} key={item.id}>
                         <StaggerItem>
+                            <HoverCard style={{ height: '100%' }}>
                             <Card 
                                 hoverable
                                 className="kb-card"
                                 onClick={() => handleNavigateDetail(item.id)}
                                 bodyStyle={{ padding: 20, minHeight: 190, display: 'flex', flexDirection: 'column', gap: 16 }}
+                                style={{ height: '100%', cursor: 'pointer' }}
                                 title={
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Space>
@@ -222,6 +224,7 @@ export default function KnowledgeBasePage() {
                                     </Space>
                                 </div>
                             </Card>
+                            </HoverCard>
                         </StaggerItem>
                     </Col>
                 ))}
@@ -235,6 +238,7 @@ export default function KnowledgeBasePage() {
         onCancel={() => setCreateModalOpen(false)}
         onOk={() => form.submit()}
         width={600}
+        modalRender={(modal) => <ScaleIn>{modal}</ScaleIn>}
       >
           <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ ragMethod: RAG_METHODS.NAIVE }}>
               <Form.Item name="name" label="名称" rules={[{ required: true }]}>
