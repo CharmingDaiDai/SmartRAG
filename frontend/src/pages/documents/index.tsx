@@ -274,7 +274,7 @@ export default function DocumentsPage() {
 
   return (
     <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="p-[15px] bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <SlideInUp>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <Space>

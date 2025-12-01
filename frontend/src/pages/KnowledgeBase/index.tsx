@@ -150,7 +150,7 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="p-[15px] bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SlideInUp>
         <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <Typography.Title level={4} style={{ margin: 0 }}>知识库列表</Typography.Title>
