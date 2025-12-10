@@ -21,7 +21,7 @@ import {
   MessageOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
-import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, InputNumber, Tooltip, List, Popconfirm } from 'antd';
+import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, InputNumber, Tooltip, Popconfirm } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
@@ -30,7 +30,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
-import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
+import { getMethodConfig, RAG_METHODS, RAG_STRATEGIES } from '../../config/ragConfig';
 import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
 
 const { Sider, Content } = Layout;
@@ -96,12 +96,28 @@ const ChatPage: React.FC = () => {
       }
   }, [kbIdParam, setCurrentKbId]);
 
+  const currentKb = useMemo(() => kbs.find(kb => String(kb.id) === String(currentKbId)), [kbs, currentKbId]);
+
+  const { strategy, endpoint } = useMemo(() => {
+      if (!currentKb) return { strategy: RAG_STRATEGIES.NAIVE_RAG, endpoint: '/api/chat/rag/naive' };
+      
+      const type = currentKb.indexStrategyType || RAG_STRATEGIES.NAIVE_RAG;
+      let ep = '/api/chat/rag/naive';
+      
+      if (type === RAG_STRATEGIES.HISEM_RAG) {
+          ep = '/api/chat/rag/hisem';
+      } else if (type === RAG_STRATEGIES.HISEM_RAG_FAST) {
+          ep = '/api/chat/rag/hisem-fast';
+      }
+      
+      return { strategy: type, endpoint: ep };
+  }, [currentKb]);
+
   const [form] = Form.useForm();
   const [input, setInput] = useState('');
   const [llmModels, setLlmModels] = useState<string[]>([]);
   const [rerankModels, setRerankModels] = useState<string[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const ragMethod = Form.useWatch('method', form);
   const enableRerank = Form.useWatch('enable_rerank', form);
 
   useEffect(() => {
@@ -127,41 +143,51 @@ const ChatPage: React.FC = () => {
           const currentValues = form.getFieldsValue();
           
           // Validate LLM Model
-          if (currentValues.llm_model && llmModels.length > 0 && !llmModels.includes(currentValues.llm_model)) {
-              // If current selection is invalid, try to reset to default or clear
+          if (currentValues.llmModelId && llmModels.length > 0 && !llmModels.includes(currentValues.llmModelId)) {
               if (localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
-                  form.setFieldValue('llm_model', localSettings.defaultModel);
+                  form.setFieldValue('llmModelId', localSettings.defaultModel);
               } else {
-                  form.setFieldValue('llm_model', undefined);
+                  form.setFieldValue('llmModelId', undefined);
               }
-          } else if (!currentValues.llm_model && localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
-              // Auto-select default if empty
-              form.setFieldValue('llm_model', localSettings.defaultModel);
+          } else if (!currentValues.llmModelId && localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
+              form.setFieldValue('llmModelId', localSettings.defaultModel);
           }
 
           // Validate Rerank Model
-          if (currentValues.rerank_model) {
-             if (rerankModels.length > 0 && !rerankModels.includes(currentValues.rerank_model)) {
-                 form.setFieldValue('rerank_model', undefined);
+          if (currentValues.rerankModelId) {
+             if (rerankModels.length > 0 && !rerankModels.includes(currentValues.rerankModelId)) {
+                 form.setFieldValue('rerankModelId', undefined);
              } else if (rerankModels.length === 0) {
-                 // If no models available, clear selection
-                 form.setFieldValue('rerank_model', undefined);
+                 form.setFieldValue('rerankModelId', undefined);
              }
-          } else if (!currentValues.rerank_model && localSettings?.defaultRerank && rerankModels.includes(localSettings.defaultRerank)) {
-              form.setFieldValue('rerank_model', localSettings.defaultRerank);
+          } else if (!currentValues.rerankModelId && localSettings?.defaultRerank && rerankModels.includes(localSettings.defaultRerank)) {
+              form.setFieldValue('rerankModelId', localSettings.defaultRerank);
           }
       }
   }, [modelsLoaded, llmModels, rerankModels, localSettings, form]);
-  
+
+  // Reset form when strategy changes
+  useEffect(() => {
+      if (strategy) {
+          form.resetFields();
+          // Set default model values
+          if (localSettings?.defaultModel && llmModels.includes(localSettings.defaultModel)) {
+              form.setFieldValue('llmModelId', localSettings.defaultModel);
+          }
+          if (localSettings?.defaultRerank && rerankModels.includes(localSettings.defaultRerank)) {
+              form.setFieldValue('rerankModelId', localSettings.defaultRerank);
+          }
+      }
+  }, [strategy, form, localSettings, llmModels, rerankModels]);
 
 
   // Initialize Provider
   const provider = useMemo(() => {
-    return new SmartDocChatProvider(authToken || undefined);
-  }, [authToken]);
+    return new SmartDocChatProvider(authToken || undefined, endpoint);
+  }, [authToken, endpoint]);
 
   // Use XChat Hook
-  const { messages, onRequest, isRequesting, setMessages } = useXChat({
+  const { messages, onRequest, isRequesting, setMessages, abort } = useXChat({
     provider,
   });
 
@@ -191,7 +217,7 @@ const ChatPage: React.FC = () => {
   }, []);
 
   const handleRequest = (text: string) => {
-      if (!currentKbId) {
+      if (!currentKbId || !currentKb) {
           message.warning('请先选择知识库');
           return;
       }
@@ -206,14 +232,35 @@ const ChatPage: React.FC = () => {
           id: m.id 
       }));
 
+      // Construct request body based on strategy
+      const requestBody: any = {
+          kbId: currentKbId,
+          question: text,
+          embeddingModelId: currentKb.embeddingModelId,
+          llmModelId: ragParams.llmModelId,
+          rerankModelId: ragParams.rerankModelId,
+          // Common boolean flags
+          enableQueryRewrite: ragParams.enableQueryRewrite,
+          enableQueryDecomposition: ragParams.enableQueryDecomposition,
+          enableIntentRecognition: ragParams.enableIntentRecognition,
+          enableHyde: ragParams.enableHyde,
+      };
+
+      if (strategy === RAG_STRATEGIES.NAIVE_RAG) {
+          requestBody.topK = ragParams.topK;
+          requestBody.threshold = ragParams.threshold;
+      } else if (strategy === RAG_STRATEGIES.HISEM_RAG || strategy === RAG_STRATEGIES.HISEM_FAST_RAG) {
+          requestBody.maxTopK = ragParams.maxTopK;
+      }
+
       onRequest({
           messages: [
               ...historyMessages,
               { role: 'user', content: text, id: Date.now().toString() }
           ] as any,
           kbId: currentKbId,
-          ragMethod: ragParams.method,
-          ragParams: ragParams
+          ragMethod: strategy,
+          ragParams: requestBody
       });
       
       setInput('');
@@ -294,50 +341,46 @@ const ChatPage: React.FC = () => {
                     历史对话
                 </div>
                 <StaggerContainer>
-                    <List
-                        dataSource={historyList}
-                        split={false}
-                        renderItem={(item) => (
-                            <StaggerItem>
-                                <div 
-                                    className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200`}
-                                    style={{ 
-                                        padding: '10px 16px', 
-                                        background: activeHistoryId === item.id ? (themeMode === 'dark' ? '#1f1f1f' : '#e6f4ff') : 'transparent',
-                                        borderLeft: activeHistoryId === item.id ? `3px solid ${token.colorPrimary}` : '3px solid transparent'
-                                    }}
-                                    onClick={() => handleHistoryClick(item.id)}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-                                            <MessageOutlined style={{ marginRight: 8, color: token.colorTextSecondary }} />
-                                            <Text ellipsis style={{ maxWidth: 140, color: token.colorText }}>{item.title}</Text>
+                    {historyList.map((item) => (
+                        <StaggerItem key={item.id}>
+                            <div
+                                className={`cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200`}
+                                style={{
+                                    padding: '10px 16px',
+                                    background: activeHistoryId === item.id ? (themeMode === 'dark' ? '#1f1f1f' : '#e6f4ff') : 'transparent',
+                                    borderLeft: activeHistoryId === item.id ? `3px solid ${token.colorPrimary}` : '3px solid transparent'
+                                }}
+                                onClick={() => handleHistoryClick(item.id)}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                                        <MessageOutlined style={{ marginRight: 8, color: token.colorTextSecondary }} />
+                                        <Text ellipsis style={{ maxWidth: 140, color: token.colorText }}>{item.title}</Text>
+                                    </div>
+                                    {activeHistoryId === item.id && (
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <Popconfirm
+                                                title="确定删除该对话吗？"
+                                                onConfirm={() => {
+                                                    message.success('删除成功');
+                                                    setHistoryList(prev => prev.filter(h => h.id !== item.id));
+                                                }}
+                                                okText="确定"
+                                                cancelText="取消"
+                                            >
+                                                <DeleteOutlined
+                                                    className="text-gray-400 hover:text-red-500"
+                                                />
+                                            </Popconfirm>
                                         </div>
-                                        {activeHistoryId === item.id && (
-                                            <div onClick={(e) => e.stopPropagation()}>
-                                                <Popconfirm
-                                                    title="确定删除该对话吗？"
-                                                    onConfirm={() => {
-                                                        message.success('删除成功');
-                                                        setHistoryList(prev => prev.filter(h => h.id !== item.id));
-                                                    }}
-                                                    okText="确定"
-                                                    cancelText="取消"
-                                                >
-                                                    <DeleteOutlined 
-                                                        className="text-gray-400 hover:text-red-500" 
-                                                    />
-                                                </Popconfirm>
-                                            </div>
-                                        )}
+                                    )}
                                     </div>
                                     <div style={{ fontSize: 12, color: token.colorTextDescription, marginLeft: 24, marginTop: 4 }}>
                                         {item.date}
                                     </div>
                                 </div>
                             </StaggerItem>
-                        )}
-                    />
+                        ))}
                 </StaggerContainer>
             </div>
         </Sider>
@@ -400,7 +443,7 @@ const ChatPage: React.FC = () => {
                                             hasNextChunk: status === 'updating' || status === 'loading',
                                             enableAnimation: true,
                                             // 在这里调整流式输出的速度（动画时长），单位毫秒
-                                            animationConfig: { fadeDuration: 800 },
+                                            animationConfig: { fadeDuration: 400 },
                                         }}
                                     >
                                         {content}
@@ -418,6 +461,7 @@ const ChatPage: React.FC = () => {
                     onChange={setInput}
                     loading={isRequesting}
                     onSubmit={handleRequest}
+                    onCancel={abort}
                     placeholder="输入问题，Shift + Enter 换行"
                 />
             </div>
@@ -450,31 +494,28 @@ const ChatPage: React.FC = () => {
                         
                         <div>
                             <Title level={5}>RAG 参数配置</Title>
-                            <Form 
-                                layout="vertical" 
-                                form={form} 
-                                initialValues={{ 
-                                    method: RAG_METHODS.NAIVE,
-                                    top_k: 5,
-                                    score_threshold: 0.5
+                            <Form
+                                layout="vertical"
+                                form={form}
+                                key={strategy}
+                                initialValues={{
+                                    topK: 5,
+                                    threshold: 0.0,
+                                    maxTopK: 10
                                 }}
                             >
-                                <Form.Item name="method" label="RAG 方法">
-                                    <Select options={[
-                                        { label: 'Naive RAG', value: RAG_METHODS.NAIVE }, 
-                                        { label: 'HiSem RAG Fast', value: RAG_METHODS.HISEM_FAST },
-                                        { label: 'Graph RAG', value: RAG_METHODS.HISEM }
-                                    ]} />
-                                </Form.Item>
+                                {/* RAG Method is determined by KB strategy */}
                                 
-                                {ragMethod && getMethodConfig(ragMethod).searchConfig.map((item: any) => {
+                                {strategy && getMethodConfig(strategy).searchConfig.map((item: any) => {
                                     if (item.dependency) {
                                         const depValue = item.dependency.field === 'enable_rerank' ? enableRerank : form.getFieldValue(item.dependency.field);
                                         if (depValue !== item.dependency.value) return null;
                                     }
 
                                     let inputNode = <div />;
-                                    let initialValue = item.defaultValue;
+                                    // Form initialValues 中已定义的字段不再设置 initialValue
+                                    const formInitialKeys = ['topK', 'threshold', 'maxTopK'];
+                                    let initialValue = formInitialKeys.includes(item.key) ? undefined : item.defaultValue;
 
                                     if (item.type === 'select') {
                                         inputNode = (

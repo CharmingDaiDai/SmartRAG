@@ -6,8 +6,10 @@ import {
     BranchesOutlined, 
     SortAscendingOutlined, 
     CheckCircleOutlined, 
-    LoadingOutlined 
+    LoadingOutlined,
+    CloseCircleOutlined
 } from '@ant-design/icons';
+import { message } from 'antd';
 import React from 'react';
 
 interface ChatInput {
@@ -29,14 +31,15 @@ const getIcon = (name: string) => {
         case 'merge': return React.createElement(BranchesOutlined);
         case 'sort': return React.createElement(SortAscendingOutlined);
         case 'check': return React.createElement(CheckCircleOutlined);
+        case 'error': return React.createElement(CloseCircleOutlined, { style: { color: '#ff4d4f' } });
         default: return React.createElement(LoadingOutlined);
     }
 };
 
 export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, ChatInput, ChatOutput> {
-  constructor(token?: string) {
+  constructor(token?: string, endpoint: string = '/api/chat/test/full-rag-emitter') {
     super({
-      request: XRequest('/api/chat/test/full-rag-emitter', {
+      request: XRequest(endpoint, {
         manual: true,
         headers: {
             'Content-Type': 'application/json',
@@ -50,16 +53,12 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
     requestParams: Partial<ChatInput>,
     _options: XRequestOptions<ChatInput, ChatOutput>
   ): ChatInput {
-    const { messages, kbId, ragMethod, ragParams } = requestParams;
-    const lastMessage = messages?.[messages.length - 1];
+    const { messages, ragParams } = requestParams;
     const history = messages?.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
 
     return {
-        kbId,
-        query: lastMessage?.content,
-        history,
-        ragMethod,
-        ragParams
+        ...ragParams,
+        history
     } as any;
   }
 
@@ -148,12 +147,18 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
              };
         }
 
+        const thoughtStatus = data.status || 'processing';
+        
+        if (thoughtStatus === 'error') {
+            message.error(data.content || '处理过程中发生错误');
+        }
+
         // Create new thought
         const newThought: ThoughtItem & { startTime: number } = {
-            title: data.title || '思考中...',
-            status: 'processing',
+            title: data.title || (thoughtStatus === 'error' ? '发生错误' : '思考中...'),
+            status: thoughtStatus,
             content: data.content || '',
-            icon: getIcon(data.icon),
+            icon: getIcon(data.icon || (thoughtStatus === 'error' ? 'error' : undefined)),
             duration: 0,
             startTime: Date.now()
         };
@@ -161,7 +166,7 @@ export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, Chat
         return { 
             ...currentMessage, 
             thoughts: [...updatedThoughts, newThought],
-            status: 'updating'
+            status: thoughtStatus === 'error' ? 'error' : 'updating'
         };
 
       case 'ref':

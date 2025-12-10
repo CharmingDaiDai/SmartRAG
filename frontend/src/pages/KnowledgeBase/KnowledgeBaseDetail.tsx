@@ -1,6 +1,6 @@
-import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography, Tooltip } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography, Tooltip, App } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
@@ -43,6 +43,7 @@ const formatFileSize = (size: number) => {
 export default function KnowledgeBaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [kbInfo, setKbInfo] = useState<KnowledgeBaseItem | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -320,6 +321,9 @@ export default function KnowledgeBaseDetail() {
             />
           </Space>
           <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>
+                刷新
+            </Button>
             <Button icon={<SyncOutlined />} loading={batchIndexLoading} onClick={handleTriggerKbIndex}>
                 构建知识库索引
             </Button>
@@ -381,7 +385,7 @@ export default function KnowledgeBaseDetail() {
                   type="info"
                   showIcon
                   style={{ marginBottom: 16, borderRadius: 8 }}
-                  message="支持批量拖拽上传"
+                  title="支持批量拖拽上传"
                   description="单个文件最大 200MB，上传前可删除或替换文件"
               />
               <Form.Item label="选择文件">

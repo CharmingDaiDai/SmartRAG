@@ -6,7 +6,7 @@ import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
 import { FadeIn, StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
-import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
+import { getMethodConfig, RAG_METHODS, RAG_METHOD_OPTIONS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
 
@@ -19,7 +19,7 @@ const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
 const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
     NAIVE_RAG: 'Naive RAG',
     HISEM_RAG_FAST: 'HiSem RAG Fast',
-    HISEM_RAG: 'Graph RAG',
+    HISEM_RAG: 'HiSem RAG',
 };
 
 const toCamelCase = (key: string) => key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
@@ -31,10 +31,12 @@ export default function KnowledgeBasePage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<KnowledgeBaseItem[]>([]);
   const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
-    const [indexingKbId, setIndexingKbId] = useState<string | null>(null);
+  const [llmModels, setLlmModels] = useState<string[]>([]);
+  const [indexingKbId, setIndexingKbId] = useState<string | null>(null);
   const ragMethod = Form.useWatch('ragMethod', form);
   const splitterType = Form.useWatch('splitter_type', form);
   const chunkSize = Form.useWatch('chunk_size', form);
+  const enableSemanticCompression = Form.useWatch('enableSemanticCompression', form);
   const { localSettings } = useAppStore();
 
   useEffect(() => {
@@ -65,9 +67,15 @@ export default function KnowledgeBasePage() {
 
   const fetchModels = async () => {
       try {
-          const res: any = await modelService.getEmbeddings();
-          if (res.code === 200) {
-              setEmbeddingModels(res.data);
+          const [embeddingRes, llmRes]: any[] = await Promise.all([
+              modelService.getEmbeddings(),
+              modelService.getLLMs(),
+          ]);
+          if (embeddingRes.code === 200) {
+              setEmbeddingModels(embeddingRes.data);
+          }
+          if (llmRes.code === 200) {
+              setLlmModels(llmRes.data);
           }
       } catch (error) {
           console.error('Failed to fetch models');
@@ -171,11 +179,11 @@ export default function KnowledgeBasePage() {
                     <Col span={8} key={item.id}>
                         <StaggerItem>
                             <HoverCard style={{ height: '100%' }}>
-                            <Card 
+                            <Card
                                 hoverable
                                 className="kb-card"
                                 onClick={() => handleNavigateDetail(item.id)}
-                                bodyStyle={{ padding: 20, minHeight: 190, display: 'flex', flexDirection: 'column', gap: 16 }}
+                                styles={{ body: { padding: 20, minHeight: 190, display: 'flex', flexDirection: 'column', gap: 16 } }}
                                 style={{ height: '100%', cursor: 'pointer' }}
                                 title={
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -212,7 +220,7 @@ export default function KnowledgeBasePage() {
                                 <Space size={6} wrap>
                                     <Tag color="blue">{INDEX_STRATEGY_LABEL_MAP[item.indexStrategyType || 'NAIVE_RAG'] || item.indexStrategyType}</Tag>
                                     <Tag color="green">{item.embeddingModelId}</Tag>
-                                    <Tag>{`${item.documentCount || 0} 文档`}</Tag>
+                                    <Tag>{`${item.documentCount || 0} 篇文档`}</Tag>
                                 </Space>
                                 <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ margin: 0 }}>
                                     {item.description || '暂无描述'}
@@ -249,15 +257,19 @@ export default function KnowledgeBasePage() {
               </Form.Item>
               <Form.Item name="ragMethod" label="RAG 方法">
                   <Select>
-                      <Select.Option value={RAG_METHODS.NAIVE}>Naive RAG</Select.Option>
-                      <Select.Option value={RAG_METHODS.HISEM_FAST}>HiSem RAG Fast</Select.Option>
-                      <Select.Option value={RAG_METHODS.HISEM}>Graph RAG</Select.Option>
+                      {RAG_METHOD_OPTIONS.map(option => (
+                          <Select.Option key={option.value} value={option.value}>{option.label}</Select.Option>
+                      ))}
                   </Select>
               </Form.Item>
               
               {ragMethod && getMethodConfig(ragMethod).indexConfig.map((item: any) => {
                   if (item.dependency) {
-                      const depValue = item.dependency.field === 'splitter_type' ? splitterType : form.getFieldValue(item.dependency.field);
+                      const depFieldMap: Record<string, any> = {
+                          'splitter_type': splitterType,
+                          'enableSemanticCompression': enableSemanticCompression,
+                      };
+                      const depValue = depFieldMap[item.dependency.field] ?? form.getFieldValue(item.dependency.field);
                       if (depValue !== item.dependency.value) return null;
                   }
 
@@ -273,30 +285,47 @@ export default function KnowledgeBasePage() {
                           </Select>
                       );
                   } else if (item.type === 'model_select') {
+                      const modelList = item.modelType === 'llm' ? llmModels : embeddingModels;
                       if (item.modelType === 'embedding' && localSettings?.defaultEmbedding) {
                           initialValue = localSettings.defaultEmbedding;
                       }
+                      if (item.modelType === 'llm' && localSettings?.defaultLLM) {
+                          initialValue = localSettings.defaultLLM;
+                      }
                       inputNode = (
                           <Select placeholder={`请选择 ${item.label}`}>
-                              {embeddingModels.map(model => (
+                              {modelList.map(model => (
                                   <Select.Option key={model} value={model}>{model}</Select.Option>
                               ))}
                           </Select>
                       );
                   } else if (item.type === 'slider') {
                       const max = item.dynamicMaxRatio ? Math.floor((chunkSize || 512) * item.dynamicMaxRatio) : item.max;
-                      inputNode = <Slider min={item.min} max={max} step={item.step} marks={{ [item.min]: item.min, [max]: max }} />;
+                      const marks = item.marks || { [item.min]: item.min, [max]: max };
+                      inputNode = <Slider min={item.min} max={max} step={item.step} marks={marks} />;
+                  } else if (item.type === 'switch') {
+                      inputNode = <Switch />;
                   } else if (item.type === 'input') {
                       inputNode = <Input />;
                   }
 
+                  const labelNode = item.tooltip ? (
+                      <Space>
+                          {item.label}
+                          <Tooltip title={item.tooltip}>
+                              <QuestionCircleOutlined style={{ color: '#999' }} />
+                          </Tooltip>
+                      </Space>
+                  ) : item.label;
+
                   return (
-                    <Form.Item 
-                        key={item.key} 
-                        name={item.key} 
-                        label={item.label}
-                        rules={[{ required: true, message: `请输入${item.label}` }]}
+                    <Form.Item
+                        key={item.key}
+                        name={item.key}
+                        label={labelNode}
+                        rules={item.type === 'switch' ? undefined : [{ required: true, message: `请输入${item.label}` }]}
                         initialValue={initialValue}
+                        valuePropName={item.type === 'switch' ? 'checked' : 'value'}
                     >
                         {inputNode}
                     </Form.Item>

@@ -4,7 +4,7 @@ import {
   Input,
   Button,
   Card,
-  message,
+  App,
   Typography,
   Divider,
   Row,
@@ -30,6 +30,7 @@ const { Title, Text } = Typography;
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { message } = App.useApp();
 
   const onFinish = async (values: any) => {
     setLoading(true);

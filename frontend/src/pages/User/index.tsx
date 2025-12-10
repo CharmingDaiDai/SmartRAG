@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { Card, Form, Input, Button, Upload, Select, message, Avatar, Row, Col, Divider } from 'antd';
+import { Card, Form, Input, Button, Upload, Select, Avatar, Row, Col, Divider, App } from 'antd';
 import { UserOutlined, UploadOutlined, SettingOutlined, IdcardOutlined } from '@ant-design/icons';
 import { useAppStore } from '../../store/useAppStore';
 import { userService } from '../../services/userService';
 
 const UserProfile: React.FC = () => {
+  const { message } = App.useApp();
   const { userInfo, setUserInfo, llmModels, embeddingModels, rerankModels, fetchModelLists, localSettings, updateLocalSettings } = useAppStore();
   const [profileForm] = Form.useForm();
   const [settingsForm] = Form.useForm();
@@ -107,9 +108,9 @@ const UserProfile: React.FC = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <Row gutter={[24, 24]} justify="center">
         <Col xs={24} lg={10}>
-            <Card 
-                title={<><IdcardOutlined /> 个人资料</>} 
-                bordered={false}
+            <Card
+                title={<><IdcardOutlined /> 个人资料</>}
+                variant="borderless"
             >
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                     <Avatar size={100} src={userInfo?.avatarUrl || userInfo?.avatar} icon={<UserOutlined />} />
@@ -170,9 +171,9 @@ const UserProfile: React.FC = () => {
         </Col>
 
         <Col xs={24} lg={10}>
-            <Card 
-                title={<><SettingOutlined /> 偏好设置</>} 
-                bordered={false}
+            <Card
+                title={<><SettingOutlined /> 偏好设置</>}
+                variant="borderless"
             >
                 <Form
                     form={settingsForm}

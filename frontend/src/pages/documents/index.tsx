@@ -1,4 +1,4 @@
-import { Button, Space, Popconfirm, message, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App } from 'antd';
 import { useState, useEffect } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { documentService } from '../../services/documentService';
@@ -35,6 +35,7 @@ const formatFileSize = (size: number) => {
 };
 
 export default function DocumentsPage() {
+  const { message } = App.useApp();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DocumentItem[]>([]);
@@ -71,13 +72,16 @@ export default function DocumentsPage() {
               page: page - 1, // Backend uses 0-based index
               size: size,
           };
-          if (filterKbId) {
-              params.kbId = filterKbId;
-          }
-          // Add other filters if needed based on the new API signature
-          // id, username, password, email, etc. are available in params if needed
 
-          const res: any = await documentService.listAll(params);
+          let res: any;
+          if (filterKbId) {
+              // 使用 listByKb 按知识库筛选
+              res = await documentService.listByKb(String(filterKbId), params);
+          } else {
+              // 获取所有文档
+              res = await documentService.listAll(params);
+          }
+
           if (res.code === 200) {
               // Assuming the response structure for pagination is data: { content: [], totalElements: 0 }
               // Adjust based on actual backend response structure if different
@@ -329,12 +333,12 @@ export default function DocumentsPage() {
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
                 scroll={{ y: 'calc(100vh - 280px)' }}
-                pagination={{ 
+                pagination={{
                     current: currentPage,
                     pageSize: pageSize,
                     total: total,
                     showSizeChanger: true,
-                    position: ['bottomRight'],
+                    align: 'end',
                     onChange: (page, size) => {
                         setCurrentPage(page);
                         setPageSize(size);
@@ -365,7 +369,7 @@ export default function DocumentsPage() {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16, borderRadius: 8 }}
-                    message="支持批量拖拽上传"
+                    title="支持批量拖拽上传"
                     description="单个文件最大 200MB，上传前可删除或替换文件"
                 />
                 <Form.Item label="选择文件">
