@@ -1,154 +1,273 @@
-
 export const RAG_METHODS = {
-  NAIVE: 'naive',
-  HISEM_FAST: 'hisem-fast',
-  HISEM: 'hisem',
+  NAIVE: "naive",
+  HISEM_FAST: "hisem-fast",
+  HISEM: "hisem",
+};
+
+export const RAG_METHOD_OPTIONS = [
+  { value: RAG_METHODS.NAIVE, label: "Naive RAG" },
+  { value: RAG_METHODS.HISEM_FAST, label: "HiSem RAG Fast" },
+  { value: RAG_METHODS.HISEM, label: "HiSem RAG" },
+];
+
+export const RAG_STRATEGIES = {
+  NAIVE_RAG: "NAIVE_RAG",
+  HISEM_RAG: "HISEM_RAG",
+  HISEM_RAG_FAST: "HISEM_RAG_FAST",
+};
+
+// 策略类型到方法的映射
+export const STRATEGY_TO_METHOD: Record<string, string> = {
+  [RAG_STRATEGIES.NAIVE_RAG]: RAG_METHODS.NAIVE,
+  [RAG_STRATEGIES.HISEM_RAG]: RAG_METHODS.HISEM,
+  [RAG_STRATEGIES.HISEM_RAG_FAST]: RAG_METHODS.HISEM_FAST,
 };
 
 export const SPLITTER_TYPES = [
-  { label: '按段落切分', value: 'BY_PARAGRAPH' },
-  { label: '按行切分', value: 'BY_LINE' },
-  { label: '按句子切分', value: 'BY_SENTENCE' },
-  { label: '自定义分隔符', value: 'BY_SEPARATOR' },
+  { label: "按段落切分", value: "BY_PARAGRAPH" },
+  { label: "按行切分", value: "BY_LINE" },
+  { label: "按句子切分", value: "BY_SENTENCE" },
+  { label: "自定义分隔符", value: "BY_SEPARATOR" },
 ];
 
 export const getMethodConfig = (method: string) => {
-  const commonIndexConfig = [
+  // Naive RAG 索引配置：块大小、重叠大小、分块方式、分隔符、Embedding 模型
+  const naiveIndexConfig = [
+    // 拖动类型
     {
-      key: 'splitter_type',
-      label: '分块方式',
-      type: 'select',
-      options: SPLITTER_TYPES,
-      defaultValue: 'BY_PARAGRAPH',
-    },
-    {
-      key: 'separator',
-      label: '分隔符',
-      type: 'input',
-      defaultValue: '\\n\\n',
-      dependency: { field: 'splitter_type', value: 'BY_SEPARATOR' },
-    },
-    {
-      key: 'chunk_size',
-      label: '块大小',
-      type: 'slider',
+      key: "chunk_size",
+      label: "块大小",
+      type: "slider",
       min: 1,
       max: 8192,
       step: 1,
       defaultValue: 512,
+      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
     },
     {
-      key: 'chunk_overlap',
-      label: '重叠大小',
-      type: 'slider',
+      key: "chunk_overlap",
+      label: "重叠大小",
+      type: "slider",
       min: 0,
-      // max will be calculated dynamically: chunk_size * 0.2
-      dynamicMaxRatio: 0.2, 
+      dynamicMaxRatio: 0.2,
       step: 1,
       defaultValue: 50,
     },
+    // 选择类型
     {
-      key: 'embedding_model',
-      label: 'Embedding 模型',
-      type: 'model_select', // Special type to fetch from API
-      modelType: 'embedding',
-      defaultValue: '',
-    }
+      key: "splitter_type",
+      label: "分块方式",
+      type: "select",
+      options: SPLITTER_TYPES,
+      defaultValue: "BY_PARAGRAPH",
+    },
+    {
+      key: "separator",
+      label: "分隔符",
+      type: "input",
+      defaultValue: "\\n\\n",
+      dependency: { field: "splitter_type", value: "BY_SEPARATOR" },
+    },
+    {
+      key: "embedding_model",
+      label: "Embedding 模型",
+      type: "model_select",
+      modelType: "embedding",
+      defaultValue: "",
+    },
+  ];
+
+  // HiSem RAG Fast 索引配置：块大小、标题语义增强、Embedding 模型
+  const hisemFastIndexConfig = [
+    // 拖动类型
+    {
+      key: "chunk_size",
+      label: "块大小",
+      type: "slider",
+      min: 1,
+      max: 8192,
+      step: 1,
+      defaultValue: 512,
+      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
+    },
+    // 开关类型
+    {
+      key: "enableTitleEnhancement",
+      label: "标题语义增强",
+      type: "switch",
+      defaultValue: true,
+    },
+    // 选择类型
+    {
+      key: "embedding_model",
+      label: "Embedding 模型",
+      type: "model_select",
+      modelType: "embedding",
+      defaultValue: "",
+    },
+  ];
+
+  // HiSem RAG 索引配置：块大小、标题语义增强、语义压缩、Embedding 模型、LLM 模型
+  const hisemIndexConfig = [
+    // 拖动类型
+    {
+      key: "chunk_size",
+      label: "块大小",
+      type: "slider",
+      min: 1,
+      max: 8192,
+      step: 1,
+      defaultValue: 512,
+      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
+    },
+    // 开关类型
+    {
+      key: "enableTitleEnhancement",
+      label: "标题语义增强",
+      type: "switch",
+      defaultValue: true,
+    },
+    {
+      key: "enableSemanticCompression",
+      label: "语义压缩",
+      type: "switch",
+      defaultValue: true,
+      tooltip: "用大模型提取摘要",
+    },
+    // 选择类型
+    {
+      key: "embedding_model",
+      label: "Embedding 模型",
+      type: "model_select",
+      modelType: "embedding",
+      defaultValue: "",
+    },
+    {
+      key: "llm_model",
+      label: "LLM 模型",
+      type: "model_select",
+      modelType: "llm",
+      defaultValue: "",
+      dependency: { field: "enableSemanticCompression", value: true },
+      tooltip: "用于生成摘要和知识点",
+    },
   ];
 
   const commonSearchConfig = [
+    // 开关类型
     {
-      key: 'top_k',
-      label: 'Top K',
-      type: 'slider',
-      min: 1,
-      max: 20,
-      step: 1,
-      defaultValue: 5,
-    },
-    {
-      key: 'score_threshold',
-      label: '相似度阈值',
-      type: 'slider',
-      min: 0,
-      max: 1,
-      step: 0.01,
-      defaultValue: 0.5,
-    },
-    {
-      key: 'enable_rerank',
-      label: '开启重排序',
-      type: 'switch',
+      key: "enable_rerank",
+      label: "开启重排序",
+      type: "switch",
       defaultValue: false,
     },
     {
-      key: 'rerank_model',
-      label: 'Rerank 模型',
-      type: 'model_select',
-      modelType: 'rerank',
-      defaultValue: '',
-      dependency: { field: 'enable_rerank', value: true },
-    },
-    {
-      key: 'llm_model',
-      label: 'LLM 模型',
-      type: 'model_select',
-      modelType: 'llm',
-      defaultValue: '',
-    },
-    {
-      key: 'enable_query_rewrite',
-      label: '查询重写',
-      type: 'switch',
+      key: "enableIntentRecognition",
+      label: "意图识别",
+      type: "switch",
       defaultValue: false,
     },
     {
-      key: 'enable_query_decomposition',
-      label: '查询分解',
-      type: 'switch',
+      key: "enableQueryRewrite",
+      label: "查询重写",
+      type: "switch",
       defaultValue: false,
     },
     {
-      key: 'enable_hyde',
-      label: 'Hyde 模式',
-      type: 'switch',
+      key: "enableQueryDecomposition",
+      label: "查询分解",
+      type: "switch",
       defaultValue: false,
+    },
+    {
+      key: "enableHyde",
+      label: "Hyde 模式",
+      type: "switch",
+      defaultValue: false,
+    },
+    // 选择类型
+    {
+      key: "rerankModelId",
+      label: "Rerank 模型",
+      type: "model_select",
+      modelType: "rerank",
+      defaultValue: "",
+      dependency: { field: "enable_rerank", value: true },
+    },
+    {
+      key: "llmModelId",
+      label: "LLM 模型",
+      type: "model_select",
+      modelType: "llm",
+      defaultValue: "",
     },
   ];
 
   const configs: Record<string, any> = {
     [RAG_METHODS.NAIVE]: {
-      name: 'Naive RAG',
-      description: '基础检索增强生成',
-      indexConfig: commonIndexConfig,
-      searchConfig: commonSearchConfig,
-    },
-    [RAG_METHODS.HISEM_FAST]: {
-      name: 'HiSem RAG Fast',
-      description: '层级语义检索 快速版',
-      indexConfig: commonIndexConfig, // Assuming similar index config for now
-      searchConfig: commonSearchConfig,
-    },
-    [RAG_METHODS.HISEM]: {
-      name: 'Graph RAG',
-      description: '层级语义检索',
-      indexConfig: [
-         // Placeholder for Graph RAG specific index config if needed
-         ...commonIndexConfig
-      ],
+      name: "Naive RAG",
+      description: "基础检索增强生成",
+      indexConfig: naiveIndexConfig,
       searchConfig: [
         {
-            key: 'depth', 
-            label: '搜索深度', 
-            type: 'slider', 
-            defaultValue: 2, 
-            min: 1, 
-            max: 5 
+          key: "topK",
+          label: "Top K",
+          type: "slider",
+          min: 1,
+          max: 20,
+          step: 1,
+          defaultValue: 5,
         },
-        ...commonSearchConfig
+        {
+          key: "threshold",
+          label: "相似度阈值",
+          type: "slider",
+          min: 0,
+          max: 1,
+          step: 0.01,
+          defaultValue: 0,
+        },
+        ...commonSearchConfig,
       ],
-    }
+    },
+    [RAG_METHODS.HISEM_FAST]: {
+      name: "HiSem RAG Fast",
+      description: "层级语义检索 快速版",
+      indexConfig: hisemFastIndexConfig,
+      searchConfig: [
+        {
+          key: "maxTopK",
+          label: "最大结果数",
+          type: "slider",
+          min: 1,
+          max: 20,
+          step: 1,
+          defaultValue: 10,
+        },
+        ...commonSearchConfig,
+      ],
+    },
+    [RAG_METHODS.HISEM]: {
+      name: "HiSem RAG",
+      description: "层级语义检索",
+      indexConfig: hisemIndexConfig,
+      searchConfig: [
+        {
+          key: "maxTopK",
+          label: "最大结果数",
+          type: "slider",
+          min: 1,
+          max: 20,
+          step: 1,
+          defaultValue: 10,
+        },
+        ...commonSearchConfig,
+      ],
+    },
   };
 
-  return configs[method] || configs[RAG_METHODS.NAIVE];
+  // 支持 RAG_STRATEGIES 和 RAG_METHODS 两种格式
+  const normalizedMethod = STRATEGY_TO_METHOD[method] || method;
+
+  return configs[normalizedMethod] || configs[RAG_METHODS.NAIVE];
 };
