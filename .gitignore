@@ -48,6 +48,8 @@ docs
 .env.production
 .env.development
 .env.docker
+application-dev.yml
+src/main/resources/application-dev.yml
 
 src/test/*
 
