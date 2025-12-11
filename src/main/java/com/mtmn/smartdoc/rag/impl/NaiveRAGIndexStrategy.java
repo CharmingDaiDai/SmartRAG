@@ -1,20 +1,25 @@
 package com.mtmn.smartdoc.rag.impl;
 
-import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
-import com.mtmn.smartdoc.rag.config.NaiveRAGConfig;
+import com.mtmn.smartdoc.constants.AppConstants;
+import com.mtmn.smartdoc.enums.DocumentIndexStatus;
 import com.mtmn.smartdoc.enums.IndexStrategyType;
+import com.mtmn.smartdoc.factory.DocumentSplitterFactory;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
+import com.mtmn.smartdoc.model.dto.IndexUpdateItem;
+import com.mtmn.smartdoc.model.dto.VectorItem;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
 import com.mtmn.smartdoc.po.Chunk;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
-import com.mtmn.smartdoc.repository.ChunkRepository;
-import com.mtmn.smartdoc.service.MinioService;
 import com.mtmn.smartdoc.rag.AbstractIndexStrategy;
-import com.mtmn.smartdoc.rag.StorageStrategy;
+import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
+import com.mtmn.smartdoc.rag.config.NaiveRagIndexConfig;
+import com.mtmn.smartdoc.repository.ChunkRepository;
+import com.mtmn.smartdoc.service.MilvusService;
+import com.mtmn.smartdoc.service.MinioService;
 import com.mtmn.smartdoc.utils.DocumentParseUtils;
-import com.mtmn.smartdoc.factory.DocumentSplitterFactory;
-import dev.langchain4j.data.document.*;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +28,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -40,7 +48,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
 
     private final ChunkRepository chunkRepository;
     private final MinioService minioService;
-    private final StorageStrategy storageStrategy;
+    private final MilvusService milvusService;
     private final ModelFactory modelFactory;
 
     @Override
@@ -53,12 +61,13 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
         log.info("Building index for document: id={}, type={}", documentPo.getId(), getType());
 
         try {
+            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
             String content = readDocumentContent(documentPo);
             List<TextSegment> segments = processContent(content, config);
+            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKED);
             persist(kb, segments, documentPo.getId());
 
             log.info("✅ Index built successfully: documentId={}, segments={}", documentPo.getId(), segments.size());
-
         } catch (Exception e) {
             log.error("❌ Failed to build index: documentId={}", documentPo.getId(), e);
             throw new RuntimeException("Index building failed: " + e.getMessage(), e);
@@ -84,37 +93,37 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
 
     @Override
     protected List<TextSegment> processContent(String content, IndexStrategyConfig config) {
-        NaiveRAGConfig naiveConfig = (NaiveRAGConfig) config;
-        
+        NaiveRagIndexConfig naiveConfig = (NaiveRagIndexConfig) config;
+
         // 使用工厂创建切分器
         DocumentSplitter splitter = DocumentSplitterFactory.createSplitter(naiveConfig);
-        
+
         // 创建 LangChain4j Document
         Document document = Document.from(content);
-        
+
         // 使用切分器切分文档
         List<TextSegment> segments = splitter.split(document);
-        
+
         // 添加 chunk_index 元数据
         for (int i = 0; i < segments.size(); i++) {
             TextSegment segment = segments.get(i);
             segment.metadata().put("chunk_index", i);
         }
-        
+
         log.info("Document split into {} segments using {}", segments.size(), naiveConfig.getSplitterType());
-        
+
         return segments;
     }
 
     @Override
     protected void persist(KnowledgeBase kb, List<TextSegment> segments, Long documentId) {
         try {
-            // TODO 优化 chunks 存储位置（存入 Mysql 压力太大）
+            // 删除文档原有的 chunks
             chunkRepository.deleteByDocumentId(documentId);
 
             Long kbId = kb.getId();
             List<Chunk> chunkEntities = new ArrayList<>();
-            
+
             for (int i = 0; i < segments.size(); i++) {
                 TextSegment segment = segments.get(i);
                 Chunk chunk = new Chunk();
@@ -145,18 +154,67 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
         log.info("Deleting index for documents: documentIds={}, kbId={}", documentIds, kbId);
 
         try {
+            // 1. 先删除向量（需要查询 Chunks 获取 vectorId）
+            deleteVectorsByDocumentIds(kbId, documentIds);
+
+            // 2. 再删除 Chunks
             for (Long docId : documentIds) {
                 chunkRepository.deleteByDocumentId(docId);
             }
-
-            String collectionName = "kb_" + kbId + "_chunks";
-            deleteVectorsByDocumentIds(collectionName, documentIds);
 
             log.info("✅ Index deleted successfully for {} documents", documentIds.size());
 
         } catch (Exception e) {
             log.error("❌ Failed to delete index: documentIds={}, kbId={}", documentIds, kbId, e);
             throw new RuntimeException("Index deletion failed: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void deleteIndex(KnowledgeBase kb) {
+        Long kbId = kb.getId();
+        log.info("Deleting entire index for knowledge base: kbId={}", kbId);
+
+        try {
+            // 1. 删除向量库中的集合
+            String collectionName = AppConstants.Milvus.CHUNKS_TEMPLATE.formatted(kbId);
+            milvusService.dropCollection(collectionName);
+
+            // 2. 删除数据库中的 Chunks
+            chunkRepository.deleteByKbId(kbId);
+
+            log.info("✅ Entire index deleted successfully for kbId={}", kbId);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to delete entire index: kbId={}", kbId, e);
+            throw new RuntimeException("Index deletion failed: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config) {
+        log.info("Rebuilding index from chunks for document: id={}", document.getId());
+
+        try {
+            // 1. 获取现有 Chunks
+            List<Chunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(document.getId());
+            if (chunks.isEmpty()) {
+                log.warn("No chunks found for document: {}, falling back to full build.", document.getId());
+                buildIndex(kb, document, config);
+                return;
+            }
+
+            // 2. 删除旧向量
+            deleteVectorsByDocumentIds(kb.getId(), List.of(document.getId()));
+
+            // 3. 重新向量化并存储
+            vectorizeAndStore(chunks, kb, document.getId());
+
+            log.info("✅ Index rebuilt from chunks successfully: documentId={}, chunks={}", document.getId(), chunks.size());
+
+        } catch (Exception e) {
+            log.error("❌ Failed to rebuild index from chunks: documentId={}", document.getId(), e);
+            throw new RuntimeException("Index rebuild failed: " + e.getMessage(), e);
         }
     }
 
@@ -177,15 +235,14 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
                     .collect(Collectors.toList());
             List<Embedding> embeddings = embeddingClient.embedBatch(contents);
 
-            List<StorageStrategy.VectorItem> vectorItems = new ArrayList<>(chunks.size());
+            List<VectorItem> vectorItems = new ArrayList<>(chunks.size());
 
             for (int i = 0; i < chunks.size(); i++) {
                 Chunk chunk = chunks.get(i);
                 Embedding embedding = embeddings.get(i);
-                String vectorId = UUID.randomUUID().toString();
 
-                StorageStrategy.VectorItem item = new StorageStrategy.VectorItem();
-                item.setId(vectorId);
+                VectorItem item = new VectorItem();
+                item.setId(chunk.getId().toString());
                 item.setEmbedding(embedding);
                 item.setContent(chunk.getContent());
 
@@ -197,19 +254,9 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
                 item.setMetadata(metadata);
 
                 vectorItems.add(item);
-                chunk.setVectorId(vectorId);
             }
 
-            String collectionName = "kb_" + kbId + "_chunks";
-            StorageStrategy.IndexData indexData = new StorageStrategy.IndexData();
-            indexData.setVectors(vectorItems);
-
-            Map<String, Object> globalMetadata = new HashMap<>();
-            globalMetadata.put("kb_id", kbId);
-            globalMetadata.put("document_id", documentId);
-            indexData.setMetadata(globalMetadata);
-
-            storageStrategy.storeIndex(collectionName, indexData);
+            milvusService.store(kbId, vectorItems);
 
         } catch (Exception e) {
             log.error("Failed to vectorize chunks: documentId={}", documentId, e);
@@ -220,11 +267,32 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
     /**
      * 删除向量数据
      */
-    private void deleteVectorsByDocumentIds(String collectionName, List<Long> documentIds) {
+    private void deleteVectorsByDocumentIds(Long kbId, List<Long> documentIds) {
         try {
-            log.debug("Deleting vectors from collection: {}, documentIds: {}", collectionName, documentIds);
+            log.debug("Deleting vectors from collection: {}, documentIds: {}", kbId, documentIds);
+
+            // 1. 查询关联的 Chunks
+            List<Chunk> chunks = chunkRepository.findByDocumentIdIn(documentIds);
+            if (chunks.isEmpty()) {
+                return;
+            }
+
+            // 2. 构建删除请求
+            List<IndexUpdateItem> items = chunks.stream()
+                    .map(chunk -> {
+                        IndexUpdateItem item = new IndexUpdateItem();
+                        // 使用 chunk ID 作为向量 ID
+                        item.setId(chunk.getId().toString());
+                        item.setUpdateType(IndexUpdateItem.UpdateType.DELETE);
+                        return item;
+                    })
+                    .collect(Collectors.toList());
+
+            // 3. 调用 MilvusService 删除向量
+            milvusService.update(kbId, items);
+
         } catch (Exception e) {
-            log.error("Failed to delete vectors: collection={}, documentIds={}", collectionName, documentIds, e);
+            log.error("Failed to delete vectors: collection={}, documentIds={}", kbId, documentIds, e);
             throw new RuntimeException("Failed to delete vectors: " + e.getMessage(), e);
         }
     }
