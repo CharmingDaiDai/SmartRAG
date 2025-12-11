@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,17 +21,6 @@ import java.util.Map;
 public class SseEventBuilder {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    public static final String PADDING_DATA;
-
-    static {
-        StringBuilder sb = new StringBuilder();
-        String str = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-        // 生成约 2KB 的随机噪声数据
-        for (int i = 0; i < 2048; i++) {
-            sb.append(str.charAt((int) (Math.random() * str.length())));
-        }
-        PADDING_DATA = sb.toString();
-    }
 
     /**
      * 构建思考事件
@@ -50,7 +38,6 @@ public class SseEventBuilder {
             return ServerSentEvent.<String>builder()
                     .event("thought")
                     .data(json)
-                    .comment(PADDING_DATA)
                     .build();
         } catch (Exception e) {
             log.error("构建思考事件失败", e);
@@ -167,7 +154,7 @@ public class SseEventBuilder {
             emitter.send(SseEmitter.event()
                     .name("thought")
                     .data(json)
-                    .comment(PADDING_DATA));
+            );
         } catch (Exception e) {
             log.error("发送思考事件失败", e);
         }
@@ -185,7 +172,7 @@ public class SseEventBuilder {
             emitter.send(SseEmitter.event()
                     .name("message")
                     .data(json)
-                    .comment(PADDING_DATA));
+            );
         } catch (Exception e) {
             log.error("发送消息事件失败", e);
         }
@@ -200,7 +187,7 @@ public class SseEventBuilder {
             emitter.send(SseEmitter.event()
                     .name("ref")
                     .data(json)
-                    .comment(PADDING_DATA));
+            );
         } catch (Exception e) {
             log.error("发送参考文档事件失败", e);
         }
@@ -214,7 +201,7 @@ public class SseEventBuilder {
             emitter.send(SseEmitter.event()
                     .name("done")
                     .data("[DONE]")
-                    .comment(PADDING_DATA));
+            );
         } catch (Exception e) {
             log.error("发送完成事件失败", e);
         }
