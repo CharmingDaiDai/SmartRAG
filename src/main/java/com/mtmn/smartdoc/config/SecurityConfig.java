@@ -56,13 +56,9 @@ public class SecurityConfig {
                         .requestMatchers("/favicon.ico").permitAll()
                         .requestMatchers("/").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/kb/chat/**").permitAll()
-                        // // 流式响应接口 - 需要提前进行验证，避免在流式输出过程中进行安全检查
-                        // .requestMatchers(request ->
-                        //     request.getRequestURI().contains("/api/kb/chat/") &&
-                        //     (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) ||
-                        //      request.getRequestURI().endsWith(".stream")))
-                        // .authenticated() // 仅执行基本身份验证，不做额外权限检查
+                        // 测试接口（临时开放，生产环境应移除）
+//                        .requestMatchers("/api/kb/chat/**").permitAll()
+                        .requestMatchers("/api/chat/**").permitAll()
                         // 要求认证的路径
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/documents/**").authenticated()

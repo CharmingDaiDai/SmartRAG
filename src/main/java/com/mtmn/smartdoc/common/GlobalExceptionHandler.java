@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.common;
 
 import com.mtmn.smartdoc.exception.ConfigValidationException;
+import com.mtmn.smartdoc.exception.MilvusConnectionException;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import jakarta.validation.ConstraintViolationException;
@@ -214,6 +215,16 @@ public class GlobalExceptionHandler {
     public ApiResponse<String> handleMultipartException(MultipartException e) {
         log.warn("Multipart请求错误: {}", e.getMessage());
         return ApiResponse.badRequest("文件上传请求格式错误，请确保请求类型为multipart/form-data");
+    }
+
+    /**
+     * 处理 Milvus 连接异常
+     */
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    @ExceptionHandler(MilvusConnectionException.class)
+    public ApiResponse<String> handleMilvusConnectionException(MilvusConnectionException e) {
+        log.error("Milvus 服务异常: {}", e.getMessage());
+        return ApiResponse.error(503, "向量数据库服务暂时不可用，请联系管理员或稍后重试");
     }
 
     /**
