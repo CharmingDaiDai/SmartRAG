@@ -62,6 +62,11 @@ public abstract class AbstractIndexStrategy implements IndexStrategy {
         buildIndex(kb, document, config);
     }
 
+    @Override
+    public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config) {
+        throw new UnsupportedOperationException("This strategy does not support rebuilding index from chunks.");
+    }
+
     /**
      * 读取文档内容（通用步骤）
      */

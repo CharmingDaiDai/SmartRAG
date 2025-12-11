@@ -43,10 +43,26 @@ public interface IndexStrategy {
     void deleteIndex(KnowledgeBase kb, List<Long> documentIds);
 
     /**
+     * 删除整个知识库的索引
+     *
+     * @param kb 知识库对象
+     */
+    void deleteIndex(KnowledgeBase kb);
+
+    /**
      * 重建索引
      *
      * @param document 文档对象
      * @param config   索引策略配置
      */
     void rebuildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config);
+
+    /**
+     * 基于现有 Chunk 重建索引
+     *
+     * @param kb       知识库
+     * @param document 文档
+     * @param config   索引策略配置
+     */
+    void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config);
 }
