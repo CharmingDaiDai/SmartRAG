@@ -2,6 +2,8 @@ package com.mtmn.smartdoc.repository;
 
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
 import com.mtmn.smartdoc.po.DocumentPo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,9 +26,19 @@ public interface DocumentRepository extends JpaRepository<DocumentPo, Long> {
     long countByUserId(Long userId);
 
     /**
+     * 根据用户ID分页查询文档
+     */
+    Page<DocumentPo> findByUserId(Long userId, Pageable pageable);
+
+    /**
      * 根据知识库ID查询文档列表
      */
     List<DocumentPo> findByKbId(Long kbId);
+
+    /**
+     * 根据知识库ID分页查询文档
+     */
+    Page<DocumentPo> findByKbId(Long kbId, Pageable pageable);
 
     /**
      * 根据知识库ID和索引状态查询

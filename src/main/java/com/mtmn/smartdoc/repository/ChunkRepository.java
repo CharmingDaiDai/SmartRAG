@@ -27,6 +27,11 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
     List<Chunk> findByDocumentId(Long documentId);
 
     /**
+     * 根据文档ID列表查询切分块
+     */
+    List<Chunk> findByDocumentIdIn(List<Long> documentIds);
+
+    /**
      * 根据文档ID查询切分块（按索引排序）
      */
     List<Chunk> findByDocumentIdOrderByChunkIndex(Long documentId);

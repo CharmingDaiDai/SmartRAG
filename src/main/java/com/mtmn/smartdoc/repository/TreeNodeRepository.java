@@ -74,4 +74,6 @@ public interface TreeNodeRepository extends JpaRepository<TreeNode, Long> {
      * 删除知识库的所有树节点
      */
     void deleteByKbId(Long kbId);
+
+    List<TreeNode> findByDocumentIdIn(List<Long> documentIds);
 }

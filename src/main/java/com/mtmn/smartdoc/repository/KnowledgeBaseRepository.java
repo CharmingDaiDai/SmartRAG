@@ -23,6 +23,11 @@ public interface KnowledgeBaseRepository extends JpaRepository<KnowledgeBase, Lo
     List<KnowledgeBase> findByUserId(Long userId);
 
     /**
+     * 统计用户的知识库数量
+     */
+    long countByUserId(Long userId);
+
+    /**
      * 根据用户ID和知识库ID查询
      */
     Optional<KnowledgeBase> findByIdAndUserId(Long id, Long userId);
