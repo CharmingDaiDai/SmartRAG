@@ -1,6 +1,6 @@
 package com.mtmn.smartdoc.factory;
 
-import com.mtmn.smartdoc.rag.config.NaiveRAGConfig;
+import com.mtmn.smartdoc.rag.config.NaiveRagIndexConfig;
 import com.mtmn.smartdoc.enums.SplitterType;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -30,7 +30,7 @@ public class DocumentSplitterFactory {
      * @param config NaiveRAG 配置
      * @return 文档切分器
      */
-    public static DocumentSplitter createSplitter(NaiveRAGConfig config) {
+    public static DocumentSplitter createSplitter(NaiveRagIndexConfig config) {
         SplitterType splitterType = config.getSplitterType();
         int chunkSize = config.getChunkSize();
         int overlap = config.getChunkOverlap();
