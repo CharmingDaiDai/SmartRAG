@@ -25,4 +25,7 @@ export const documentService = {
   batchDelete: (ids: string[]) => request.delete('/documents/batch', { data: ids }),
   triggerIndex: (id: string) => request.post(`/documents/${id}/index`),
   triggerBatchIndex: (kbId: string) => request.post('/documents/batch-index', null, { params: { kbId } }),
+  // 重建索引（基于现有 Chunk，不重新切分文档）
+  rebuildIndex: (id: string) => request.post(`/documents/${id}/rebuild-index`),
+  batchRebuildIndex: (ids: string[]) => request.post('/documents/batch-rebuild-index', ids),
 };

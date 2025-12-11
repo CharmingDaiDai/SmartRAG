@@ -1,6 +1,6 @@
 import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography, Tooltip, App } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
@@ -57,7 +57,8 @@ export default function KnowledgeBaseDetail() {
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [uploading, setUploading] = useState(false);
     const [batchIndexLoading, setBatchIndexLoading] = useState(false);
-    const [indexingDocIds, setIndexingDocIds] = useState<Record<string, boolean>>({});
+    const [rebuildingDocIds, setRebuildingDocIds] = useState<Record<string, boolean>>({});
+    const [batchRebuildLoading, setBatchRebuildLoading] = useState(false);
 
   const fetchKbInfo = async () => {
       if (!id) return;
@@ -152,24 +153,48 @@ export default function KnowledgeBaseDetail() {
       }
   };
 
-  const handleTriggerDocIndex = async (docId: string) => {
-      setIndexingDocIds(prev => ({ ...prev, [docId]: true }));
+  // 重建单个文档索引
+  const handleRebuildDocIndex = async (docId: string) => {
+      setRebuildingDocIds(prev => ({ ...prev, [docId]: true }));
       try {
-          const res: any = await documentService.triggerIndex(docId);
+          const res: any = await documentService.rebuildIndex(docId);
           if (res.code === 200) {
-              message.success('已触发文档索引');
+              message.success('已触发重建索引');
               fetchData();
           } else {
-              message.error(res.message || '触发索引失败');
+              message.error(res.message || '重建索引失败');
           }
       } catch (error) {
-          message.error('触发索引失败');
+          message.error('重建索引失败');
       } finally {
-          setIndexingDocIds(prev => {
+          setRebuildingDocIds(prev => {
               const next = { ...prev };
               delete next[docId];
               return next;
           });
+      }
+  };
+
+  // 批量重建索引
+  const handleBatchRebuildIndex = async () => {
+      if (selectedRowKeys.length === 0) {
+          message.warning('请先选择要重建索引的文档');
+          return;
+      }
+      setBatchRebuildLoading(true);
+      try {
+          const res: any = await documentService.batchRebuildIndex(selectedRowKeys as string[]);
+          if (res.code === 200) {
+              message.success(`已触发 ${selectedRowKeys.length} 个文档的重建索引`);
+              setSelectedRowKeys([]);
+              fetchData();
+          } else {
+              message.error(res.message || '批量重建索引失败');
+          }
+      } catch (error) {
+          message.error('批量重建索引失败');
+      } finally {
+          setBatchRebuildLoading(false);
       }
   };
 
@@ -263,12 +288,12 @@ export default function KnowledgeBaseDetail() {
                     onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}
                 />
             </Tooltip>
-            <Tooltip title="索引">
+            <Tooltip title="重建索引">
                 <Button
                     type="text"
-                    icon={<SyncOutlined />}
-                    loading={!!indexingDocIds[record.id]}
-                    onClick={() => handleTriggerDocIndex(record.id)}
+                    icon={<BuildOutlined />}
+                    loading={!!rebuildingDocIds[record.id]}
+                    onClick={() => handleRebuildDocIndex(record.id)}
                 />
             </Tooltip>
             <Popconfirm
@@ -328,9 +353,18 @@ export default function KnowledgeBaseDetail() {
                 构建知识库索引
             </Button>
             {selectedRowKeys.length > 0 && (
-                <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
-                    <Button danger>批量删除 ({selectedRowKeys.length})</Button>
-                </Popconfirm>
+                <>
+                    <Button
+                        icon={<BuildOutlined />}
+                        loading={batchRebuildLoading}
+                        onClick={handleBatchRebuildIndex}
+                    >
+                        批量重建索引 ({selectedRowKeys.length})
+                    </Button>
+                    <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
+                        <Button danger>批量删除 ({selectedRowKeys.length})</Button>
+                    </Popconfirm>
+                </>
             )}
             <Button
                 icon={<PlusOutlined />}
