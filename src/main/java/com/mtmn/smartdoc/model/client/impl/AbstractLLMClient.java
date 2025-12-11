@@ -149,7 +149,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                             public void onPartialResponse(String partialResponse) {
                                 // 过滤null值,防止sink.next(null)异常
                                 if (partialResponse != null && !partialResponse.isEmpty()) {
-                                    log.trace("收到部分响应: {}", partialResponse);
+                                    log.trace("LLM分片响应: {}", partialResponse);
                                     // 普通对话或 RAG 对话都使用 SSE 格式
                                     ServerSentEvent<String> event;
                                     if (eventHandler instanceof StreamEventHandler.NoOpHandler) {
@@ -169,7 +169,7 @@ public abstract class AbstractLLMClient implements LLMClient {
 
                             @Override
                             public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                                log.debug("流式聊天完成");
+                                log.info("流式聊天完成");
                                 // 步骤3: 调用事件处理器的 onAfterChat（发送完成标识等）
                                 eventHandler.onAfterChat(sink);
                                 sink.complete();
@@ -219,7 +219,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                     public void onPartialResponse(String partialResponse) {
                         // 过滤null值,防止sink.next(null)异常
                         if (partialResponse != null && !partialResponse.isEmpty()) {
-                            log.trace("收到部分响应: {}", partialResponse);
+                            log.trace("结构化LLM分片响应: {}", partialResponse);
                             // 结构化请求统一使用纯文本流
                             ServerSentEvent<String> event = ServerSentEvent.<String>builder()
                                     .data(partialResponse)
@@ -230,7 +230,7 @@ public abstract class AbstractLLMClient implements LLMClient {
 
                     @Override
                     public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                        log.debug("结构化流式聊天完成");
+                        log.info("结构化流式聊天完成");
                         sink.complete();
                     }
 
@@ -306,7 +306,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                     @Override
                     public void onPartialResponse(String partialResponse) {
                         if (partialResponse != null && !partialResponse.isEmpty()) {
-                            log.trace("收到部分响应: {}", partialResponse);
+                            log.trace("Emitter LLM分片响应: {}", partialResponse);
                             // 发送消息事件，带 Padding
                             SseEventBuilder.sendMessageEvent(emitter, partialResponse);
                         }
@@ -314,7 +314,7 @@ public abstract class AbstractLLMClient implements LLMClient {
 
                     @Override
                     public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                        log.debug("流式聊天完成");
+                        log.info("流式聊天完成");
                         // 步骤3: 调用事件处理器的 onAfterChat
                         eventHandler.onAfterChat(emitter);
                         // 发送完成事件
@@ -329,7 +329,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                             emitter.send(SseEmitter.event()
                                     .name("error")
                                     .data("{\"error\":\"" + error.getMessage() + "\"}")
-                                    .comment(SseEventBuilder.PADDING_DATA));
+                            );
                         } catch (Exception e) {
                             // ignore
                         }
