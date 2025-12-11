@@ -44,15 +44,6 @@ const Code: React.FC<ComponentProps> = (props) => {
   return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
-const MD_PLUGINS = [
-    Latex({ 
-        katexOptions: { 
-            output: 'html',
-            throwOnError: false,
-        } 
-    }), 
-    Mermaid
-];
 const MD_COMPONENTS = {
     code: Code,
 };

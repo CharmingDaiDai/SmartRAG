@@ -1,11 +1,11 @@
-import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin, Slider, InputNumber, Switch, Tooltip } from 'antd';
+import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin, Slider, Switch, Tooltip } from 'antd';
 import { useState, useEffect, MouseEvent } from 'react';
 import { PlusOutlined, DatabaseOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined, QuestionCircleOutlined, SyncOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
-import { FadeIn, StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
+import { StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
 import { getMethodConfig, RAG_METHODS, RAG_METHOD_OPTIONS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
@@ -289,8 +289,8 @@ export default function KnowledgeBasePage() {
                       if (item.modelType === 'embedding' && localSettings?.defaultEmbedding) {
                           initialValue = localSettings.defaultEmbedding;
                       }
-                      if (item.modelType === 'llm' && localSettings?.defaultLLM) {
-                          initialValue = localSettings.defaultLLM;
+                      if (item.modelType === 'llm' && localSettings?.defaultModel) {
+                          initialValue = localSettings.defaultModel;
                       }
                       inputNode = (
                           <Select placeholder={`请选择 ${item.label}`}>
