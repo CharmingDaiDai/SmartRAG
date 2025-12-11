@@ -9,33 +9,69 @@ import lombok.NoArgsConstructor;
 /**
  * @author charmingdaidai
  */
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "仪表板统计数据")
 public class DashboardStatisticsDto {
-    // 用户文档总数
-    @Schema(description = "用户文档总数")
+
+    @Schema(description = "知识库数量")
+    private long knowledgeBases;
+
+    @Schema(description = "文档总数")
     private long documents;
 
-    // 文档分析总数
-    @Schema(description = "文档分析总数")
-    private long analysis;
+    @Schema(description = "对话统计信息")
+    private ConversationStats conversationStats;
 
-    // 关键词提取数
-    @Schema(description = "关键词提取数")
-    private long keywords;
+    @Schema(description = "热门查询词云（Mock 数据）")
+    private List<WordCloudItem> wordCloud;
 
-    // 安全检查数
-    @Schema(description = "安全检查数")
-    private long security;
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "对话统计")
+    public static class ConversationStats {
 
-    // 生成摘要数
-    @Schema(description = "生成摘要数")
-    private long summary;
+        @Schema(description = "对话总次数（Mock 数据）")
+        private long total;
 
-    // 内容润色数
-    @Schema(description = "内容润色数")
-    private long polish;
+        @Schema(description = "最近7天每天的对话次数（Mock 数据）")
+        private List<DailyConversationCount> last7Days;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "每天的对话次数")
+    public static class DailyConversationCount {
+
+        @Schema(description = "日期，格式 yyyy-MM-dd")
+        private String date;
+
+        @Schema(description = "当天对话次数")
+        private long count;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "词云项")
+    public static class WordCloudItem {
+
+        @Schema(description = "展示文本")
+        private String text;
+
+        @Schema(description = "所属的用户或来源名称")
+        private String name;
+
+        @Schema(description = "热度值")
+        private double value;
+    }
 }
