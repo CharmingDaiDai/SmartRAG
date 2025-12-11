@@ -55,28 +55,28 @@ CREATE TABLE IF NOT EXISTS `users`
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';
 
 
--- VIP会员表
-CREATE TABLE IF NOT EXISTS `vip_memberships`
-(
-    `id`                BIGINT      NOT NULL AUTO_INCREMENT,
-    `user_id`           BIGINT      NOT NULL COMMENT '用户ID',
-    `start_date`        DATETIME    NOT NULL COMMENT '开始日期',
-    `expire_date`       DATETIME    NOT NULL COMMENT '过期日期',
-    `membership_level`  VARCHAR(50) NOT NULL DEFAULT 'basic' COMMENT '会员等级: basic, premium, enterprise',
-    `auto_renew`        TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否自动续费',
-    `payment_reference` VARCHAR(255)         DEFAULT NULL COMMENT '支付参考号',
-    `status`            VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '状态: active, expired, cancelled',
-    `created_at`        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at`        DATETIME             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    KEY `fk_vip_user` (`user_id`),
-    KEY `idx_status` (`status`),
-    KEY `idx_expire_date` (`expire_date`),
-    KEY `idx_level_status` (`membership_level`, `status`),
-    CONSTRAINT `fk_vip_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci COMMENT ='VIP会员表';
+# -- VIP会员表
+# CREATE TABLE IF NOT EXISTS `vip_memberships`
+# (
+#     `id`                BIGINT      NOT NULL AUTO_INCREMENT,
+#     `user_id`           BIGINT      NOT NULL COMMENT '用户ID',
+#     `start_date`        DATETIME    NOT NULL COMMENT '开始日期',
+#     `expire_date`       DATETIME    NOT NULL COMMENT '过期日期',
+#     `membership_level`  VARCHAR(50) NOT NULL DEFAULT 'basic' COMMENT '会员等级: basic, premium, enterprise',
+#     `auto_renew`        TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否自动续费',
+#     `payment_reference` VARCHAR(255)         DEFAULT NULL COMMENT '支付参考号',
+#     `status`            VARCHAR(20) NOT NULL DEFAULT 'active' COMMENT '状态: active, expired, cancelled',
+#     `created_at`        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+#     `updated_at`        DATETIME             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+#     PRIMARY KEY (`id`),
+#     KEY `fk_vip_user` (`user_id`),
+#     KEY `idx_status` (`status`),
+#     KEY `idx_expire_date` (`expire_date`),
+#     KEY `idx_level_status` (`membership_level`, `status`),
+#     CONSTRAINT `fk_vip_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+# ) ENGINE = InnoDB
+#   DEFAULT CHARSET = utf8mb4
+#   COLLATE = utf8mb4_unicode_ci COMMENT ='VIP会员表';
 
 
 -- 用户活动记录表
@@ -100,30 +100,6 @@ CREATE TABLE IF NOT EXISTS `user_activities`
 
 
 -- =====================================================
--- 2. 模型配置表
--- =====================================================
-
--- 用户自定义模型表
-CREATE TABLE IF NOT EXISTS `models`
-(
-    `id`         BIGINT       NOT NULL AUTO_INCREMENT,
-    `user_id`    BIGINT       NOT NULL COMMENT '用户ID',
-    `model_type` VARCHAR(20)  NOT NULL COMMENT '模型类型: llm, embedding',
-    `base_url`   VARCHAR(255) NOT NULL COMMENT 'API基础URL',
-    `api_key`    VARCHAR(255) NOT NULL COMMENT 'API密钥',
-    `model_name` VARCHAR(100) NOT NULL COMMENT '模型名称',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    KEY `fk_model_user` (`user_id`),
-    KEY `idx_model_type` (`model_type`),
-    CONSTRAINT `fk_model_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci COMMENT ='用户自定义AI模型配置表';
-
-
--- =====================================================
 -- 3. 知识库相关表 (V2.0 核心)
 -- =====================================================
 
@@ -134,7 +110,7 @@ CREATE TABLE IF NOT EXISTS `knowledge_bases`
     `user_id`               BIGINT       NOT NULL COMMENT '用户ID',
     `name`                  VARCHAR(255) NOT NULL COMMENT '知识库名称',
     `description`           VARCHAR(500)          DEFAULT NULL COMMENT '知识库描述',
-    `index_strategy_type`   VARCHAR(50)  NOT NULL COMMENT '索引策略类型: NAIVE_RAG, HISEM_RAG',
+    `index_strategy_type`   VARCHAR(50)  NOT NULL COMMENT '索引策略类型: NAIVE_RAG, HISEM_RAG, HISEM_RAG_FAST',
     `index_strategy_config` JSON                  DEFAULT NULL COMMENT '策略配置参数(JSON格式)',
     `embedding_model_id`    VARCHAR(255) NOT NULL COMMENT 'Embedding模型ID',
     `status`                VARCHAR(50)  NOT NULL DEFAULT 'READY' COMMENT '状态: CREATING, READY, INDEXING, INDEXED, ERROR',
@@ -159,7 +135,7 @@ CREATE TABLE IF NOT EXISTS `documents`
     `kb_id`        BIGINT       NOT NULL COMMENT '知识库ID',
     `user_id`      BIGINT       NOT NULL COMMENT '用户ID',
     `filename`     VARCHAR(255) NOT NULL COMMENT '文件名',
-    `file_type`    VARCHAR(50)           DEFAULT NULL COMMENT '文件类型: pdf, docx, txt, md',
+    `file_type`    VARCHAR(255)           DEFAULT NULL COMMENT '文件类型: pdf, docx, txt, md',
     `file_size`    BIGINT                DEFAULT NULL COMMENT '文件大小(字节)',
     `file_path`    VARCHAR(500) NOT NULL COMMENT '文件路径(MinIO)',
     `index_status` VARCHAR(50)  NOT NULL DEFAULT 'UPLOADED' COMMENT '索引状态: UPLOADED, PARSING, PARSED, INDEXING, INDEXED, ERROR',
