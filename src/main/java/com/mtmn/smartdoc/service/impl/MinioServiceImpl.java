@@ -41,18 +41,34 @@ public class MinioServiceImpl implements MinioService {
     // 【优化1】在 Bean 初始化时检查一次 Bucket 即可，不需要每次上传都检查，提高性能
     @PostConstruct
     public void init() {
-        try {
-            boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
-            if (!found) {
-                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-                log.info("MinIO Bucket created: {}", bucketName);
-            } else {
-                log.info("MinIO Bucket already exists: {}", bucketName);
+        // 尝试初始化 Bucket，带重试机制
+        int maxRetries = 3;
+        int retryDelayMs = 2000;
+
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+                if (!found) {
+                    minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+                    log.info("MinIO Bucket created: {}", bucketName);
+                } else {
+                    log.info("MinIO Bucket already exists: {}", bucketName);
+                }
+                return; // 初始化成功，直接返回
+            } catch (Exception e) {
+                log.warn("Failed to initialize MinIO bucket (Attempt {}/{}): {}", i + 1, maxRetries, e.getMessage());
+                if (i < maxRetries - 1) {
+                    try {
+                        Thread.sleep(retryDelayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
             }
-        } catch (Exception e) {
-            log.error("Failed to initialize MinIO bucket", e);
-            // TODO 这里的异常通常意味着服务无法启动，可以考虑抛出 RuntimeException 终止启动
         }
+        log.error("MinIO bucket initialization failed after {} attempts. File upload features may be unavailable.", maxRetries);
+        // 不抛出异常，允许应用继续启动，但在使用时可能会报错
     }
 
     @Override

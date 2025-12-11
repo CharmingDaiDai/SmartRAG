@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.rag.IndexStrategy;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.dto.CreateKnowledgeBaseRequest;
 import com.mtmn.smartdoc.dto.KnowledgeBaseResponse;
@@ -9,10 +10,13 @@ import com.mtmn.smartdoc.exception.ConfigValidationException;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
+import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
+import com.mtmn.smartdoc.rag.factory.RAGStrategyFactory;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.KnowledgeBaseService;
+import com.mtmn.smartdoc.service.MinioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +41,8 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final DocumentRepository documentRepository;
     private final ModelFactory modelFactory;
     private final ObjectMapper objectMapper;
+    private final RAGStrategyFactory ragStrategyFactory;
+    private final MinioService minioService;
 
     @Override
     @Transactional
@@ -159,40 +165,34 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         // 1. 验证权限
         KnowledgeBase kb = getKnowledgeBaseEntity(kbId, userId);
 
-        // 2. 【级联删除】删除关联数据
-        // 注意：由于在 SQL 中定义了外键级联删除（ON DELETE CASCADE），
-        // 理论上删除知识库会自动删除关联的 documents, chunks, tree_nodes, conversations
-        // 但这里显式处理是为了：
-        // a) 控制删除顺序，避免外键约束冲突
-        // b) 记录日志便于追踪
-        // c) 触发额外的清理逻辑（如删除 MinIO 文件、向量库索引）
+        // 2. 获取该知识库下的所有文档（用于删除 MinIO 文件）
+        List<DocumentPo> documents = documentRepository.findByKbId(kbId);
 
-        long documentCount = documentRepository.countByKbId(kbId);
-        if (documentCount > 0) {
-            log.info("Deleting {} documents associated with KB: {}", documentCount, kbId);
-            // 使用批量删除，比循环调用 delete() 效率高
+        // 3. 删除索引（向量和Chunks）
+        // 调用策略模式删除整个知识库的索引数据
+        IndexStrategy indexStrategy = ragStrategyFactory.getIndexStrategy(kb.getIndexStrategyType());
+        indexStrategy.deleteIndex(kb);
+
+        // 4. 删除 MinIO 文件
+        for (DocumentPo doc : documents) {
+            try {
+                minioService.deleteFile(doc.getFilePath());
+            } catch (Exception e) {
+                log.warn("Failed to delete file from MinIO: {}, error: {}", doc.getFilePath(), e.getMessage());
+                // 继续删除其他文件，不中断流程
+            }
+        }
+
+        // 5. 删除数据库中的文档记录
+        if (!documents.isEmpty()) {
+            log.info("Deleting {} documents associated with KB: {}", documents.size(), kbId);
             documentRepository.deleteByKbId(kbId);
         }
 
-        // TODO: 删除 Chunks（如果使用 NaiveRAG）
-        // chunkRepository.deleteByKbId(kbId);
-
-        // TODO: 删除 TreeNodes（如果使用 HisemRAG）
-        // treeNodeRepository.deleteByKbId(kbId);
-
-        // TODO: 删除 Conversations
-        // conversationRepository.deleteByKbId(kbId);
-
-        // TODO: 异步删除向量存储中的索引
-        // vectorStoreService.deleteCollection(kbId);
-
-        // TODO: 异步删除 MinIO 中的文件
-        // minioService.deleteFolder("kb-" + kbId);
-
-        // 3. 删除知识库
+        // 6. 删除知识库记录
         knowledgeBaseRepository.delete(kb);
 
-        log.info("Knowledge base deleted successfully: id={}, cleaned {} documents", kbId, documentCount);
+        log.info("Knowledge base deleted successfully: id={}, cleaned {} documents", kbId, documents.size());
     }
 
     /**
