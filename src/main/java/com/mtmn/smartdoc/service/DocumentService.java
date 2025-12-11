@@ -38,7 +38,28 @@ public interface DocumentService {
     List<DocumentResponse> uploadDocuments(Long kbId, Long userId, MultipartFile[] files, String[] titles);
 
     /**
-     * 获取知识库的文档列表
+     * 分页获取所有文档列表
+     *
+     * @param userId 用户 ID
+     * @param page   页码（从0开始）
+     * @param size   每页大小
+     * @return 文档分页结果
+     */
+    org.springframework.data.domain.Page<DocumentResponse> listAllDocuments(Long userId, int page, int size);
+
+    /**
+     * 分页获取知识库的文档列表
+     *
+     * @param kbId   知识库 ID
+     * @param userId 用户 ID
+     * @param page   页码（从0开始）
+     * @param size   每页大小
+     * @return 文档分页结果
+     */
+    org.springframework.data.domain.Page<DocumentResponse> listDocumentsByKb(Long kbId, Long userId, int page, int size);
+
+    /**
+     * 获取知识库的文档列表（不分页，内部使用）
      *
      * @param kbId   知识库 ID
      * @param userId 用户 ID
@@ -95,4 +116,20 @@ public interface DocumentService {
      * @param userId 用户 ID
      */
     void triggerBatchIndexing(Long kbId, Long userId);
+
+    /**
+     * 重建文档索引（基于现有 Chunk）
+     *
+     * @param documentId 文档 ID
+     * @param userId     用户 ID
+     */
+    void rebuildIndex(Long documentId, Long userId);
+
+    /**
+     * 批量重建文档索引
+     *
+     * @param documentIds 文档 ID 列表
+     * @param userId      用户 ID
+     */
+    void batchRebuildIndex(List<Long> documentIds, Long userId);
 }
