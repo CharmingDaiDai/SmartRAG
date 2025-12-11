@@ -22,9 +22,10 @@ public class MarkdownProcessTest {
 
     /**
      * 打印文档节点结构
-     * @param rootNode 根节点
+     *
+     * @param rootNode  根节点
      * @param nodesDict 节点字典
-     * @param indent 缩进级别
+     * @param indent    缩进级别
      */
     private void printNodeStructure(MyNode rootNode, Map<String, MyNode> nodesDict, int indent) {
         // 创建缩进
