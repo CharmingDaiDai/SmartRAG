@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class NaiveRAGConfig extends IndexStrategyConfig {
+public class NaiveRagIndexConfig extends IndexStrategyConfig {
 
     /**
      * 切分器类型
@@ -53,10 +53,10 @@ public class NaiveRAGConfig extends IndexStrategyConfig {
 
     @Override
     public void validate() {
-        if (chunkSize == null || chunkSize <= 0 || chunkSize > 10000) {
-            throw new IllegalArgumentException("chunkSize must be between 1 and 10000");
+        if (chunkSize == null || chunkSize <= 0 || chunkSize > 8192) {
+            throw new IllegalArgumentException("chunkSize must be between 1 and 8192");
         }
-        if (chunkOverlap == null || chunkOverlap < 0 || chunkOverlap >= chunkSize) {
+        if (chunkOverlap == null || chunkOverlap < 0 || chunkOverlap >= chunkSize * 0.2) {
             throw new IllegalArgumentException("chunkOverlap must be between 0 and chunkSize");
         }
         if (separator == null) {
