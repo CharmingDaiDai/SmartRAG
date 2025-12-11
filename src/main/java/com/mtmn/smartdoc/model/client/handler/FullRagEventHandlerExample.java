@@ -104,7 +104,7 @@ public class FullRagEventHandlerExample implements StreamEventHandler {
     @Override
     public void onBeforeChat(SseEmitter emitter, String prompt) {
         log.debug("开始完整 RAG 流程 (SseEmitter)");
-        long time = 500;
+        long time = 1;
 
         // 步骤1: 查询扩展
         SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在扩展查询语句...", "edit");
