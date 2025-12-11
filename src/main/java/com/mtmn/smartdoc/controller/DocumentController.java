@@ -45,7 +45,7 @@ public class DocumentController {
 
         DocumentResponse response = documentService.uploadDocument(kbId, user.getId(), file, title);
 
-        return ApiResponse.success(response);
+        return ApiResponse.success("文档上传成功", response);
     }
 
     /**
@@ -64,21 +64,40 @@ public class DocumentController {
         List<DocumentResponse> responses = documentService.uploadDocuments(
                 kbId, user.getId(), files, titles);
 
+        return ApiResponse.success("文档批量上传成功", responses);
+    }
+
+    /**
+     * 分页获取所有文档列表
+     */
+    @GetMapping
+    @Operation(summary = "分页获取所有文档", description = "分页查询当前用户的所有文档")
+    public ApiResponse<org.springframework.data.domain.Page<DocumentResponse>> listAllDocuments(
+            @Parameter(description = "页码（从0开始）") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Listing all documents for user {}, page={}, size={}", user.getId(), page, size);
+
+        org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listAllDocuments(user.getId(), page, size);
+
         return ApiResponse.success(responses);
     }
 
     /**
-     * 获取知识库的文档列表
+     * 分页获取知识库的文档列表
      */
-    @GetMapping
-    @Operation(summary = "获取文档列表", description = "获取指定知识库的所有文档列表")
-    public ApiResponse<List<DocumentResponse>> listDocuments(
-            @Parameter(description = "知识库ID") @RequestParam Long kbId,
+    @GetMapping("/{kbId}")
+    @Operation(summary = "分页获取知识库文档", description = "分页查询指定知识库的文档列表")
+    public ApiResponse<org.springframework.data.domain.Page<DocumentResponse>> listDocumentsByKb(
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
+            @Parameter(description = "页码（从0开始）") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal User user) {
 
-        log.debug("Listing documents for knowledge base {}", kbId);
+        log.debug("Listing documents for knowledge base {}, page={}, size={}", kbId, page, size);
 
-        List<DocumentResponse> responses = documentService.listDocuments(kbId, user.getId());
+        org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listDocumentsByKb(kbId, user.getId(), page, size);
 
         return ApiResponse.success(responses);
     }
@@ -86,7 +105,7 @@ public class DocumentController {
     /**
      * 获取文档详情
      */
-    @GetMapping("/{documentId}")
+    @GetMapping("/detail/{documentId}")
     @Operation(summary = "获取文档详情", description = "根据文档ID获取详细信息")
     public ApiResponse<DocumentResponse> getDocument(
             @Parameter(description = "文档ID") @PathVariable Long documentId,
@@ -112,7 +131,7 @@ public class DocumentController {
 
         documentService.deleteDocument(documentId, user.getId());
 
-        return ApiResponse.success(null);
+        return ApiResponse.success("文档删除成功", null);
     }
 
     /**
@@ -128,7 +147,7 @@ public class DocumentController {
 
         documentService.deleteDocuments(documentIds, user.getId());
 
-        return ApiResponse.success(null);
+        return ApiResponse.success("文档批量删除成功", null);
     }
 
     /**
@@ -144,7 +163,7 @@ public class DocumentController {
 
         documentService.triggerIndexing(documentId, user.getId());
 
-        return ApiResponse.success(null);
+        return ApiResponse.success("文档索引成功", null);
     }
 
     /**
@@ -160,6 +179,38 @@ public class DocumentController {
 
         documentService.triggerBatchIndexing(kbId, user.getId());
 
-        return ApiResponse.success(null);
+        return ApiResponse.success("文档索引成功", null);
+    }
+
+    /**
+     * 重建文档索引（基于现有 Chunk）
+     */
+    @PostMapping("/{documentId}/rebuild-index")
+    @Operation(summary = "重建文档索引", description = "基于数据库中现有的 Chunk 重建索引，不重新切分文档")
+    public ApiResponse<Void> rebuildIndex(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Rebuilding index for document: {}", documentId);
+
+        documentService.rebuildIndex(documentId, user.getId());
+
+        return ApiResponse.success("文档索引成功", null);
+    }
+
+    /**
+     * 批量重建文档索引
+     */
+    @PostMapping("/batch-rebuild-index")
+    @Operation(summary = "批量重建文档索引", description = "批量重建多个文档的索引")
+    public ApiResponse<Void> batchRebuildIndex(
+            @RequestBody List<Long> documentIds,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Batch rebuilding index for {} documents", documentIds.size());
+
+        documentService.batchRebuildIndex(documentIds, user.getId());
+
+        return ApiResponse.success("文档索引成功", null);
     }
 }

@@ -44,7 +44,7 @@ public class KnowledgeBaseController {
         KnowledgeBaseResponse response = knowledgeBaseService.createKnowledgeBase(
                 request, user.getId());
 
-        return ApiResponse.success(response);
+        return ApiResponse.success("知识库创建成功", response);
     }
 
     /**
@@ -91,6 +91,6 @@ public class KnowledgeBaseController {
 
         knowledgeBaseService.deleteKnowledgeBase(kbId, user.getId());
 
-        return ApiResponse.success(null);
+        return ApiResponse.success("知识库删除成功", null);
     }
 }
