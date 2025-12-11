@@ -90,6 +90,7 @@ public class IndexingServiceImpl implements IndexingService {
             DocumentPo documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
 
+            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
             documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
             documentRepository.save(documentPo);
 
@@ -99,6 +100,7 @@ public class IndexingServiceImpl implements IndexingService {
             // 构建索引（策略内部完成：读取、处理、向量化、存储）
             strategy.buildIndex(kb, documentPo, indexConfig);
 
+            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
             documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
             documentRepository.save(documentPo);
 
@@ -113,6 +115,60 @@ public class IndexingServiceImpl implements IndexingService {
                 documentRepository.save(doc);
             }
             throw new RuntimeException("Indexing failed: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void rebuildDocumentIndexFromChunks(Long documentId, Long kbId) {
+        log.info("Submitting rebuild index from chunks task: documentId={}, kbId={}", documentId, kbId);
+        KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
+                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+        IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
+        self.executeRebuildIndexFromChunks(documentId, knowledgeBase, indexConfig);
+    }
+
+    @Override
+    public void batchRebuildDocumentIndexFromChunks(Long kbId, List<Long> documentIds) {
+        log.info("Submitting batch rebuild index from chunks task: kbId={}, count={}", kbId, documentIds.size());
+        KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
+                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+        IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
+        for (Long documentId : documentIds) {
+            try {
+                self.executeRebuildIndexFromChunks(documentId, knowledgeBase, indexConfig);
+            } catch (Exception e) {
+                log.error("Failed to rebuild index for document: {}", documentId, e);
+                // Continue with other documents
+            }
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
+        log.info("Executing rebuild index from chunks with transaction: documentId={}, kbId={}", documentId, kb.getId());
+        try {
+            DocumentPo documentPo = documentRepository.findById(documentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
+
+            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
+            documentRepository.save(documentPo);
+
+            IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
+            strategy.rebuildIndexFromChunks(kb, documentPo, indexConfig);
+
+            documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
+            documentRepository.save(documentPo);
+
+            log.info("✅ Rebuild index from chunks completed successfully: documentId={}", documentId);
+        } catch (Exception e) {
+            log.error("❌ Rebuild index from chunks failed: documentId={}", documentId, e);
+            DocumentPo doc = documentRepository.findById(documentId).orElse(null);
+            if (doc != null) {
+                doc.setIndexStatus(DocumentIndexStatus.ERROR);
+                documentRepository.save(doc);
+            }
+            throw new RuntimeException("Rebuild index failed: " + e.getMessage(), e);
         }
     }
 

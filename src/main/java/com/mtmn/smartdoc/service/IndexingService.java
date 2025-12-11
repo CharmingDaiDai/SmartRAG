@@ -63,4 +63,30 @@ public interface IndexingService {
      * @param status     状态
      */
     void updateDocumentStatus(Long documentId, DocumentIndexStatus status);
+
+    /**
+     * 基于现有 Chunk 重建文档索引
+     *
+     * @param documentId 文档 ID
+     * @param kbId       知识库 ID
+     */
+    void rebuildDocumentIndexFromChunks(Long documentId, Long kbId);
+
+    /**
+     * 批量基于现有 Chunk 重建文档索引
+     *
+     * @param kbId        知识库 ID
+     * @param documentIds 文档 ID 列表
+     */
+    void batchRebuildDocumentIndexFromChunks(Long kbId, List<Long> documentIds);
+
+    /**
+     * 执行基于 Chunk 的索引重建（带事务）
+     * 该方法需要在接口中声明，以便通过 self 代理调用
+     *
+     * @param documentId  文档 ID
+     * @param kb          知识库
+     * @param indexConfig 索引策略配置
+     */
+    void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig);
 }
