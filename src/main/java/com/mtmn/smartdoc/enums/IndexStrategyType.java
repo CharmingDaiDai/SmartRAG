@@ -16,5 +16,10 @@ public enum IndexStrategyType {
     /**
      * 层次语义 RAG - 基于文档层次结构的语义检索
      */
-    HISEM_RAG
+    HISEM_RAG,
+
+    /**
+     * 层次语义 RAG 快速版 - 基于文档层次结构的语义检索
+     */
+    HISEM_RAG_FAST
 }

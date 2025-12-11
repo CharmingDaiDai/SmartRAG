@@ -1,5 +1,7 @@
 package com.mtmn.smartdoc.enums;
 
+import lombok.Getter;
+
 /**
  * 文档切分器类型枚举
  *
@@ -7,6 +9,7 @@ package com.mtmn.smartdoc.enums;
  * @version 1.0
  * @date 2025-11-24
  */
+@Getter
 public enum SplitterType {
 
     /**
@@ -39,14 +42,6 @@ public enum SplitterType {
     SplitterType(String code, String description) {
         this.code = code;
         this.description = description;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     /**
