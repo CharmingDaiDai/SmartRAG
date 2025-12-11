@@ -2,7 +2,6 @@ package com.mtmn.smartdoc.controller;
 
 import com.mtmn.smartdoc.common.ApiResponse;
 import com.mtmn.smartdoc.dto.DashboardStatisticsDto;
-import com.mtmn.smartdoc.dto.UserActivityDto;
 import com.mtmn.smartdoc.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,10 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * @author charmingdaidai
@@ -29,7 +25,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/statistics")
-    @Operation(summary = "获取仪表盘统计数据", description = "返回用户的文档总数、分析次数等统计数据")
+    @Operation(summary = "获取仪表盘统计数据", description = "返回用户的知识库数量、文档总数以及对话统计（Mock 数据）")
     public ApiResponse<DashboardStatisticsDto> getStatistics(Authentication authentication) {
         DashboardStatisticsDto statistics = dashboardService.getUserStatistics(authentication);
         return ApiResponse.success(statistics);
