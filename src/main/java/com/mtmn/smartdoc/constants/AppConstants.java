@@ -2,7 +2,7 @@ package com.mtmn.smartdoc.constants;
 
 /**
  * 应用常量类
- * 
+ *
  * @author charmingdaidai
  * @version 1.0
  * @date 2025-11-25
@@ -105,6 +105,11 @@ public final class AppConstants {
         public static final String NODES_TEMPLATE = "smart_rag_%d_nodes";
 
         public static final Integer INSERT_BATCH_SIZE = 1000;
+
+        /**
+         * 元数据字段：文档ID
+         */
+        public static final String METADATA_FIELD_DOC_ID = "document_id";
     }
 
 
@@ -116,65 +121,155 @@ public final class AppConstants {
     public static final class PromptTemplates {
 
         /**
-         * 查询扩展提示词
+         * 意图识别提示词
          */
-        public static final String QUERY_EXPANSION = """
-                请根据用户的原始查询，生成 3 个相关的扩展查询。
-                这些扩展查询应该：
-                1. 使用不同的表达方式
-                2. 包含相关的同义词或近义词
-                3. 从不同角度理解原始问题
+        public static final String PROMPT_INTENT_RECOGNITION = """
+                # Role
+                你是一个对话意图分类器。你的任务是判断用户的输入是否需要检索外部知识库来回答。
                 
-                原始查询：{query}
+                # Input
+                对话历史：
+                <history>
+                {history}
+                </history>
                 
-                请以 JSON 数组格式返回扩展查询，例如：
-                ["扩展查询1", "扩展查询2", "扩展查询3"]
+                当前问题：
+                <query>
+                {query}
+                </query>
+                
+                # Rules
+                1. **需要检索 (SEARCH)**：当用户询问具体事实、知识概念、数据、流程，或者虽然是追问但需要补充新信息时。
+                2. **无需检索 (CHAT)**：当用户进行闲聊（如打招呼、感谢）、确认信息、请求重写文案、或者完全基于上文进行简单的逻辑推理时。
+                3. **格式**：必须且仅输出 JSON，不要包含任何其他解释。
+                
+                # Output Example
+                {"action": "SEARCH", "reason": "用户询问具体技术概念"}
+                {"action": "CHAT", "reason": "用户仅是在表示感谢"}
+                
+                # Result
                 """;
 
         /**
-         * 文档摘要提示词
+         * 查询重写提示词
          */
-        public static final String DOCUMENT_SUMMARY = """
-                请为以下文档内容生成一个简洁的摘要（不超过 200 字）：
+        public static final String PROMPT_QUERY_REWRITE = """
+                # Role
+                你是一个搜索引擎优化专家。你的任务是将用户的口语化问题重写为高效的搜索引擎关键词。
                 
-                {content}
+                # Input
+                对话历史：
+                <history>
+                {history}
+                </history>
                 
-                摘要应该：
-                1. 准确概括文档的主要内容
-                2. 保留关键信息和核心观点
-                3. 使用简洁清晰的语言
+                当前问题：
+                <query>
+                {query}
+                </query>
+                
+                # Rules
+                1. **去噪**：去除“请问”、“是什么”、“有什么用”、“我想知道”等无实际语义的词。
+                2. **指代消解**：如果当前问题包含“它”、“这个”、“他”等代词，请结合对话历史将其替换为具体的实体名称。
+                3. **核心提取**：只保留对语义检索有用的核心实体、名词或动名短语。
+                4. **单一输出**：直接输出重写后的查询字符串，不要包含任何解释或标点符号。
+                
+                # Examples
+                User: "Redis 的持久化机制有哪些？" -> Output: "Redis 持久化机制 RDB AOF"
+                User: "它有什么缺点？" (上文讨论的是 MySQL) -> Output: "MySQL 缺点"
+                User: "帮我找一下关于劳动合同法的规定" -> Output: "劳动合同法 规定"
+                
+                # Result
+                """;
+
+        /**
+         * 问题分解提示词
+         */
+        public static final String PROMPT_QUERY_DECOMPOSITION = """
+                # Role
+                你是一个搜索策略专家。你的任务是分析用户的复杂问题，提取出需要进行检索的**完整检索主题（Search Topics）**。
+                
+                # Input
+                当前问题：
+                <query>
+                {query}
+                </query>
+                
+                # Rules
+                1. **保持语义完整 (聚合原则)**：对于单一主体的修饰、属性或动作（如“xxx的安装标准”、“xxx的原理”），**严禁拆分**。必须将其保留为一个完整的检索短语。
+                   - 错误：["主变压器", "安装", "标准"]
+                   - 正确：["主变压器安装标准"]
+                2. **仅在多意图时拆分**：只有当问题包含多个**独立**的主体（如“A和B的区别”、“A的原理及B的应用”）时，才进行拆分。
+                3. **去口语化**：提取的主题应去除“请问”、“是什么”等无意义词汇，直接保留核心名词短语。
+                4. **格式**：必须且仅输出 JSON 字符串数组。
+                
+                # Examples
+                Query: "主变压器安装的工艺标准是什么？"
+                Output: ["主变压器安装工艺标准"]
+                
+                Query: "Spring Boot 和 Spring Cloud 有什么区别？"
+                Output: ["Spring Boot", "Spring Cloud"]
+                
+                Query: "Redis 的 RDB 原理以及 AOF 的优缺点"
+                Output: ["Redis RDB 原理", "Redis AOF 优缺点"]
+                
+                Query: "介绍一下 Kafka 的架构和高可用设计"
+                Output: ["Kafka 架构", "Kafka 高可用设计"]
+                
+                # Result
+                """;
+
+        /**
+         * HYDE 提示词
+         */
+        public static final String PROMPT_HYDE = """
+                # Role
+                你是一个专业的文档生成器。请根据用户的问题，生成一段**假想的**、**通过向量检索可能匹配到的**教科书片段或技术文档段落。
+                
+                # Input
+                当前问题：
+                <query>
+                {query}
+                </query>
+                
+                # Rules
+                1. **内容相关**：生成的段落应包含回答该问题可能涉及的专业术语、关键词和上下文逻辑。
+                2. **事实无关**：不需要保证内容的真实性或准确性，我们的目的是利用这段文本去匹配知识库中的真实文档。
+                3. **风格模仿**：模仿专业文档、百科全书或技术手册的语气。
+                4. **直接输出**：不要输出“以下是假想文档”等前缀，直接输出段落内容。
+                
+                # Result
                 """;
 
         /**
          * RAG 回答生成提示词
          */
         public static final String RAG_ANSWER = """
-                你是一个专业的智能助手。请根据以下检索到的相关文档，回答用户的问题。
+                # Role
+                你是一个专业的智能助手，专门负责根据参考文档回答用户问题。
                 
-                用户问题：{query}
+                # Instructions
+                请仔细阅读下方的【参考文档】，并据此回答【用户问题】。
                 
-                相关文档：
+                # Rules
+                1. **仅依据文档**：完全依赖【参考文档】中的信息。严禁使用你训练数据中的外部知识。
+                2. **引用溯源**：回答时必须在句末标注信息来源的文档 ID，格式为 [ID]。
+                3. **诚实原则**：如果【参考文档】中没有包含回答问题所需的信息，请直接回答"根据现有文档无法回答该问题"，不要编造。
+                4. **结构清晰**：回答要逻辑清晰，分点表述。
+                5. **拒绝客套**：**严禁**输出任何开场白（如“根据提供的参考文档...”、“你好”、“以下是回答...”等）。**直接输出答案正文，不要有任何铺垫。**
+                
+                # Context (参考文档)
+                <documents>
                 {context}
+                </documents>
                 
-                要求：
-                1. 基于提供的文档内容回答，不要编造信息
-                2. 如果文档中没有相关信息，请明确说明
-                3. 回答要准确、简洁、易懂
-                4. 必要时可以引用文档中的原文
-                """;
-
-        /**
-         * 关键词提取提示词
-         */
-        public static final String KEYWORD_EXTRACTION = """
-                请从以下文本中提取 5-10 个最重要的关键词：
+                # Query (用户问题)
+                <query>
+                {query}
+                </query>
                 
-                {text}
-                
-                要求：
-                1. 关键词应能代表文本的核心主题
-                2. 优先选择专业术语和核心概念
-                3. 以 JSON 数组格式返回，例如：["关键词1", "关键词2"]
+                # Answer
+                (切记：不要有任何前缀或开场白，直接开始回答)：
                 """;
     }
 
