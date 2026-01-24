@@ -3,14 +3,18 @@ package com.mtmn.smartdoc.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.dto.DocumentResponse;
+import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
+import com.mtmn.smartdoc.enums.IndexingTaskType;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import com.mtmn.smartdoc.po.DocumentPo;
+import com.mtmn.smartdoc.po.IndexingTask;
 import com.mtmn.smartdoc.repository.ChunkRepository;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.service.DocumentService;
 import com.mtmn.smartdoc.service.IndexingService;
+import com.mtmn.smartdoc.service.IndexingTaskService;
 import com.mtmn.smartdoc.service.KnowledgeBaseService;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.MinioService;
@@ -42,6 +46,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final KnowledgeBaseService knowledgeBaseService;
     private final MinioService minioService;
     private final IndexingService indexingService;
+    private final IndexingTaskService indexingTaskService;
     private final MilvusService milvusService;
     private final ChunkRepository chunkRepository;
     private final ObjectMapper objectMapper;
@@ -324,54 +329,131 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public void triggerIndexing(Long documentId, Long userId) {
-        // 复用 getDocumentEntity 进行权限校验
+    public IndexingTaskResponse triggerIndexing(Long documentId, Long userId) {
+        // 权限校验
         DocumentPo document = getDocumentEntity(documentId, userId);
-        indexingService.submitIndexingTask(document.getId(), document.getKbId());
+        Long kbId = document.getKbId();
+
+        // 提交任务
+        IndexingTask task = indexingTaskService.submitTask(userId, kbId, IndexingTaskType.INDEX, List.of(documentId));
+        boolean isNew = task.getCompletedDocs() == 0 && task.getFailedDocs() == 0;
+
+        // 如果是新任务，异步执行
+        if (isNew) {
+            indexingTaskService.executeIndexingAsync(task.getId());
+        }
+
+        return convertToTaskResponse(task, isNew);
     }
 
     @Override
-    public void triggerBatchIndexing(Long kbId, Long userId) {
+    public IndexingTaskResponse triggerBatchIndexing(Long kbId, Long userId) {
         knowledgeBaseService.getKnowledgeBaseEntity(kbId, userId);
 
-        List<DocumentPo> documents = documentRepository.findByKbIdAndIndexStatus(
-                kbId, DocumentIndexStatus.UPLOADED);
+        // 获取待索引的文档
+        List<DocumentPo> documents = documentRepository.findByKbIdAndIndexStatus(kbId, DocumentIndexStatus.UPLOADED);
 
-        if (!documents.isEmpty()) {
-            log.info("Submitting batch indexing task for {} documents", documents.size());
-            indexingService.submitBatchIndexingTask(kbId,
-                    documents.stream().map(DocumentPo::getId).collect(Collectors.toList()));
+        if (documents.isEmpty()) {
+            log.info("No documents to index for kbId={}", kbId);
+            return null;
         }
+
+        List<Long> documentIds = documents.stream().map(DocumentPo::getId).collect(Collectors.toList());
+
+        // 提交任务
+        IndexingTask task = indexingTaskService.submitTask(userId, kbId, IndexingTaskType.INDEX, documentIds);
+        boolean isNew = task.getCompletedDocs() == 0 && task.getFailedDocs() == 0;
+
+        // 如果是新任务，异步执行
+        if (isNew) {
+            indexingTaskService.executeIndexingAsync(task.getId());
+        }
+
+        return convertToTaskResponse(task, isNew);
     }
 
     @Override
-    public void rebuildIndex(Long documentId, Long userId) {
-        // 1. 权限校验
+    public IndexingTaskResponse rebuildIndex(Long documentId, Long userId) {
+        // 权限校验
         DocumentPo document = getDocumentEntity(documentId, userId);
-        // 2. 提交重建任务
-        indexingService.rebuildDocumentIndexFromChunks(documentId, document.getKbId());
+        Long kbId = document.getKbId();
+
+        // 提交任务
+        IndexingTask task = indexingTaskService.submitTask(userId, kbId, IndexingTaskType.REBUILD, List.of(documentId));
+        boolean isNew = task.getCompletedDocs() == 0 && task.getFailedDocs() == 0;
+
+        // 如果是新任务，异步执行
+        if (isNew) {
+            indexingTaskService.executeIndexingAsync(task.getId());
+        }
+
+        return convertToTaskResponse(task, isNew);
     }
 
     @Override
-    public void batchRebuildIndex(List<Long> documentIds, Long userId) {
-        // 1. 批量查询
+    public IndexingTaskResponse batchRebuildIndex(List<Long> documentIds, Long userId) {
+        // 批量查询
         List<DocumentPo> documents = documentRepository.findAllById(documentIds);
         if (documents.isEmpty()) {
-            return;
+            return null;
         }
-        // 2. 权限校验
+
+        // 权限校验
         for (DocumentPo document : documents) {
             if (!document.getUserId().equals(userId)) {
                 throw new UnauthorizedAccessException(userId, "Document", document.getId());
             }
         }
-        // 3. 提交批量重建任务
+
+        // 按知识库分组（通常应该只有一个知识库）
         Map<Long, List<Long>> kbDocsMap = documents.stream()
                 .collect(Collectors.groupingBy(DocumentPo::getKbId, Collectors.mapping(DocumentPo::getId, Collectors.toList())));
 
-        kbDocsMap.forEach((kbId, docIds) -> {
-            indexingService.batchRebuildDocumentIndexFromChunks(kbId, docIds);
-        });
+        // 取第一个知识库的任务作为返回
+        IndexingTaskResponse result = null;
+        for (Map.Entry<Long, List<Long>> entry : kbDocsMap.entrySet()) {
+            Long kbId = entry.getKey();
+            List<Long> docIds = entry.getValue();
+
+            IndexingTask task = indexingTaskService.submitTask(userId, kbId, IndexingTaskType.REBUILD, docIds);
+            boolean isNew = task.getCompletedDocs() == 0 && task.getFailedDocs() == 0;
+
+            if (isNew) {
+                indexingTaskService.executeIndexingAsync(task.getId());
+            }
+
+            if (result == null) {
+                result = convertToTaskResponse(task, isNew);
+            }
+        }
+
+        return result;
+    }
+
+    private IndexingTaskResponse convertToTaskResponse(IndexingTask task, boolean isNew) {
+        int percentage = task.getTotalDocs() > 0
+                ? (task.getCompletedDocs() * 100 / task.getTotalDocs())
+                : 0;
+
+        return IndexingTaskResponse.builder()
+                .id(task.getId())
+                .kbId(task.getKbId())
+                .taskType(task.getTaskType())
+                .status(task.getStatus())
+                .totalDocs(task.getTotalDocs())
+                .completedDocs(task.getCompletedDocs())
+                .failedDocs(task.getFailedDocs())
+                .currentDocId(task.getCurrentDocId())
+                .currentDocName(task.getCurrentDocName())
+                .currentStep(task.getCurrentStep())
+                .currentStepName(task.getCurrentStep() != null ? task.getCurrentStep().getDisplayName() : null)
+                .percentage(percentage)
+                .errorMessage(task.getErrorMessage())
+                .createdAt(task.getCreatedAt())
+                .startedAt(task.getStartedAt())
+                .completedAt(task.getCompletedAt())
+                .isNew(isNew)
+                .build();
     }
 
     private DocumentResponse convertToResponse(DocumentPo document) {

@@ -1,6 +1,7 @@
 package com.mtmn.smartdoc.service;
 
 import com.mtmn.smartdoc.dto.DocumentResponse;
+import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.DocumentPo;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -102,34 +103,38 @@ public interface DocumentService {
     void deleteDocuments(List<Long> documentIds, Long userId);
 
     /**
-     * 触发文档索引构建
+     * 触发文档索引构建（异步）
      *
      * @param documentId 文档 ID
      * @param userId     用户 ID
+     * @return 任务响应
      */
-    void triggerIndexing(Long documentId, Long userId);
+    IndexingTaskResponse triggerIndexing(Long documentId, Long userId);
 
     /**
-     * 批量触发索引构建
+     * 批量触发索引构建（异步）
      *
      * @param kbId   知识库 ID
      * @param userId 用户 ID
+     * @return 任务响应
      */
-    void triggerBatchIndexing(Long kbId, Long userId);
+    IndexingTaskResponse triggerBatchIndexing(Long kbId, Long userId);
 
     /**
-     * 重建文档索引（基于现有 Chunk）
+     * 重建文档索引（异步，基于现有 Chunk）
      *
      * @param documentId 文档 ID
      * @param userId     用户 ID
+     * @return 任务响应
      */
-    void rebuildIndex(Long documentId, Long userId);
+    IndexingTaskResponse rebuildIndex(Long documentId, Long userId);
 
     /**
-     * 批量重建文档索引
+     * 批量重建文档索引（异步）
      *
      * @param documentIds 文档 ID 列表
      * @param userId      用户 ID
+     * @return 任务响应
      */
-    void batchRebuildIndex(List<Long> documentIds, Long userId);
+    IndexingTaskResponse batchRebuildIndex(List<Long> documentIds, Long userId);
 }

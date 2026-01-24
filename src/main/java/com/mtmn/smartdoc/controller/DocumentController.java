@@ -2,16 +2,20 @@ package com.mtmn.smartdoc.controller;
 
 import com.mtmn.smartdoc.common.ApiResponse;
 import com.mtmn.smartdoc.dto.DocumentResponse;
+import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.User;
 import com.mtmn.smartdoc.service.DocumentService;
+import com.mtmn.smartdoc.service.IndexingTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -29,6 +33,7 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final IndexingTaskService indexingTaskService;
 
     /**
      * 上传文档
@@ -151,66 +156,88 @@ public class DocumentController {
     }
 
     /**
-     * 触发文档索引
+     * 订阅索引进度（SSE）
+     */
+    @GetMapping(value = "/index-progress/{kbId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "订阅索引进度", description = "通过 SSE 实时获取索引构建进度")
+    public SseEmitter subscribeIndexProgress(
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Subscribing to index progress for kbId={}, userId={}", kbId, user.getId());
+
+        return indexingTaskService.subscribe(user.getId(), kbId);
+    }
+
+    /**
+     * 触发文档索引（异步）
      */
     @PostMapping("/{documentId}/index")
-    @Operation(summary = "触发文档索引", description = "触发指定文档的索引操作")
-    public ApiResponse<Void> triggerIndexing(
+    @Operation(summary = "触发文档索引", description = "异步触发指定文档的索引操作，返回任务信息")
+    public ApiResponse<IndexingTaskResponse> triggerIndexing(
             @Parameter(description = "文档ID") @PathVariable Long documentId,
             @AuthenticationPrincipal User user) {
 
         log.info("Triggering indexing for document: {}", documentId);
 
-        documentService.triggerIndexing(documentId, user.getId());
+        IndexingTaskResponse response = documentService.triggerIndexing(documentId, user.getId());
 
-        return ApiResponse.success("文档索引成功", null);
+        return ApiResponse.success("索引任务已提交", response);
     }
 
     /**
-     * 触发批量索引
+     * 触发批量索引（异步）
      */
     @PostMapping("/batch-index")
-    @Operation(summary = "触发批量索引", description = "触发指定知识库的批量索引操作")
-    public ApiResponse<Void> triggerBatchIndexing(
+    @Operation(summary = "触发批量索引", description = "异步触发指定知识库的批量索引操作，返回任务信息")
+    public ApiResponse<IndexingTaskResponse> triggerBatchIndexing(
             @Parameter(description = "知识库ID") @RequestParam Long kbId,
             @AuthenticationPrincipal User user) {
 
         log.info("Triggering batch indexing for knowledge base: {}", kbId);
 
-        documentService.triggerBatchIndexing(kbId, user.getId());
+        IndexingTaskResponse response = documentService.triggerBatchIndexing(kbId, user.getId());
 
-        return ApiResponse.success("文档索引成功", null);
+        if (response == null) {
+            return ApiResponse.success("没有待索引的文档", null);
+        }
+
+        return ApiResponse.success("索引任务已提交", response);
     }
 
     /**
-     * 重建文档索引（基于现有 Chunk）
+     * 重建文档索引（异步，基于现有 Chunk）
      */
     @PostMapping("/{documentId}/rebuild-index")
-    @Operation(summary = "重建文档索引", description = "基于数据库中现有的 Chunk 重建索引，不重新切分文档")
-    public ApiResponse<Void> rebuildIndex(
+    @Operation(summary = "重建文档索引", description = "异步重建索引，基于数据库中现有的 Chunk，不重新切分文档")
+    public ApiResponse<IndexingTaskResponse> rebuildIndex(
             @Parameter(description = "文档ID") @PathVariable Long documentId,
             @AuthenticationPrincipal User user) {
 
         log.info("Rebuilding index for document: {}", documentId);
 
-        documentService.rebuildIndex(documentId, user.getId());
+        IndexingTaskResponse response = documentService.rebuildIndex(documentId, user.getId());
 
-        return ApiResponse.success("文档索引成功", null);
+        return ApiResponse.success("重建索引任务已提交", response);
     }
 
     /**
-     * 批量重建文档索引
+     * 批量重建文档索引（异步）
      */
     @PostMapping("/batch-rebuild-index")
-    @Operation(summary = "批量重建文档索引", description = "批量重建多个文档的索引")
-    public ApiResponse<Void> batchRebuildIndex(
+    @Operation(summary = "批量重建文档索引", description = "异步批量重建多个文档的索引")
+    public ApiResponse<IndexingTaskResponse> batchRebuildIndex(
             @RequestBody List<Long> documentIds,
             @AuthenticationPrincipal User user) {
 
         log.info("Batch rebuilding index for {} documents", documentIds.size());
 
-        documentService.batchRebuildIndex(documentIds, user.getId());
+        IndexingTaskResponse response = documentService.batchRebuildIndex(documentIds, user.getId());
 
-        return ApiResponse.success("文档索引成功", null);
+        if (response == null) {
+            return ApiResponse.success("没有文档需要重建索引", null);
+        }
+
+        return ApiResponse.success("重建索引任务已提交", response);
     }
 }

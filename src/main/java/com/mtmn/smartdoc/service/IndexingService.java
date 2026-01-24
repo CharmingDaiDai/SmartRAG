@@ -56,6 +56,16 @@ public interface IndexingService {
     void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig);
 
     /**
+     * 执行索引构建（带事务和进度回调）
+     *
+     * @param documentId  文档 ID
+     * @param kb          知识库
+     * @param indexConfig 索引策略配置
+     * @param callback    进度回调
+     */
+    void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback);
+
+    /**
      * 更新文档索引状态（带事务）
      * 该方法需要在接口中声明，以便通过 self 代理调用
      *
@@ -89,4 +99,14 @@ public interface IndexingService {
      * @param indexConfig 索引策略配置
      */
     void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig);
+
+    /**
+     * 执行基于 Chunk 的索引重建（带事务和进度回调）
+     *
+     * @param documentId  文档 ID
+     * @param kb          知识库
+     * @param indexConfig 索引策略配置
+     * @param callback    进度回调
+     */
+    void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback);
 }

@@ -9,11 +9,12 @@ import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.IndexingService;
+import com.mtmn.smartdoc.service.IndexingProgressCallback;
+import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.rag.IndexStrategy;
 import com.mtmn.smartdoc.rag.factory.RAGStrategyFactory;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,28 +84,49 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
+        executeIndexing(documentId, kb, indexConfig, IndexingProgressCallback.NOOP);
+    }
+
+    /**
+     * 执行索引构建（带事务和进度回调）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
         log.info("Executing indexing with transaction: documentId={}, kbId={}", documentId, kb.getId());
 
+        DocumentPo documentPo = null;
         try {
             // 加载文档
-            DocumentPo documentPo = documentRepository.findById(documentId)
+            documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
 
-            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
+            // 回调：解析中
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.PARSING);
+
             documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
             documentRepository.save(documentPo);
+
+            // 回调：切分中
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.CHUNKING);
 
             // 使用工厂获取对应的索引策略
             IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
 
+            // 回调：向量化中
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.EMBEDDING);
+
             // 构建索引（策略内部完成：读取、处理、向量化、存储）
             strategy.buildIndex(kb, documentPo, indexConfig);
 
-            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
+            // 回调：存储中
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.STORING);
+
             documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
             documentRepository.save(documentPo);
 
             log.info("✅ Indexing completed successfully: documentId={}", documentId);
+            callback.onDocumentCompleted(documentId, documentPo.getFilename());
 
         } catch (Exception e) {
             log.error("❌ Indexing failed: documentId={}", documentId, e);
@@ -114,6 +136,8 @@ public class IndexingServiceImpl implements IndexingService {
                 doc.setIndexStatus(DocumentIndexStatus.ERROR);
                 documentRepository.save(doc);
             }
+            String docName = documentPo != null ? documentPo.getFilename() : "unknown";
+            callback.onDocumentFailed(documentId, docName, e.getMessage());
             throw new RuntimeException("Indexing failed: " + e.getMessage(), e);
         }
     }
@@ -146,10 +170,21 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
+        executeRebuildIndexFromChunks(documentId, kb, indexConfig, IndexingProgressCallback.NOOP);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
         log.info("Executing rebuild index from chunks with transaction: documentId={}, kbId={}", documentId, kb.getId());
+
+        DocumentPo documentPo = null;
         try {
-            DocumentPo documentPo = documentRepository.findById(documentId)
+            documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
+
+            // 回调：向量化中（重建索引跳过解析和切分）
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.EMBEDDING);
 
             documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
             documentRepository.save(documentPo);
@@ -157,10 +192,14 @@ public class IndexingServiceImpl implements IndexingService {
             IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
             strategy.rebuildIndexFromChunks(kb, documentPo, indexConfig);
 
+            // 回调：存储中
+            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.STORING);
+
             documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
             documentRepository.save(documentPo);
 
             log.info("✅ Rebuild index from chunks completed successfully: documentId={}", documentId);
+            callback.onDocumentCompleted(documentId, documentPo.getFilename());
         } catch (Exception e) {
             log.error("❌ Rebuild index from chunks failed: documentId={}", documentId, e);
             DocumentPo doc = documentRepository.findById(documentId).orElse(null);
@@ -168,6 +207,8 @@ public class IndexingServiceImpl implements IndexingService {
                 doc.setIndexStatus(DocumentIndexStatus.ERROR);
                 documentRepository.save(doc);
             }
+            String docName = documentPo != null ? documentPo.getFilename() : "unknown";
+            callback.onDocumentFailed(documentId, docName, e.getMessage());
             throw new RuntimeException("Rebuild index failed: " + e.getMessage(), e);
         }
     }
