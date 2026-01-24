@@ -12,7 +12,6 @@ import {
     Input,
     message,
     Modal,
-    Progress,
     Radio,
     Row,
     Select,
@@ -25,14 +24,12 @@ import {
 } from "antd";
 import {
     BookOutlined,
-    BuildOutlined,
-    SearchOutlined,
     DeleteOutlined,
     ExclamationCircleOutlined,
     EyeOutlined,
-    FileTextOutlined,
     PlusOutlined,
     QuestionCircleOutlined,
+    SearchOutlined,
     UploadOutlined,
 } from "@ant-design/icons";
 import {useAuth} from "../../context/AuthContext";

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.common.ApiResponse;
 import com.mtmn.smartdoc.common.IntentResult;
+import com.mtmn.smartdoc.common.QueryDecomposeResult;
 import com.mtmn.smartdoc.config.ModelConfig;
 import com.mtmn.smartdoc.config.RagStrategyFactory;
 import com.mtmn.smartdoc.dto.CreateKbRequest;
@@ -15,6 +16,7 @@ import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.*;
 import com.mtmn.smartdoc.utils.IntentClassifier;
+import com.mtmn.smartdoc.utils.QueryDecompose;
 import com.mtmn.smartdoc.utils.QueryRewrite;
 import com.mtmn.smartdoc.utils.SseUtil;
 import com.mtmn.smartdoc.vo.DocumentVO;
@@ -62,6 +64,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final LLMService llmService;
     private final IntentClassifier intentClassifier;
     private final QueryRewrite queryRewrite;
+    private final QueryDecompose queryDecompose;
     private final RagStrategyFactory ragStrategyFactory;
     private final HiSemRag hiSemRag;
     private final NaiveRag naiveRag;
@@ -589,6 +592,14 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             question = queryRewrite.rewriteQuery("", question).getFinalQuery();
         }
 
+        // 查询分解
+        if(qd){
+            QueryDecomposeResult result = queryDecompose.decomposeQuery(question);
+            for (QueryDecomposeResult.QueryItem item : result.getQueries()) {
+                System.out.println("类型: " + item.getType() + ", 查询: " + item.getQuery());
+            }
+        }
+
         HashMap<String, Object> params = new HashMap<>();
         params.put("topk", topk);
 
@@ -634,6 +645,14 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
         // 查询重写
         if (qr) {
             question = queryRewrite.rewriteQuery("", question).getFinalQuery();
+        }
+
+        // 查询分解
+        if(qd){
+            QueryDecomposeResult result = queryDecompose.decomposeQuery(question);
+            for (QueryDecomposeResult.QueryItem item : result.getQueries()) {
+                System.out.println("类型: " + item.getType() + ", 查询: " + item.getQuery());
+            }
         }
 
         HashMap<String, Object> params = new HashMap<>();
