@@ -212,7 +212,41 @@ CREATE TABLE IF NOT EXISTS `tree_nodes`
 
 
 -- =====================================================
--- 4. 对话历史表
+-- 4. 索引任务表
+-- =====================================================
+
+-- 索引任务表（用于异步索引构建的任务跟踪）
+CREATE TABLE IF NOT EXISTS `indexing_tasks`
+(
+    `id`               BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`          BIGINT       NOT NULL COMMENT '用户ID',
+    `kb_id`            BIGINT       NOT NULL COMMENT '知识库ID',
+    `task_type`        VARCHAR(50)  NOT NULL COMMENT '任务类型: INDEX, REBUILD',
+    `status`           VARCHAR(50)  NOT NULL DEFAULT 'PENDING' COMMENT '状态: PENDING, RUNNING, COMPLETED, FAILED',
+    `total_docs`       INT          NOT NULL DEFAULT 0 COMMENT '总文档数',
+    `completed_docs`   INT          NOT NULL DEFAULT 0 COMMENT '已完成文档数',
+    `failed_docs`      INT          NOT NULL DEFAULT 0 COMMENT '失败文档数',
+    `current_doc_id`   BIGINT                DEFAULT NULL COMMENT '当前处理的文档ID',
+    `current_doc_name` VARCHAR(255)          DEFAULT NULL COMMENT '当前处理的文档名',
+    `current_step`     VARCHAR(100)          DEFAULT NULL COMMENT '当前步骤: PARSING, CHUNKING, EMBEDDING, STORING',
+    `error_message`    TEXT                  DEFAULT NULL COMMENT '错误信息',
+    `document_ids`     JSON         NOT NULL COMMENT '待处理文档ID列表',
+    `created_at`       DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `started_at`       DATETIME              DEFAULT NULL COMMENT '开始时间',
+    `completed_at`     DATETIME              DEFAULT NULL COMMENT '完成时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_status` (`user_id`, `status`),
+    KEY `idx_kb_status` (`kb_id`, `status`),
+    KEY `idx_created_at` (`created_at`),
+    CONSTRAINT `fk_task_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_task_kb` FOREIGN KEY (`kb_id`) REFERENCES `knowledge_bases` (`id`) ON DELETE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='索引任务表';
+
+
+-- =====================================================
+-- 5. 对话历史表
 -- =====================================================
 
 -- 对话表
@@ -242,7 +276,7 @@ CREATE TABLE IF NOT EXISTS `conversations`
 
 
 -- =====================================================
--- 5. 添加外键约束到 user_activities (依赖 documents)
+-- 6. 添加外键约束到 user_activities (依赖 documents)
 -- =====================================================
 
 ALTER TABLE `user_activities`
@@ -251,7 +285,7 @@ ALTER TABLE `user_activities`
 
 
 -- =====================================================
--- 6. 创建视图(可选)
+-- 7. 创建视图(可选)
 -- =====================================================
 
 -- 知识库统计视图
