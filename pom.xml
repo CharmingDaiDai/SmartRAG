@@ -12,7 +12,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>3.2.2</spring-boot.version>
-        <langchain4j.version>1.8.0-beta15</langchain4j.version>
+        <langchain4j.version>1.9.1-beta17</langchain4j.version>
         <io.jsonwebtoken.version>0.12.5</io.jsonwebtoken.version>
     </properties>
     <dependencies>
@@ -248,13 +248,6 @@
             <groupId>com.github.xiaoymin</groupId>
             <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
             <version>4.4.0</version>
-        </dependency>
-
-        <!-- dotenv-java 支持读取 .env 文件 -->
-        <dependency>
-            <groupId>io.github.cdimascio</groupId>
-            <artifactId>dotenv-java</artifactId>
-            <version>3.2.0</version>
         </dependency>
 
         <!-- Caffeine 缓存 -->
