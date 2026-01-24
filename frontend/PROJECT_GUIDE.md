@@ -69,12 +69,51 @@ src/
   4.  **切换入口**: `BasicLayout.tsx` 顶部导航栏包含切换按钮。
 
 ### 3.3 Markdown 高级渲染
-为了解决深色模式下代码块看不清的问题，我们做了特殊处理。
-- **配置位置**: `Chat/index.tsx` 和 `TestChat/index.tsx`。
-- **样式定制**:
+系统集成了 `@ant-design/x-markdown` 以支持丰富的 Markdown 渲染能力，包括代码高亮、数学公式和图表。
+
+- **配置位置**: `src/pages/Chat/index.tsx` 和 `src/pages/TestChat/index.tsx`。
+- **关键配置**:
+  1.  **样式引入**: 必须在入口文件 (`main.tsx`) 引入 KaTeX 样式：`import 'katex/dist/katex.min.css';`。
+  2.  **插件配置**: 使用 `config={{ extensions: [...] }}` 方式加载插件。
+      - **LaTeX**: 需要使用展开语法 `...Latex({ katexOptions: { output: 'html' } })` 以确保正确加载扩展数组。
+      - **Mermaid**: 作为独立插件直接加入数组。
+  3.  **组件映射 (`components`)**:
+      - 自定义 `code` 组件以区分普通代码块和 Mermaid 图表。
+      - 如果语言类型 (`lang`) 为 `mermaid`，则渲染 `<Mermaid>` 组件，否则渲染 `<HighlightCode>`。
+
+**代码示例**:
+```tsx
+// 插件配置
+const MD_PLUGINS = [
+    ...Latex({ 
+        katexOptions: { output: 'html', throwOnError: false } 
+    }), 
+    Mermaid
+];
+
+// 自定义 Code 组件
+const Code: React.FC<ComponentProps> = (props) => {
+  const { className, children } = props;
+  const lang = className?.match(/language-(\w+)/)?.[1] || '';
+  
+  if (lang === 'mermaid') {
+    return <Mermaid>{children}</Mermaid>;
+  }
+  return <HighlightCode lang={lang}>{children}</HighlightCode>;
+};
+
+// 使用组件
+<XMarkdown 
+    config={{ extensions: MD_PLUGINS }} 
+    components={{ code: Code }}
+>
+    {content}
+</XMarkdown>
+```
+
+- **深色模式适配**:
   - 引入了 `@ant-design/x-markdown` 的官方主题样式。
-  - 在 `index.css` 中强制覆盖了代码块的背景色和字体颜色，使其在深色模式下对比度更高 (类似 GitHub Dark 主题)。
-  - **自定义 Code 组件**: 通过 `components` 属性将 Markdown 中的 `code` 标签映射为自定义组件，确保语法高亮插件能正确工作。
+  - 在 `index.css` 中强制覆盖了代码块的背景色和字体颜色，使其在深色模式下对比度更高。
 
 ## 4. 开发扩展指南 (How to Extend)
 
