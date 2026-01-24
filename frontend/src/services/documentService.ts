@@ -2,6 +2,29 @@ import request from './api';
 
 const multipartHeaders = { headers: { 'Content-Type': 'multipart/form-data' } };
 
+/**
+ * 索引任务响应类型
+ */
+export interface IndexingTaskResponse {
+  id: number;
+  kbId: number;
+  taskType: 'INDEX' | 'REBUILD';
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  totalDocs: number;
+  completedDocs: number;
+  failedDocs: number;
+  currentDocId?: number;
+  currentDocName?: string;
+  currentStep?: string;
+  currentStepName?: string;
+  percentage: number;
+  errorMessage?: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  isNew: boolean;
+}
+
 export const documentService = {
   list: (params: any) => request.get('/documents', { params }),
   listAll: (params: any) => request.get('/documents', { params }),
@@ -28,4 +51,14 @@ export const documentService = {
   // 重建索引（基于现有 Chunk，不重新切分文档）
   rebuildIndex: (id: string) => request.post(`/documents/${id}/rebuild-index`),
   batchRebuildIndex: (ids: string[]) => request.post('/documents/batch-rebuild-index', ids),
+
+  /**
+   * 订阅索引进度（SSE）
+   * @param kbId 知识库 ID
+   * @returns EventSource 实例
+   */
+  subscribeIndexProgress: (kbId: string): EventSource => {
+    const token = localStorage.getItem('token');
+    return new EventSource(`/api/documents/index-progress/${kbId}?token=${token}`);
+  },
 };

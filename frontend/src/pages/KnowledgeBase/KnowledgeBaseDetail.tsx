@@ -2,12 +2,13 @@ import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Form, Card
 import { useState, useEffect } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { documentService } from '../../services/documentService';
+import { documentService, IndexingTaskResponse } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
+import IndexingProgress from '../../components/IndexingProgress';
 
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -59,6 +60,9 @@ export default function KnowledgeBaseDetail() {
     const [batchIndexLoading, setBatchIndexLoading] = useState(false);
     const [rebuildingDocIds, setRebuildingDocIds] = useState<Record<string, boolean>>({});
     const [batchRebuildLoading, setBatchRebuildLoading] = useState(false);
+    // 索引任务状态
+    const [indexingTask, setIndexingTask] = useState<IndexingTaskResponse | null>(null);
+    const [showIndexingProgress, setShowIndexingProgress] = useState(false);
 
   const fetchKbInfo = async () => {
       if (!id) return;
@@ -142,7 +146,14 @@ export default function KnowledgeBaseDetail() {
       try {
           const res: any = await documentService.triggerBatchIndex(id);
           if (res.code === 200) {
-              message.success('已触发知识库索引构建');
+              if (res.data) {
+                  // 有任务返回，显示进度组件
+                  setIndexingTask(res.data);
+                  setShowIndexingProgress(true);
+                  message.success(res.data.isNew ? '索引任务已提交' : '正在继续之前的索引任务');
+              } else {
+                  message.info('没有待索引的文档');
+              }
           } else {
               message.error(res.message || '触发索引失败');
           }
@@ -153,14 +164,33 @@ export default function KnowledgeBaseDetail() {
       }
   };
 
+  // 索引完成回调
+  const handleIndexingComplete = () => {
+      setShowIndexingProgress(false);
+      setIndexingTask(null);
+      fetchData();
+      fetchKbInfo();
+  };
+
+  // 关闭进度组件
+  const handleIndexingClose = () => {
+      setShowIndexingProgress(false);
+      setIndexingTask(null);
+  };
+
   // 重建单个文档索引
   const handleRebuildDocIndex = async (docId: string) => {
       setRebuildingDocIds(prev => ({ ...prev, [docId]: true }));
       try {
           const res: any = await documentService.rebuildIndex(docId);
           if (res.code === 200) {
-              message.success('已触发重建索引');
-              fetchData();
+              if (res.data) {
+                  setIndexingTask(res.data);
+                  setShowIndexingProgress(true);
+                  message.success(res.data.isNew ? '重建索引任务已提交' : '正在继续之前的任务');
+              } else {
+                  message.info('没有需要重建的内容');
+              }
           } else {
               message.error(res.message || '重建索引失败');
           }
@@ -185,9 +215,14 @@ export default function KnowledgeBaseDetail() {
       try {
           const res: any = await documentService.batchRebuildIndex(selectedRowKeys as string[]);
           if (res.code === 200) {
-              message.success(`已触发 ${selectedRowKeys.length} 个文档的重建索引`);
-              setSelectedRowKeys([]);
-              fetchData();
+              if (res.data) {
+                  setIndexingTask(res.data);
+                  setShowIndexingProgress(true);
+                  message.success(res.data.isNew ? `已提交 ${selectedRowKeys.length} 个文档的重建索引` : '正在继续之前的任务');
+                  setSelectedRowKeys([]);
+              } else {
+                  message.info('没有文档需要重建索引');
+              }
           } else {
               message.error(res.message || '批量重建索引失败');
           }
@@ -349,7 +384,12 @@ export default function KnowledgeBaseDetail() {
             <Button icon={<ReloadOutlined />} onClick={() => fetchData()}>
                 刷新
             </Button>
-            <Button icon={<SyncOutlined />} loading={batchIndexLoading} onClick={handleTriggerKbIndex}>
+            <Button
+                icon={<SyncOutlined />}
+                loading={batchIndexLoading}
+                disabled={showIndexingProgress}
+                onClick={handleTriggerKbIndex}
+            >
                 构建知识库索引
             </Button>
             {selectedRowKeys.length > 0 && (
@@ -357,6 +397,7 @@ export default function KnowledgeBaseDetail() {
                     <Button
                         icon={<BuildOutlined />}
                         loading={batchRebuildLoading}
+                        disabled={showIndexingProgress}
                         onClick={handleBatchRebuildIndex}
                     >
                         批量重建索引 ({selectedRowKeys.length})
@@ -379,6 +420,16 @@ export default function KnowledgeBaseDetail() {
           </Space>
       </div>
       </SlideInUp>
+
+      {/* 索引进度显示 */}
+      {showIndexingProgress && id && (
+        <IndexingProgress
+          kbId={id}
+          taskId={indexingTask?.id}
+          onComplete={handleIndexingComplete}
+          onClose={handleIndexingClose}
+        />
+      )}
 
       <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Table
