@@ -17,9 +17,9 @@ public class MarkdownParser {
     /**
      * 解析Markdown文本，构建层级结构
      *
-     * @param markdownText Markdown格式的文本内容
+     * @param markdownText  Markdown格式的文本内容
      * @param documentTitle 文档标题，作为根节点
-     * @param maxLevel 最大解析的标题层级，超过此层级的内容作为上级标题内容处理，设置为null则不限制
+     * @param maxLevel      最大解析的标题层级，超过此层级的内容作为上级标题内容处理，设置为null则不限制
      * @return 返回根节点和所有节点的字典映射 (rootNode, {节点ID: 节点对象})
      */
     public static Map.Entry<MyNode, Map<String, MyNode>> parseMarkdownStructure(

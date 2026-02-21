@@ -1,45 +1,91 @@
 package com.mtmn.smartdoc.repository;
 
-import com.mtmn.smartdoc.po.DocumentPO;
-import com.mtmn.smartdoc.po.User;
+import com.mtmn.smartdoc.enums.DocumentIndexStatus;
+import com.mtmn.smartdoc.po.DocumentPo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 /**
+ * 文档 Repository
+ *
  * @author charmingdaidai
+ * @version 2.1
+ * @date 2025-11-19
  */
 @Repository
-public interface DocumentRepository extends JpaRepository<DocumentPO, Long> {
-    
-    /**
-     * 根据用户ID统计文档数量
-     */
+public interface DocumentRepository extends JpaRepository<DocumentPo, Long> {
+
+
     long countByUserId(Long userId);
-    
+
     /**
-     * 根据用户统计文档数量
+     * 根据用户ID分页查询文档
      */
-    long countByUser(User user);
-    
+    Page<DocumentPo> findByUserId(Long userId, Pageable pageable);
+
     /**
-     * 根据用户查询所有文档（按创建时间降序）
+     * 根据知识库ID查询文档列表
      */
-    List<DocumentPO> findByUserOrderByCreatedAtDesc(User user);
-    
+    List<DocumentPo> findByKbId(Long kbId);
+
     /**
-     * 根据用户ID查询所有文档（按创建时间降序）
+     * 根据知识库ID分页查询文档
      */
-    List<DocumentPO> findByUserIdOrderByCreatedAtDesc(Long userId);
-    
+    Page<DocumentPo> findByKbId(Long kbId, Pageable pageable);
+
     /**
-     * 检查文档是否属于特定用户
+     * 根据知识库ID和索引状态查询
      */
-    boolean existsByIdAndUser(Long id, User user);
-    
+    List<DocumentPo> findByKbIdAndIndexStatus(Long kbId, DocumentIndexStatus indexStatus);
+
     /**
-     * 根据知识库ID查询所有文档（按创建时间降序）
+     * 根据知识库ID统计文档数量
      */
-    List<DocumentPO> findByKnowledgeBaseIdOrderByCreatedAtDesc(Long knowledgeBaseId);
+    long countByKbId(Long kbId);
+
+    /**
+     * 根据知识库ID和索引状态统计
+     */
+    long countByKbIdAndIndexStatus(Long kbId, DocumentIndexStatus indexStatus);
+
+    /**
+     * 删除知识库下的所有文档
+     */
+    void deleteByKbId(Long kbId);
+
+    /**
+     * 【性能优化】批量统计多个知识库的文档总数
+     * 一次查询替代 N 次查询，解决 N+1 问题
+     *
+     * @param kbIds 知识库ID列表
+     * @return Map<知识库ID, 文档总数>
+     */
+    @Query("SELECT d.kbId as kbId, COUNT(d) as count " +
+            "FROM DocumentPo d " +
+            "WHERE d.kbId IN :kbIds " +
+            "GROUP BY d.kbId")
+    List<Map<String, Object>> countByKbIdIn(@Param("kbIds") List<Long> kbIds);
+
+    /**
+     * 【性能优化】批量统计多个知识库的已索引文档数
+     * 一次查询替代 N 次查询
+     *
+     * @param kbIds  知识库ID列表
+     * @param status 索引状态
+     * @return Map<知识库ID, 已索引文档数>
+     */
+    @Query("SELECT d.kbId as kbId, COUNT(d) as count " +
+            "FROM DocumentPo d " +
+            "WHERE d.kbId IN :kbIds AND d.indexStatus = :status " +
+            "GROUP BY d.kbId")
+    List<Map<String, Object>> countByKbIdInAndIndexStatus(
+            @Param("kbIds") List<Long> kbIds,
+            @Param("status") DocumentIndexStatus status);
 }

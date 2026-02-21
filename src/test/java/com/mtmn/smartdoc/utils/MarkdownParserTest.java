@@ -13,24 +13,24 @@ import java.util.Map;
 public class MarkdownParserTest {
     public static void main(String[] args) {
         String markdown = """
-            # 1. 引言
-            这是引言部分的内容。
-            
-            ## 1.1 背景
-            这是背景部分的内容。
-            
-            # 2. 主要内容
-            这是主要内容部分。
-            
-            ## 2.1 小节一
-            小节一的内容。
-            
-            ### 2.1.1 更深一层
-            更深一层的内容。
-            
-            ## 2.2 小节二
-            小节二的内容。
-            """;
+                # 1. 引言
+                这是引言部分的内容。
+                
+                ## 1.1 背景
+                这是背景部分的内容。
+                
+                # 2. 主要内容
+                这是主要内容部分。
+                
+                ## 2.1 小节一
+                小节一的内容。
+                
+                ### 2.1.1 更深一层
+                更深一层的内容。
+                
+                ## 2.2 小节二
+                小节二的内容。
+                """;
 
         // 解析Markdown文档
         Map.Entry<MyNode, Map<String, MyNode>> result =

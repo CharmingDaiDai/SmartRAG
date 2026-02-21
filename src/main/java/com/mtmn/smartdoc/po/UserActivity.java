@@ -57,7 +57,9 @@ public class UserActivity {
             updatable = false,
             foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT) // 取消外键约束
     )
-    private DocumentPO document;
+    private DocumentPo document;
+
+    // TODO 改为纯 RAG 系统，这些活动类型需要改
 
     /**
      * 活动类型枚举

@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" monitorInterval="30">
     <Properties>
-        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${hostName} --- [%15.15t] %-40.40c{1.} : %m%n%ex</Property>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${hostName} --- [%15.15t] %-40.40c{1.} : %m%n%ex
+        </Property>
         <Property name="APP_LOG_ROOT">logs</Property>
     </Properties>
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
+            <PatternLayout
+                    pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
         </Console>
 
         <RollingFile name="appLog"
                      fileName="${APP_LOG_ROOT}/application.log"
                      filePattern="${APP_LOG_ROOT}/application-%d{yyyy-MM-dd}-%i.log">
-            <PatternLayout pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
+            <PatternLayout
+                    pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="19500KB"/>
                 <TimeBasedTriggeringPolicy interval="1"/>
@@ -23,7 +26,8 @@
         <RollingFile name="errorLog"
                      fileName="${APP_LOG_ROOT}/error.log"
                      filePattern="${APP_LOG_ROOT}/error-%d{yyyy-MM-dd}-%i.log">
-            <PatternLayout pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
+            <PatternLayout
+                    pattern="%highlight{${LOG_PATTERN}}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=white}"/>
             <Policies>
                 <SizeBasedTriggeringPolicy size="19500KB"/>
                 <TimeBasedTriggeringPolicy interval="1"/>

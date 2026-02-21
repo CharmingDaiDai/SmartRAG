@@ -34,10 +34,10 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
 
-    private static final int NO_WRITE_LIMIT = -1;
     public static final Supplier<Parser> DEFAULT_PARSER_SUPPLIER = AutoDetectParser::new;
     public static final Supplier<Metadata> DEFAULT_METADATA_SUPPLIER = Metadata::new;
     public static final Supplier<ParseContext> DEFAULT_PARSE_CONTEXT_SUPPLIER = ParseContext::new;
+    private static final int NO_WRITE_LIMIT = -1;
     public static final Supplier<ContentHandler> DEFAULT_CONTENT_HANDLER_SUPPLIER =
             () -> new BodyContentHandler(NO_WRITE_LIMIT);
 
@@ -63,7 +63,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * 它使用{@link AutoDetectParser}、无写入限制的{@link BodyContentHandler}、
      * 空的{@link Metadata}和空的{@link ParseContext}。
      *
-     * @param includeMetadata        是否在解析的文档中包含元数据
+     * @param includeMetadata 是否在解析的文档中包含元数据
      */
     public ApacheTikaDocumentParser(boolean includeMetadata) {
         this(null, null, null, null, includeMetadata);
@@ -160,7 +160,6 @@ public class ApacheTikaDocumentParser implements DocumentParser {
 
     /**
      * 将Tika的{@link Metadata}对象转换为{@link dev.langchain4j.data.document.Metadata}对象。
-     *
      *
      * @param tikaMetadata 来自Tika库的包含元数据信息的{@code Metadata}对象
      * @return 以langchain4j格式表示的{@link dev.langchain4j.data.document.Metadata}对象。

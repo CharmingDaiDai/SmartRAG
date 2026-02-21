@@ -7,14 +7,14 @@ import com.mtmn.smartdoc.vo.RegisterRequest;
 
 /**
  * 认证服务接口
- * 
+ *
  * @author charmingdaidai
  */
 public interface AuthenticationService {
 
     /**
      * 用户注册
-     * 
+     *
      * @param request 注册请求
      * @return 认证响应，包含JWT令牌
      */
@@ -22,7 +22,7 @@ public interface AuthenticationService {
 
     /**
      * 用户认证登录
-     * 
+     *
      * @param request 认证请求
      * @return 认证响应，包含JWT令牌
      */
@@ -30,15 +30,15 @@ public interface AuthenticationService {
 
     /**
      * 创建GitHub OAuth授权URL
-     * 
+     *
      * @return GitHub授权URL
      */
     String createGithubAuthorizationUrl();
 
     /**
      * 使用GitHub OAuth进行认证
-     * 
-     * @param code GitHub OAuth返回的授权码
+     *
+     * @param code  GitHub OAuth返回的授权码
      * @param state 状态参数
      * @return 认证响应，包含JWT令牌
      */

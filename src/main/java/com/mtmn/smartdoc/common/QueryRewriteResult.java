@@ -37,6 +37,7 @@ public class QueryRewriteResult {
     /**
      * 是否重写成功
      */
+    @Builder.Default
     private boolean success = true;
 
     /**

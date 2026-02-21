@@ -47,6 +47,10 @@ docs
 .env.local
 .env.production
 .env.development
+.env.docker
+application-dev.yml
+src/main/resources/application-dev.yml
 
-### others ###
-src/test/java/com/mtmn/smartdoc/SmartDocApplicationTests.java
+src/test/*
+
+backup

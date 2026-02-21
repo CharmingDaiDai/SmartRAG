@@ -1,38 +1,215 @@
 .App {
-  text-align: center;
+    text-align: center;
 }
 
 .App-logo {
-  height: 40vmin;
-  pointer-events: none;
+    height: 40vmin;
+    pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+    .App-logo {
+        animation: App-logo-spin infinite 20s linear;
+    }
 }
 
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+    background-color: #282c34;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
 }
 
 .App-link {
-  color: #61dafb;
+    color: #61dafb;
 }
 
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==================== 知识库卡片动画 ==================== */
+.kb-card {
+    border-radius: 18px !important;
+    border: 1px solid #f2f4f7 !important;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.kb-card .ant-card-head {
+    border-bottom: none;
+}
+
+/* ==================== 按钮微动效 ==================== */
+.ant-btn:not(:disabled) {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-btn-primary:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3);
+}
+
+.ant-btn-primary:not(:disabled):active {
+    transform: translateY(0);
+}
+
+.ant-btn-text:not(:disabled):hover {
+    transform: scale(1.05);
+}
+
+.ant-btn-text:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+/* ==================== 表格行动画 ==================== */
+.ant-table-tbody > tr {
+    transition: all 0.2s ease;
+}
+
+.ant-table-tbody > tr:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+/* ==================== 卡片统一动画 ==================== */
+.ant-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ant-card.ant-card-hoverable:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ==================== 输入框聚焦动画 ==================== */
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+    box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+/* ==================== 标签动画 ==================== */
+.ant-tag {
+    transition: all 0.2s ease;
+}
+
+.ant-tag:hover {
+    transform: scale(1.05);
+}
+
+/* ==================== 模态框动画增强 ==================== */
+.ant-modal-mask {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ==================== 消息提示动画 ==================== */
+.ant-message-notice {
+    animation: slideInDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==================== 选择器下拉动画 ==================== */
+.ant-select-dropdown {
+    animation: slideInUp 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==================== 统计卡片脉冲效果 ==================== */
+.ant-statistic-content {
+    transition: all 0.3s ease;
+}
+
+.ant-card:hover .ant-statistic-content {
+    transform: scale(1.05);
+}
+
+/* ==================== 加载状态动画 ==================== */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ==================== 图标旋转动画 ==================== */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.icon-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ==================== 页面过渡优化 ==================== */
+.page-enter {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.page-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.page-exit {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.page-exit-active {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 200ms, transform 200ms;
 }

@@ -3,7 +3,7 @@ package com.mtmn.smartdoc.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.common.IntentResult;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.regex.Matcher;
@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * @date 2025/5/31 16:46
  */
 @Component
-@Log4j2
+@Slf4j
 public class IntentResponseParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();

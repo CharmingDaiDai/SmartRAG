@@ -3,7 +3,7 @@ package com.mtmn.smartdoc.config;
 import com.mtmn.smartdoc.po.User;
 import com.mtmn.smartdoc.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -27,17 +27,16 @@ import java.util.List;
 /**
  * 数据库初始化配置
  * 根据application.yml中的配置决定是否初始化数据库
- * 
  */
 @Configuration
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class DatabaseInitializer {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
-    
+
     @Value("${application.database.initialize:false}")
     private boolean shouldInitializeDatabase;
 
@@ -48,26 +47,26 @@ public class DatabaseInitializer {
                 log.info("数据库初始化已禁用，跳过初始化过程");
                 return;
             }
-            
+
             log.info("开始执行数据库初始化...");
-            
+
             // 初始化数据库表
             initDatabaseTables();
-            
+
             // 初始化用户数据
             initializeUsers();
-            
+
             log.info("数据库初始化完成");
         };
     }
-    
+
     /**
      * 初始化用户数据
      */
     private void initializeUsers() {
         if (userRepository.count() == 0) {
             log.info("初始化测试用户数据...");
-            
+
             // 创建普通用户
             User normalUser = User.builder()
                     .username("user")
@@ -78,7 +77,7 @@ public class DatabaseInitializer {
                     .createdAt(LocalDateTime.now())
                     .enabled(true)
                     .build();
-            
+
             // 创建VIP用户
             User vipUser = User.builder()
                     .username("vipUser")
@@ -89,7 +88,7 @@ public class DatabaseInitializer {
                     .createdAt(LocalDateTime.now())
                     .enabled(true)
                     .build();
-            
+
             // 创建管理员用户
             User adminUser = User.builder()
                     .username("admin")
@@ -100,14 +99,14 @@ public class DatabaseInitializer {
                     .createdAt(LocalDateTime.now())
                     .enabled(true)
                     .build();
-            
+
             userRepository.saveAll(List.of(normalUser, vipUser, adminUser));
             log.info("测试用户数据初始化完成");
         } else {
             log.info("用户数据已存在，跳过用户初始化");
         }
     }
-    
+
     /**
      * 初始化数据库表
      * 按照文件名自动加载并执行db目录下的所有SQL文件
@@ -115,14 +114,14 @@ public class DatabaseInitializer {
     private void initDatabaseTables() {
         try {
             log.info("开始初始化数据库表...");
-            
+
             // 获取所有SQL文件并排序
             Resource[] resources = loadSqlResources();
             if (resources == null || resources.length == 0) {
                 log.warn("未找到任何SQL文件，跳过表初始化");
                 return;
             }
-            
+
             // 按文件名排序，确保表的创建顺序正确（先创建没有依赖的表）
             Arrays.sort(resources, Comparator.comparing(r -> {
                 try {
@@ -131,16 +130,16 @@ public class DatabaseInitializer {
                     return "";
                 }
             }));
-            
+
             // 执行每个SQL文件
             for (Resource resource : resources) {
                 try {
                     String filename = resource.getFilename();
                     if (filename == null) continue;
-                    
+
                     log.info("执行SQL文件: {}", filename);
                     String sqlContent = readResourceContent(resource);
-                    
+
                     if (sqlContent != null && !sqlContent.trim().isEmpty()) {
                         // 处理可能包含多条语句的SQL文件
                         String[] statements = sqlContent.split(";");
@@ -161,13 +160,13 @@ public class DatabaseInitializer {
                     log.error("执行SQL文件失败: {}", resource.getFilename(), e);
                 }
             }
-            
+
             log.info("数据库表初始化完成");
         } catch (Exception e) {
             log.error("初始化数据库表失败", e);
         }
     }
-    
+
     /**
      * 加载所有SQL资源文件
      */
@@ -180,7 +179,7 @@ public class DatabaseInitializer {
             return new Resource[0];
         }
     }
-    
+
     /**
      * 读取资源文件内容
      */
@@ -193,7 +192,7 @@ public class DatabaseInitializer {
             return null;
         }
     }
-    
+
     /**
      * 读取资源内容
      */
@@ -201,7 +200,7 @@ public class DatabaseInitializer {
         if (resource == null || !resource.exists()) {
             return null;
         }
-        
+
         try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8)) {
             return FileCopyUtils.copyToString(reader);
         } catch (IOException e) {

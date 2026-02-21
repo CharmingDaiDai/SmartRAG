@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.utils;
 
 import com.mtmn.smartdoc.common.MyNode;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +22,7 @@ import java.util.stream.Stream;
  * @description Markdown文档处理工具类，提供文档解析、分块、知识点提取等功能
  * @date 2025/5/23 10:36
  */
-@Log4j2
+@Slf4j
 public class MarkdownProcessor {
     // 全局参数配置
     // 最大解析的标题层级

@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -24,7 +24,7 @@ import java.util.UUID;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Tag(name = "认证", description = "用户认证和注册接口")
-@Log4j2
+@Slf4j
 public class AuthController {
 
     private final AuthenticationService authenticationService;
@@ -82,14 +82,14 @@ public class AuthController {
             // 获取GitHub用户信息和生成JWT token
             AuthenticationResponse authResponse = authenticationService.authenticateWithGithub(code, state);
             log.info("GitHub登录成功");
-            
+
             // 生成一次性授权码（使用UUID）
             String oneTimeCode = UUID.randomUUID().toString();
-            
+
             // 将授权码与token存储在Redis或内存缓存中，设置较短的过期时间（例如2分钟）
             // 这里简化处理，使用内存Map存储，实际生产环境应使用Redis等缓存服务
             authCodeStorage.storeAuthCode(oneTimeCode, authResponse);
-            
+
             // 重定向到前端应用，只传递一次性授权码
             String frontendRedirectUrl = "http://localhost:3000/auth/callback/github?code=" + oneTimeCode;
             response.sendRedirect(frontendRedirectUrl);
@@ -108,7 +108,7 @@ public class AuthController {
     @Operation(summary = "微信登录", description = "生成微信授权URL")
     public ApiResponse<String> wxLogin() {
         log.info("收到微信登录请求");
-        
+
         return ApiResponse.error(404, "敬请期待");
     }
 
@@ -116,7 +116,7 @@ public class AuthController {
     @Operation(summary = "qq登录", description = "生成qq授权URL")
     public ApiResponse<String> qqLogin() {
         log.info("收到qq登录请求");
-        
+
         return ApiResponse.error(404, "敬请期待");
     }
 
@@ -124,32 +124,32 @@ public class AuthController {
     @Operation(summary = "交换授权码获取Token", description = "使用一次性授权码获取JWT token")
     public ApiResponse<AuthenticationResponse> exchangeToken(@RequestParam("code") String code) {
         log.info("收到授权码交换Token请求");
-        
+
         // 验证并获取授权码对应的认证信息
         AuthenticationResponse authResponse = authCodeStorage.getAndRemoveAuthResponse(code);
-        
+
         if (authResponse == null) {
             log.warn("无效或已过期的授权码: {}", code);
             return ApiResponse.error(401, "无效或已过期的授权码");
         }
-        
+
         log.info("授权码交换Token成功");
         return ApiResponse.success("Token获取成功", authResponse);
     }
 
-   @PostMapping("/refresh-token")
-   @Operation(summary = "刷新令牌", description = "使用刷新令牌获取新的访问令牌")
-   public ApiResponse<AuthenticationResponse> refreshToken(
-           @RequestBody TokenRefreshRequest request
-   ) {
-       log.info("收到令牌刷新请求");
-       try {
-           AuthenticationResponse response = authenticationService.refreshToken(request.getRefreshToken());
-           log.info("令牌刷新成功");
-           return ApiResponse.success("令牌刷新成功", response);
-       } catch (Exception e) {
-           log.error("令牌刷新失败 - 错误信息: {}", e.getMessage());
-           throw e;
-       }
-   }
+    @PostMapping("/refresh-token")
+    @Operation(summary = "刷新令牌", description = "使用刷新令牌获取新的访问令牌")
+    public ApiResponse<AuthenticationResponse> refreshToken(
+            @RequestBody TokenRefreshRequest request
+    ) {
+        log.info("收到令牌刷新请求");
+        try {
+            AuthenticationResponse response = authenticationService.refreshToken(request.getRefreshToken());
+            log.info("令牌刷新成功");
+            return ApiResponse.success("令牌刷新成功", response);
+        } catch (Exception e) {
+            log.error("令牌刷新失败 - 错误信息: {}", e.getMessage());
+            throw e;
+        }
+    }
 }

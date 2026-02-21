@@ -33,6 +33,7 @@ spring:
 
 server:
   port: 8080
+  address: 0.0.0.0
 
 logging:
   level:
@@ -60,7 +61,7 @@ models:
   llm:
     glm:
       api-key: ${GLM_API_KEY:your_glm_api_key}
-      base-url: https://open.bigmodel.cn/api/paas/v4
+      base-url: https://open.bigmodel.cn/api/paas/v4/
       model-name: glm-4-flash
     glm-250414:
       api-key: ${GLM_API_KEY:your_glm_api_key}
@@ -82,11 +83,12 @@ models:
       api-key: ${EMBEDDING_API_KEY:notnull}
       base-url: ${EMBEDDING_BASE_URL:http://localhost:9997/v1/}
       model-name: ${EMBEDDING_MODEL_NAME:bge-m3}
-#    openai:
-#      description: OpenAI 的嵌入模型
-#      api-key: ${OPENAI_API_KEY:your-openai-api-key}
-#      base-url: https://api.openai.com/v1
-#      model-name: text-embedding-ada-002
+    text-embedding-v4:
+      description: 在线的 qwen embedding
+      api-key: ${Qwen_EMBEDDING_API_KEY:your-openai-api-key}
+      base-url: ${Qwen_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      model-name: ${Qwen_EMBEDDING_MODEL_NAME:text-embedding-v4}
+
 
 # RAG 方法
 rag:

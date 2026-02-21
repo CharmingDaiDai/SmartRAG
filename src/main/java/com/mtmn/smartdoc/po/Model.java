@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * 用户定义的AI模型实体类
+ *
  * @author charmingdaidai
  */
 @Data
@@ -27,22 +28,22 @@ public class Model {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
+
     @Column(name = "model_type", nullable = false, length = 20)
     private String modelType;
-    
+
     @Column(name = "base_url", nullable = false)
     private String baseUrl;
-    
+
     @Column(name = "api_key", nullable = false)
     private String apiKey;
-    
+
     @Column(name = "model_name", nullable = false, length = 100)
     private String modelName;
-    
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

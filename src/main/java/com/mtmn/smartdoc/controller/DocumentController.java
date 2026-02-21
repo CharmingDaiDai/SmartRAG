@@ -1,227 +1,243 @@
 package com.mtmn.smartdoc.controller;
 
 import com.mtmn.smartdoc.common.ApiResponse;
-import com.mtmn.smartdoc.dto.DocumentDto;
-import com.mtmn.smartdoc.po.DocumentPO;
+import com.mtmn.smartdoc.dto.DocumentResponse;
+import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.User;
-import com.mtmn.smartdoc.po.UserActivity;
 import com.mtmn.smartdoc.service.DocumentService;
-import com.mtmn.smartdoc.service.UserActivityService;
+import com.mtmn.smartdoc.service.IndexingTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
+ * 文档控制器
+ *
  * @author charmingdaidai
+ * @version 2.0
  */
-@Log4j2
+@Slf4j
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
-@Tag(name = "文档管理", description = "文档上传、查询和删除等接口")
+@Tag(name = "Document Management", description = "文档管理相关接口")
 public class DocumentController {
 
     private final DocumentService documentService;
-    private final UserActivityService userActivityService;
+    private final IndexingTaskService indexingTaskService;
 
-    @GetMapping
-    @Operation(summary = "获取用户文档列表", description = "获取当前用户的所有文档")
-    public ApiResponse<List<DocumentDto>> getUserDocuments(@AuthenticationPrincipal User user) {
-        List<DocumentPO> documents = documentService.getUserDocuments(user);
-        List<DocumentDto> documentDtos = documents.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
-        return ApiResponse.success(documentDtos);
-    }
-
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "上传文档", description = "上传新文档并关联到当前用户")
-    public ApiResponse<DocumentDto> uploadDocument(
-            @RequestParam(name = "file") MultipartFile file,
-            @RequestParam(name = "title") String title,
+    /**
+     * 上传文档
+     */
+    @PostMapping("/upload")
+    @Operation(summary = "上传文档", description = "上传单个文档到指定知识库")
+    public ApiResponse<DocumentResponse> uploadDocument(
+            @Parameter(description = "知识库ID") @RequestParam Long kbId,
+            @Parameter(description = "上传的文件") @RequestParam MultipartFile file,
+            @Parameter(description = "文档标题（可选）") @RequestParam(required = false) String title,
             @AuthenticationPrincipal User user) {
-        
-        if (file.isEmpty()) {
-            return ApiResponse.badRequest("上传文件不能为空");
-        }
-        
-        try {
-            DocumentPO document = documentService.uploadDocument(file, title, user, null);
-            
-            // 记录文档上传活动
-            userActivityService.recordActivity(
-                user.getId(), 
-                UserActivity.ActivityType.UPLOAD.name(), 
-                document.getId(), 
-                document.getTitle(), 
-                "上传了文档：" + document.getFileName()
-            );
-            log.info("用户 {} 上传了文档 {}", user.getUsername(), document.getTitle());
-            
-            return ApiResponse.success("文档上传成功", convertToDto(document));
-        } catch (Exception e) {
-            log.error("Error uploading document: {}", e.getMessage(), e);
-            return ApiResponse.error("文档上传失败: " + e.getMessage());
-        }
-    }
 
-    @PostMapping(value = "/upload-batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "批量上传文档", description = "同时上传多个文档并关联到当前用户")
-    public ApiResponse<List<DocumentDto>> uploadDocuments(
-            @RequestParam(name = "files") MultipartFile[] files,
-            @RequestParam(name = "titles") String[] titles,
-            @AuthenticationPrincipal User user) {
-        
-        if (files.length == 0 || files.length != titles.length) {
-            return ApiResponse.badRequest("文件数量不能为空，且文件数量必须与标题数量一致");
-        }
-        
-        List<DocumentDto> uploadedDocs = new ArrayList<>();
-        try {
-            for (int i = 0; i < files.length; i++) {
-                if (!files[i].isEmpty()) {
-                    DocumentPO document = documentService.uploadDocument(files[i], titles[i], user, null);
-                    uploadedDocs.add(convertToDto(document));
-                    
-                    // 记录文档上传活动
-                    userActivityService.recordActivity(
-                        user.getId(), 
-                        UserActivity.ActivityType.UPLOAD.name(), 
-                        document.getId(), 
-                        document.getTitle(), 
-                        "上传了文档：" + document.getFileName()
-                    );
-                    log.info("用户 {} 上传了文档 {}", user.getUsername(), document.getTitle());
-                }
-            }
-            return ApiResponse.success("文档批量上传成功", uploadedDocs);
-        } catch (Exception e) {
-            log.error("Error batch uploading documents: {}", e.getMessage(), e);
-            return ApiResponse.error("文档批量上传失败: " + e.getMessage());
-        }
-    }
+        log.info("Uploading document to knowledge base {}: {}", kbId, file.getOriginalFilename());
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除文档", description = "删除指定ID的文档，仅限文档所有者")
-    public ApiResponse<Void> deleteDocument(
-            @Parameter(description = "文档ID") @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        
-        // 先获取文档信息，以便记录活动
-        Optional<DocumentPO> documentOpt = documentService.getDocumentById(id, user);
-        if (documentOpt.isPresent()) {
-            DocumentPO document = documentOpt.get();
-            boolean deleted = documentService.deleteDocument(id, user);
-            
-            if (deleted) {
-                // 记录文档删除活动
-                userActivityService.recordActivity(
-                    user.getId(), 
-                    "DELETE", 
-                    null,  // 文档已被删除，不再关联文档ID
-                    document.getTitle(), 
-                    "删除了文档：" + document.getFileName()
-                );
-                log.info("用户 {} 删除了文档 {}", user.getUsername(), document.getTitle());
-                
-                return ApiResponse.success("文档删除成功", null);
-            }
-        }
-        
-        return ApiResponse.notFound("文档不存在或您没有删除权限");
-    }
+        DocumentResponse response = documentService.uploadDocument(kbId, user.getId(), file, title);
 
-    @DeleteMapping("/batch")
-    @Operation(summary = "批量删除文档", description = "批量删除多个文档，仅限文档所有者")
-    public ApiResponse<Integer> deleteDocuments(
-            @RequestBody List<Long> documentIds,
-            @AuthenticationPrincipal User user) {
-        
-        // 先获取所有要删除的文档信息
-        List<DocumentPO> documentsToDelete = new ArrayList<>();
-        for (Long docId : documentIds) {
-            documentService.getDocumentById(docId, user).ifPresent(documentsToDelete::add);
-        }
-        
-        int deletedCount = documentService.deleteDocuments(documentIds, user);
-        
-        // 记录批量删除活动
-        if (deletedCount > 0) {
-            String docTitles = documentsToDelete.stream()
-                    .map(DocumentPO::getTitle)
-                    .collect(Collectors.joining(", "));
-                    
-            userActivityService.recordActivity(
-                user.getId(), 
-                "BATCH_DELETE", 
-                null,  // 文档已被删除，不再关联文档ID
-                null, 
-                "批量删除了 " + deletedCount + " 个文档: " + docTitles
-            );
-            log.info("用户 {} 批量删除了 {} 个文档", user.getUsername(), deletedCount);
-        }
-        
-        return ApiResponse.success("已成功删除 " + deletedCount + " 个文档", deletedCount);
-    }
-
-    @GetMapping("/{id}")
-    @Operation(summary = "获取文档详情", description = "获取指定ID的文档详情，仅限文档所有者")
-    public ApiResponse<DocumentDto> getDocument(
-            @Parameter(description = "文档ID") @PathVariable Long id,
-            @AuthenticationPrincipal User user) {
-        
-        Optional<DocumentPO> documentOpt = documentService.getDocumentById(id, user);
-        if (documentOpt.isPresent()) {
-            DocumentPO document = documentOpt.get();
-            DocumentDto dto = convertToDto(document);
-            
-            // 获取文件访问URL
-            String fileUrl = documentService.getDocumentUrl(id, user);
-            dto.setFileUrl(fileUrl);
-            
-            // 记录文档查看/下载活动
-            userActivityService.recordActivity(
-                user.getId(), 
-                UserActivity.ActivityType.DOWNLOAD.name(), 
-                document.getId(), 
-                document.getTitle(), 
-                "查看/下载了文档：" + document.getFileName()
-            );
-            log.info("用户 {} 查看/下载了文档 {}", user.getUsername(), document.getTitle());
-            
-            return ApiResponse.success(dto);
-        } else {
-            return ApiResponse.notFound("文档不存在或您没有访问权限");
-        }
+        return ApiResponse.success("文档上传成功", response);
     }
 
     /**
-     * 将Document实体转换为DocumentDto
+     * 批量上传文档
      */
-    private DocumentDto convertToDto(DocumentPO document) {
-        return DocumentDto.builder()
-                .id(document.getId())
-                .title(document.getTitle())
-                .fileName(document.getFileName())
-                .fileType(document.getFileType())
-                .fileSize(document.getFileSize())
-                .summary(document.getSummary())
-                .keywords(document.getKeywords())
-                .sensitiveInfo(document.getSensitiveInfo())
-                .categories(document.getCategories())
-                .createdAt(document.getCreatedAt())
-                .updatedAt(document.getUpdatedAt())
-                .build();
+    @PostMapping("/batch-upload")
+    @Operation(summary = "批量上传文档", description = "批量上传多个文档到指定知识库")
+    public ApiResponse<List<DocumentResponse>> batchUploadDocuments(
+            @Parameter(description = "知识库ID") @RequestParam Long kbId,
+            @Parameter(description = "上传的文件数组") @RequestParam MultipartFile[] files,
+            @Parameter(description = "文档标题数组（可选）") @RequestParam(required = false) String[] titles,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Batch uploading {} documents to knowledge base {}", files.length, kbId);
+
+        List<DocumentResponse> responses = documentService.uploadDocuments(
+                kbId, user.getId(), files, titles);
+
+        return ApiResponse.success("文档批量上传成功", responses);
+    }
+
+    /**
+     * 分页获取所有文档列表
+     */
+    @GetMapping
+    @Operation(summary = "分页获取所有文档", description = "分页查询当前用户的所有文档")
+    public ApiResponse<org.springframework.data.domain.Page<DocumentResponse>> listAllDocuments(
+            @Parameter(description = "页码（从0开始）") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Listing all documents for user {}, page={}, size={}", user.getId(), page, size);
+
+        org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listAllDocuments(user.getId(), page, size);
+
+        return ApiResponse.success(responses);
+    }
+
+    /**
+     * 分页获取知识库的文档列表
+     */
+    @GetMapping("/{kbId}")
+    @Operation(summary = "分页获取知识库文档", description = "分页查询指定知识库的文档列表")
+    public ApiResponse<org.springframework.data.domain.Page<DocumentResponse>> listDocumentsByKb(
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
+            @Parameter(description = "页码（从0开始）") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Listing documents for knowledge base {}, page={}, size={}", kbId, page, size);
+
+        org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listDocumentsByKb(kbId, user.getId(), page, size);
+
+        return ApiResponse.success(responses);
+    }
+
+    /**
+     * 获取文档详情
+     */
+    @GetMapping("/detail/{documentId}")
+    @Operation(summary = "获取文档详情", description = "根据文档ID获取详细信息")
+    public ApiResponse<DocumentResponse> getDocument(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Getting document: {}", documentId);
+
+        DocumentResponse response = documentService.getDocument(documentId, user.getId());
+
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 删除文档
+     */
+    @DeleteMapping("/{documentId}")
+    @Operation(summary = "删除文档", description = "根据文档ID删除指定的文档")
+    public ApiResponse<Void> deleteDocument(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Deleting document: {}", documentId);
+
+        documentService.deleteDocument(documentId, user.getId());
+
+        return ApiResponse.success("文档删除成功", null);
+    }
+
+    /**
+     * 批量删除文档
+     */
+    @DeleteMapping("/batch")
+    @Operation(summary = "批量删除文档", description = "批量删除多个文档")
+    public ApiResponse<Void> batchDeleteDocuments(
+            @RequestBody List<Long> documentIds,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Batch deleting {} documents", documentIds.size());
+
+        documentService.deleteDocuments(documentIds, user.getId());
+
+        return ApiResponse.success("文档批量删除成功", null);
+    }
+
+    /**
+     * 订阅索引进度（SSE）
+     */
+    @GetMapping(value = "/index-progress/{kbId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "订阅索引进度", description = "通过 SSE 实时获取索引构建进度")
+    public SseEmitter subscribeIndexProgress(
+            @Parameter(description = "知识库ID") @PathVariable Long kbId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Subscribing to index progress for kbId={}, userId={}", kbId, user.getId());
+
+        return indexingTaskService.subscribe(user.getId(), kbId);
+    }
+
+    /**
+     * 触发文档索引（异步）
+     */
+    @PostMapping("/{documentId}/index")
+    @Operation(summary = "触发文档索引", description = "异步触发指定文档的索引操作，返回任务信息")
+    public ApiResponse<IndexingTaskResponse> triggerIndexing(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Triggering indexing for document: {}", documentId);
+
+        IndexingTaskResponse response = documentService.triggerIndexing(documentId, user.getId());
+
+        return ApiResponse.success("索引任务已提交", response);
+    }
+
+    /**
+     * 触发批量索引（异步）
+     */
+    @PostMapping("/batch-index")
+    @Operation(summary = "触发批量索引", description = "异步触发指定知识库的批量索引操作，返回任务信息")
+    public ApiResponse<IndexingTaskResponse> triggerBatchIndexing(
+            @Parameter(description = "知识库ID") @RequestParam Long kbId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Triggering batch indexing for knowledge base: {}", kbId);
+
+        IndexingTaskResponse response = documentService.triggerBatchIndexing(kbId, user.getId());
+
+        if (response == null) {
+            return ApiResponse.success("没有待索引的文档", null);
+        }
+
+        return ApiResponse.success("索引任务已提交", response);
+    }
+
+    /**
+     * 重建文档索引（异步，基于现有 Chunk）
+     */
+    @PostMapping("/{documentId}/rebuild-index")
+    @Operation(summary = "重建文档索引", description = "异步重建索引，基于数据库中现有的 Chunk，不重新切分文档")
+    public ApiResponse<IndexingTaskResponse> rebuildIndex(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Rebuilding index for document: {}", documentId);
+
+        IndexingTaskResponse response = documentService.rebuildIndex(documentId, user.getId());
+
+        return ApiResponse.success("重建索引任务已提交", response);
+    }
+
+    /**
+     * 批量重建文档索引（异步）
+     */
+    @PostMapping("/batch-rebuild-index")
+    @Operation(summary = "批量重建文档索引", description = "异步批量重建多个文档的索引")
+    public ApiResponse<IndexingTaskResponse> batchRebuildIndex(
+            @RequestBody List<Long> documentIds,
+            @AuthenticationPrincipal User user) {
+
+        log.info("Batch rebuilding index for {} documents", documentIds.size());
+
+        IndexingTaskResponse response = documentService.batchRebuildIndex(documentIds, user.getId());
+
+        if (response == null) {
+            return ApiResponse.success("没有文档需要重建索引", null);
+        }
+
+        return ApiResponse.success("重建索引任务已提交", response);
     }
 }

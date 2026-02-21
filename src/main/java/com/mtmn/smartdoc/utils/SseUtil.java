@@ -1,38 +1,43 @@
 package com.mtmn.smartdoc.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.service.LLMService;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import lombok.extern.log4j.Log4j2;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
 import java.util.*;
 
 /**
+ * SSE 工具类
+ * 改用 Flux.concat 组合流，避免在非阻塞上下文中显式调用 subscribe()
+ *
  * @author charmingdaidai
- * @version 1.0
- * @description SSE 工具类
- * @date 2025/5/27 09:19
+ * @version 2.2
+ * @date 2025/11/26
  */
-@Log4j2
+@Slf4j
 @Component
 public class SseUtil {
-    @Autowired
+
+    @Resource
     private ObjectMapper objectMapper;
 
-    @Autowired
+    @Resource
     private LLMService llmService;
 
     /**
-     * 构建SSE消息响应格式
-     *
-     * @param content 消息内容
-     * @return 格式化的SSE消息 Json字符串
+     * 辅助方法：将 JSON 字符串包装为 ServerSentEvent 对象
+     */
+    private ServerSentEvent<String> wrapSse(String jsonContent) {
+        return ServerSentEvent.builder(jsonContent).build();
+    }
+
+    /**
+     * 构建SSE消息响应格式 (逻辑保持不变)
      */
     public String buildJsonSseMessage(String content, List<String> docs) {
         try {
@@ -40,13 +45,11 @@ public class SseUtil {
             message.put("id", "chat" + UUID.randomUUID());
             message.put("object", "chat.completion.chunk");
 
-            // 如果传入的 docs 非空（意味着先把检索到的文档列表一起推给前端）
             if (docs != null) {
                 message.put("docs", docs);
                 return objectMapper.writeValueAsString(message);
             }
 
-            // 否则，正常构造一个“delta”片段，表示模型最新输出的一段 content
             List<Map<String, Object>> choices = new ArrayList<>();
             Map<String, Object> choice = new HashMap<>();
             Map<String, String> delta = new HashMap<>();
@@ -60,70 +63,135 @@ public class SseUtil {
             return objectMapper.writeValueAsString(message);
         } catch (Exception e) {
             log.error("构建SSE消息失败", e);
-            // 如果 JSON 构建失败，返回一个简单的错误片段，前端可以收到 {"error":"构建消息失败"}
-            return "data: {\"error\":\"构建消息失败\"}\n\n";
+            return "{\"error\":\"构建消息失败\"}";
         }
     }
 
     /**
      * 创建包含消息的SSE流
-     *
-     * @param message 信息内容
-     * @return 格式化的消息流
+     * 改为直接返回 Flux.just，无需 Sink
      */
-    // FixMe 不能正确流式输出
-    public Flux<String> sendFluxMessage(String message) {
-        Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
-        // 先把传入的 message 通过 buildJsonSseMessage 转成 JSON
-        sink.tryEmitNext(buildJsonSseMessage(message, null));
-        // 然后立即告诉 Sink：数据推送完毕，可以完成（complete）了
-        sink.tryEmitComplete();
+    public Flux<ServerSentEvent<String>> sendFluxMessage(String message) {
+        String json = buildJsonSseMessage(message, null);
+        return Flux.just(wrapSse(json));
+    }
+
+    /**
+     * 处理流式聊天响应 - 使用默认模型
+     */
+    public Flux<ServerSentEvent<String>> handleStreamingChatResponse(String prompt, List<String> docContents) {
+        return handleStreamingChatResponse(prompt, docContents, null);
+    }
+
+    /**
+     * 处理流式聊天响应 - 指定模型
+     * 核心修改：使用 Flux.concat 拼接文档流和聊天流
+     */
+    public Flux<ServerSentEvent<String>> handleStreamingChatResponse(String prompt, List<String> docContents, String modelId) {
+        // 1. 创建 LLM 客户端
+        LLMClient llmClient = modelId == null ?
+                llmService.createLLMClient() :
+                llmService.createLLMClient(modelId);
+
+        // 2. 构建文档消息流 (如果 docContents 为空，则是一个空流)
+        Flux<ServerSentEvent<String>> docsFlux = Flux.empty();
+        if (docContents != null && !docContents.isEmpty()) {
+            String docsJson = buildJsonSseMessage("", docContents);
+            docsFlux = Flux.just(wrapSse(docsJson));
+        }
+
+        // 3. 构建聊天消息流 (通过 map 转换上游数据，而不是 doOnNext + sink)
+        Flux<ServerSentEvent<String>> chatFlux = llmClient.streamChat(prompt)
+                .map(clientSse -> {
+                    String token = clientSse.data();
+                    // 处理 null 情况，避免 map 返回 null (Reactor 不允许)
+                    if (token == null) {
+                        return "";
+                    }
+                    // 保留原有的转义逻辑
+                    String escapedContent = token.replace("\"", "\\\"").replace("\n", "\\n");
+                    return buildJsonSseMessage(escapedContent, null);
+                })
+                .filter(json -> !json.isEmpty()) // 过滤掉空内容
+                .map(this::wrapSse) // 包装成 ServerSentEvent
+                .doOnComplete(() -> log.debug("流式聊天响应完成"))
+                .doOnError(e -> log.error("聊天响应处理出错", e));
+
+        // 4. 按顺序拼接：先发文档，再发聊天
+        return Flux.concat(docsFlux, chatFlux);
+    }
+
+    /**
+     * 自定义流式消息推送
+     * 既然是自定义 Producer，这里保留 Sink 是合理的，因为需要桥接命令式代码
+     * 但要注意调用方必须正确处理 sink
+     */
+    public Flux<ServerSentEvent<String>> createCustomStream(java.util.function.Consumer<reactor.core.publisher.Sinks.Many<ServerSentEvent<String>>> messageProducer) {
+        reactor.core.publisher.Sinks.Many<ServerSentEvent<String>> sink = reactor.core.publisher.Sinks.many().unicast().onBackpressureBuffer();
+        try {
+            messageProducer.accept(sink);
+        } catch (Exception e) {
+            log.error("自定义流式消息推送失败", e);
+            sink.tryEmitError(e);
+        }
         return sink.asFlux();
     }
 
     /**
-     * 处理流式聊天响应
-     *
-     * @param prompt      提示词
-     * @param docContents 检索到的文档内容列表（可以为null）
-     * @return 格式化的SSE消息流
+     * 高级用法：组合多个数据源的流式推送
+     * 核心修改：使用 Flux.concat 拼接三个流
      */
-    public Flux<String> handleStreamingChatResponse(String prompt, List<String> docContents) {
-        // 1. 创建流式聊天模型
-        OpenAiStreamingChatModel streamingChatModel = llmService.createStreamingChatModel(null);
+    public Flux<ServerSentEvent<String>> handleAdvancedStreamingResponse(
+            String prompt,
+            List<String> docContents,
+            List<String> thinkingSteps,
+            String modelId) {
 
-        // 2. 创建一个只允许单订阅者、带缓冲的 Sink
-        Sinks.Many<String> sink = Sinks.many().unicast().onBackpressureBuffer();
-
-        // 3. 如果前面检索到的文档非空，先把 docs 按照 SSE 消息格式推给前端
+        // 1. 文档流
+        Flux<ServerSentEvent<String>> docsFlux = Flux.empty();
         if (docContents != null && !docContents.isEmpty()) {
-            sink.tryEmitNext(buildJsonSseMessage("", docContents));
+            docsFlux = Flux.just(wrapSse(buildJsonSseMessage("", docContents)));
         }
 
-        // 4. 调用流式聊天模型接口，传入 prompt 和 自定义回调 Handler
-        streamingChatModel.chat(prompt, new StreamingChatResponseHandler() {
-            @Override
-            public void onPartialResponse(String partialResponse) {
-                // 模型每生成一小段文本，就会触发一次 onPartialResponse 回调
-                // 先把里边的双引号、换行做转义，然后构造 JSON 片段
-                String escapedContent = partialResponse.replace("\"", "\\\"").replace("\n", "\\n");
-                sink.tryEmitNext(buildJsonSseMessage(escapedContent, null));
-            }
+        // 2. 思考过程流
+        Flux<ServerSentEvent<String>> thinkingFlux = Flux.empty();
+        if (thinkingSteps != null && !thinkingSteps.isEmpty()) {
+            // 将 List 转为 Flux
+            thinkingFlux = Flux.fromIterable(thinkingSteps)
+                    .map(step -> {
+                        Map<String, Object> thinkingMessage = new HashMap<>();
+                        thinkingMessage.put("type", "thinking");
+                        thinkingMessage.put("content", step);
+                        try {
+                            return objectMapper.writeValueAsString(thinkingMessage);
+                        } catch (Exception e) {
+                            log.error("序列化思考步骤失败", e);
+                            return "";
+                        }
+                    })
+                    .filter(json -> !json.isEmpty())
+                    .map(this::wrapSse);
+        }
 
-            @Override
-            public void onCompleteResponse(ChatResponse completeResponse) {
-                // 当模型整次对话生成完毕后，触发 onCompleteResponse
-                sink.tryEmitComplete(); // 标记当前 Sink 的 Flux 流结束
-            }
+        // 3. AI 响应流
+        LLMClient llmClient = modelId == null ?
+                llmService.createLLMClient() :
+                llmService.createLLMClient(modelId);
 
-            @Override
-            public void onError(Throwable error) {
-                log.error("聊天响应处理出错", error);
-                sink.tryEmitError(error); // 把异常推给下游，Flux 会触发 onError
-            }
-        });
+        Flux<ServerSentEvent<String>> chatFlux = llmClient.streamChat(prompt)
+                .map(clientSse -> {
+                    String token = clientSse.data();
+                    if (token == null) {
+                        return "";
+                    }
+                    String escapedContent = token.replace("\"", "\\\"").replace("\n", "\\n");
+                    return buildJsonSseMessage(escapedContent, null);
+                })
+                .filter(json -> !json.isEmpty())
+                .map(this::wrapSse)
+                .doOnError(e -> log.error("高级流式响应出错", e));
 
-        // 5. 返回这个 Sink 对应的 Flux，供外层（Controller）订阅
-        return sink.asFlux();
+        // 4. 依次拼接：文档 -> 思考 -> 聊天
+        return Flux.concat(docsFlux, thinkingFlux, chatFlux);
     }
 }

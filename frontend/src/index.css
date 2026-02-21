@@ -1,13 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  overflow: hidden; /* Prevent body scroll */
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Markdown Table Styles */
+.ant-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+  border: 1px solid #d9d9d9;
 }
+
+.ant-markdown th,
+.ant-markdown td {
+  border: 1px solid #d9d9d9;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.ant-markdown th {
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+.ant-markdown tr:nth-child(even) {
+  background-color: #fcfcfc;
+}
+
+/* Dark mode overrides for table */
+[data-theme='dark'] .ant-markdown table,
+[data-theme='dark'] .ant-markdown th,
+[data-theme='dark'] .ant-markdown td {
+  border-color: #424242;
+}
+
+[data-theme='dark'] .ant-markdown th {
+  background-color: #1f1f1f;
+}
+
+[data-theme='dark'] .ant-markdown tr:nth-child(even) {
+  background-color: #141414;
+}
+
+/* Code Block Styles Enhancement */
+.ant-markdown pre {
+    border-radius: 8px;
+    margin: 16px 0;
+    padding: 0 !important; /* Let HighlightCode handle padding */
+    overflow: hidden;
+    border: 1px solid #f0f0f0;
+}
+
+[data-theme='dark'] .ant-markdown pre {
+    border-color: #303030;
+}
+
+/* Ensure code font is nice */
+code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+/* Enhanced Code Block Styles */
+/* Light Mode - GitHub Style */
+.x-markdown-light pre {
+    background-color: #f6f8fa !important;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+}
+
+.x-markdown-light code {
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    font-size: 85%;
+    background-color: transparent !important; /* Prevent double background */
+}
+
+/* Dark Mode - One Dark / GitHub Dark Style */
+.x-markdown-dark pre {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+}
+
+.x-markdown-dark code {
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    font-size: 85%;
+    background-color: transparent !important; /* Remove background from inline code inside pre */
+    color: #e6edf3 !important; /* Ensure code text is bright enough in dark mode */
+}
+
+/* Global Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Dark Mode Scrollbar */
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+    background: #424242;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+    background: #1f1f1f;
+}
+
+/* Syntax Highlighting Overrides (Generic) */
+/* These might need adjustment depending on what classes HighlightCode generates */
+[class*="language-"] {
+    text-shadow: none !important;
+}
+
+/* Reference Viewer Dark Mode Support */
+[data-theme='dark'] .reference-item {
+    background: #1f1f1f !important;
+    border-color: #303030 !important;
+}
+
+[data-theme='dark'] .reference-item:hover {
+    background: #141414 !important;
+    border-color: #1677ff !important;
+}
+
+[data-theme='dark'] .reference-item .ant-typography {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-theme='dark'] .reference-item .ant-typography-secondary {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+
+
+

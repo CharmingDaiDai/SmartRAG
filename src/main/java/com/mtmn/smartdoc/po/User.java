@@ -39,13 +39,13 @@ public class User implements UserDetails {
 
     // @Column(name = "full_name")
     // private String fullName;
-    
+
     @Column(name = "avatar_path")
     private String avatarPath;
 
     @Column(nullable = false)
     private boolean vip;
-    
+
     @Column(name = "github_id", unique = true)
     private String githubId;
 
@@ -59,6 +59,7 @@ public class User implements UserDetails {
     private LocalDateTime lastLogin;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean enabled = true;
 
     @PrePersist
@@ -74,9 +75,9 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return vip ? 
-            List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_VIP")) :
-            List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return vip ?
+                List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_VIP")) :
+                List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override

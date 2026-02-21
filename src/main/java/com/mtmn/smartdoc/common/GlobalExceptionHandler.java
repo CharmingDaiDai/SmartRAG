@@ -1,7 +1,11 @@
 package com.mtmn.smartdoc.common;
 
+import com.mtmn.smartdoc.exception.ConfigValidationException;
+import com.mtmn.smartdoc.exception.MilvusConnectionException;
+import com.mtmn.smartdoc.exception.ResourceNotFoundException;
+import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import jakarta.validation.ConstraintViolationException;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,18 +23,20 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器
+ *
  * @author charmingdaidai
  */
-@Log4j2
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+
     /**
      * 处理参数校验异常
      */
@@ -45,7 +51,7 @@ public class GlobalExceptionHandler {
         log.warn("参数验证失败: {}", message);
         return ApiResponse.badRequest(message);
     }
-    
+
     /**
      * 处理绑定异常
      */
@@ -60,7 +66,7 @@ public class GlobalExceptionHandler {
         log.warn("参数绑定失败: {}", message);
         return ApiResponse.badRequest(message);
     }
-    
+
     /**
      * 处理约束违反异常
      */
@@ -70,7 +76,7 @@ public class GlobalExceptionHandler {
         log.warn("约束违反: {}", e.getMessage());
         return ApiResponse.badRequest(e.getMessage());
     }
-    
+
     /**
      * 处理请求参数缺失异常
      */
@@ -80,7 +86,7 @@ public class GlobalExceptionHandler {
         log.warn("请求参数缺失: {}", e.getMessage());
         return ApiResponse.badRequest("缺少必要的请求参数: " + e.getParameterName());
     }
-    
+
     /**
      * 处理方法参数类型不匹配异常
      */
@@ -90,7 +96,7 @@ public class GlobalExceptionHandler {
         log.warn("方法参数类型不匹配: {}", e.getMessage());
         return ApiResponse.badRequest("参数类型不匹配: " + e.getName());
     }
-    
+
     /**
      * 处理HTTP消息不可读异常
      */
@@ -100,7 +106,7 @@ public class GlobalExceptionHandler {
         log.warn("HTTP消息不可读: {}", e.getMessage());
         return ApiResponse.badRequest("请求体格式错误或为空");
     }
-    
+
     /**
      * 处理请求方法不支持异常
      */
@@ -110,17 +116,57 @@ public class GlobalExceptionHandler {
         log.warn("请求方法不支持: {}", e.getMessage());
         return ApiResponse.error(405, "不支持的请求方法: " + e.getMethod());
     }
-    
+
     /**
-     * 处理资源未找到异常
+     * 处理404异常（Spring 6.0+）
+     */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ApiResponse<String> handleNoResourceFoundException(NoResourceFoundException e) {
+        log.warn("静态资源未找到: {}", e.getResourcePath());
+        return ApiResponse.notFound("请求的资源不存在");
+    }
+
+    /**
+     * 处理资源未找到异常（Spring 5.x及以下）
      */
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NoHandlerFoundException.class)
     public ApiResponse<String> handleNoHandlerFoundException(NoHandlerFoundException e) {
-        log.warn("资源未找到: {}", e.getMessage());
+        log.warn("处理器未找到: {}", e.getMessage());
         return ApiResponse.notFound("请求的资源不存在: " + e.getRequestURL());
     }
-    
+
+    /**
+     * 处理业务资源未找到异常
+     */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ApiResponse<String> handleResourceNotFoundException(ResourceNotFoundException e) {
+        log.warn("业务资源未找到: {}", e.getMessage());
+        return ApiResponse.notFound(e.getMessage());
+    }
+
+    /**
+     * 处理未授权访问异常
+     */
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ApiResponse<String> handleUnauthorizedAccessException(UnauthorizedAccessException e) {
+        log.warn("未授权访问: {}", e.getMessage());
+        return ApiResponse.forbidden(e.getMessage());
+    }
+
+    /**
+     * 处理配置验证异常
+     */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ConfigValidationException.class)
+    public ApiResponse<String> handleConfigValidationException(ConfigValidationException e) {
+        log.warn("配置验证失败: {}", e.getMessage());
+        return ApiResponse.badRequest(e.getMessage());
+    }
+
     /**
      * 处理认证异常
      */
@@ -130,7 +176,7 @@ public class GlobalExceptionHandler {
         log.warn("认证失败: {}", e.getMessage());
         return ApiResponse.unauthorized("认证失败: " + e.getMessage());
     }
-    
+
     /**
      * 处理Bad Credentials异常
      */
@@ -140,7 +186,7 @@ public class GlobalExceptionHandler {
         log.warn("凭证错误: {}", e.getMessage());
         return ApiResponse.unauthorized("用户名或密码错误");
     }
-    
+
     /**
      * 处理访问拒绝异常
      */
@@ -150,7 +196,7 @@ public class GlobalExceptionHandler {
         log.warn("访问被拒绝: {}", e.getMessage());
         return ApiResponse.forbidden("没有权限访问此资源");
     }
-    
+
     /**
      * 处理文件上传大小超出限制异常
      */
@@ -170,7 +216,17 @@ public class GlobalExceptionHandler {
         log.warn("Multipart请求错误: {}", e.getMessage());
         return ApiResponse.badRequest("文件上传请求格式错误，请确保请求类型为multipart/form-data");
     }
-    
+
+    /**
+     * 处理 Milvus 连接异常
+     */
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    @ExceptionHandler(MilvusConnectionException.class)
+    public ApiResponse<String> handleMilvusConnectionException(MilvusConnectionException e) {
+        log.error("Milvus 服务异常: {}", e.getMessage());
+        return ApiResponse.error(503, "向量数据库服务暂时不可用，请联系管理员或稍后重试");
+    }
+
     /**
      * 处理自定义异常
      */
@@ -180,14 +236,30 @@ public class GlobalExceptionHandler {
         log.warn("自定义异常: {}", e.getMessage());
         return ApiResponse.error(e.getCode(), e.getMessage());
     }
-    
+
     /**
      * 处理其他未捕获的异常
      */
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public ApiResponse<String> handleException(Exception e) {
-        log.error("未捕获的异常: ", e);
-        return ApiResponse.error("服务器内部错误：" + e.getMessage());
+        // 记录完整堆栈信息，但只返回简化的错误消息给客户端
+        log.error("未捕获的异常 [{}]: {}", e.getClass().getName(), e.getMessage(), e);
+        
+        // 生产环境不暴露详细错误信息
+        String message = isProductionEnvironment() 
+            ? "服务器内部错误，请联系管理员" 
+            : "服务器内部错误：" + e.getMessage();
+            
+        return ApiResponse.error(message);
+    }
+
+    /**
+     * 判断是否为生产环境
+     * TODO: 从配置中读取环境变量
+     */
+    private boolean isProductionEnvironment() {
+        // 可以通过 @Value("${spring.profiles.active}") 注入
+        return false; // 开发环境暂时返回详细信息
     }
 }

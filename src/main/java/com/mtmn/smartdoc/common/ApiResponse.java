@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 统一API响应结果
+ *
  * @author charmingdaidai
  */
 @Data
@@ -14,27 +15,27 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApiResponse<T> {
-    
+
     /**
      * 状态码
      */
     private int code;
-    
+
     /**
      * 消息
      */
     private String message;
-    
+
     /**
      * 数据
      */
     private T data;
-    
+
     /**
      * 时间戳
      */
     private long timestamp;
-    
+
     /**
      * 成功响应
      */
@@ -46,7 +47,7 @@ public class ApiResponse<T> {
                 .timestamp(System.currentTimeMillis())
                 .build();
     }
-    
+
     /**
      * 成功响应（自定义消息）
      */
@@ -58,7 +59,7 @@ public class ApiResponse<T> {
                 .timestamp(System.currentTimeMillis())
                 .build();
     }
-    
+
     /**
      * 失败响应
      */
@@ -69,35 +70,35 @@ public class ApiResponse<T> {
                 .timestamp(System.currentTimeMillis())
                 .build();
     }
-    
+
     /**
      * 系统内部错误
      */
     public static <T> ApiResponse<T> error(String message) {
         return error(500, message);
     }
-    
+
     /**
      * 客户端错误
      */
     public static <T> ApiResponse<T> badRequest(String message) {
         return error(400, message);
     }
-    
+
     /**
      * 未授权
      */
     public static <T> ApiResponse<T> unauthorized(String message) {
         return error(401, message);
     }
-    
+
     /**
      * 禁止访问
      */
     public static <T> ApiResponse<T> forbidden(String message) {
         return error(403, message);
     }
-    
+
     /**
      * 资源不存在
      */
