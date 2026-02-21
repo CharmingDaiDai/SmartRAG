@@ -1,467 +1,906 @@
-# smartDoc Docker 部署说明
+# smartDoc Docker 部署完整指南
 
-本文档说明如何使用 Docker 和 Docker Compose 在本地开发环境以及服务器上部署 smartDoc（包含后端 Java、前端 React、MySQL、MinIO、Milvus）。
+本文档说明如何使用 Docker 和 Docker Compose 在本地开发环境以及生产服务器上部署 smartDoc 系统（包含后端 Java、前端 React、MySQL、MinIO、Milvus）。
 
-> 说明：假设你已经在本机/服务器上安装好了 Docker 和 docker compose（Docker Desktop 或 docker compose 插件）。
-
----
-
-## 1. 项目与编排文件概览
-
-项目根目录下与部署相关的主要文件：
-
-- `docker-compose.yml`：**开发/构建用** compose，负责在本机构建 backend/frontend 镜像并启动全套服务。
-- `docker-compose.runtime.yml`：**运行时用** compose，适合在服务器上只使用已构建好的镜像部署（不需要 Maven/Node 环境）。
-- `Dockerfile.backend`：后端 Spring Boot 镜像构建文件。
-- `frontend/Dockerfile.frontend`：前端 React + Nginx 镜像构建文件。
-- `frontend/nginx.conf`：前端 Nginx 配置（支持 SPA 前端路由）。
-- `.env` / `.env.docker`：环境变量配置文件（下面详细说明）。
-
-后端源代码位于根目录 `src/main/java`，前端位于 `frontend/` 目录。
+> **前置要求**：已在本机/服务器上安装了 Docker 和 Docker Compose（Docker Desktop 或 docker compose 插件）。
 
 ---
 
-## 2. 环境变量与多环境配置
+## 📋 快速导航
 
-### 2.1 后端环境变量
-
-后端主要通过环境变量配置数据库、MinIO、Milvus、JWT 等，来源有两类：
-
-1. **容器环境（Docker 内）**：通过 `env_file` 加载 `.env`（或 `.env.docker`），再由 `docker-compose` 中的 `environment` 覆盖部分关键字段（如 `DB_HOST`）。
-2. **本地开发环境**：你可以在 IDE 或命令行中自行导出环境变量，或使用单独的 `.env.localdev` 文件。
-
-#### 推荐文件划分
-
-- `.env.docker`（示例，供 `docker-compose.yml` 使用，容器内部互联）：
-
-   ```bash
-   # 数据库配置（容器内访问 mysql 服务）
-   DB_HOST=mysql
-   DB_PORT=3306
-   DB_NAME=smart_doc
-   DB_USERNAME=root
-   DB_PASSWORD=123456
-
-   # JWT 配置
-   JWT_SECRET=请替换为你自己的随机密钥
-   JWT_ISSUER_URI=http://backend:8088
-
-   # GitHub OAuth 配置（如不需要可留空或改为占位）
-   GITHUB_CLIENT_ID=your_github_client_id
-   GITHUB_CLIENT_SECRET=your_github_client_secret
-   GITHUB_REDIRECT_URI=http://localhost:8088/api/auth/callback/github
-
-   # AI 模型配置
-   GLM_API_KEY=your_glm_api_key
-   OPENAI_API_KEY=your_openai_api_key
-   GEMINI_API_KEY=your_gemini_api_key
-
-   # 嵌入模型配置
-   EMBEDDING_API_KEY=notnull
-   EMBEDDING_BASE_URL=http://your-embedding-service:9997/v1/
-   EMBEDDING_MODEL_NAME=bge-m3
-
-   # Milvus 配置（容器内部访问 milvus-standalone 服务）
-   MILVUS_HOST=milvus-standalone
-   MILVUS_PORT=19530
-
-   # MinIO 配置（容器内部访问 minio 服务）
-   MINIO_ENDPOINT=http://minio:9000
-   MINIO_ACCESS_KEY=root
-   MINIO_SECRET_KEY=12345678
-   ```
-
-   在 `docker-compose.yml` 中：
-
-   ```yaml
-   backend:
-      env_file:
-         - .env.docker
-   ```
-
-- `.env`（示例，供服务器 runtime 使用，可以是你的生产配置）：
-
-   ```bash
-   DB_HOST=mysql
-   DB_PORT=3306
-   DB_NAME=smart_doc
-   DB_USERNAME=root
-   DB_PASSWORD=123456
-
-   JWT_SECRET=请替换为你自己的随机密钥
-   JWT_ISSUER_URI=http://backend:8080
-
-   # 其余如 AI、嵌入、Milvus、MinIO 配置同上
-   ```
-
-   在 `docker-compose.runtime.yml` 中通过：
-
-   ```yaml
-   backend:
-      env_file:
-         - .env
-   ```
-
-> 安全提示：实际生产环境请不要使用示例中的弱密码和固定密钥，并确保 `.env*` 不被提交到公开仓库。
-
-### 2.2 前端环境变量
-
-前端是 Create React App（CRA）风格，规则：
-
-- 只有以 `REACT_APP_` 开头的变量才会被注入到前端代码中。
-- 开发和生产可以使用不同的 env 文件。
-
-推荐用法：
-
-- 本地开发：在 `frontend/.env.development.local` 中配置：
-
-   ```bash
-   REACT_APP_API_BASE=http://localhost:8088
-   ```
-
-   这样 `npm start` 时，前端会调用本机 `8088` 的后端。
-
-- Docker 构建 / 服务器运行：通过 compose 注入（注意端口要与后端映射一致）：
-
-   ```yaml
-   frontend:
-      environment:
-         - REACT_APP_API_BASE=http://localhost:8088
-   ```
+- [1. 文件结构概览](#1-文件结构概览)
+- [2. 端口配置说明](#2-端口配置说明)
+- [3. 环境变量配置](#3-环境变量配置)
+- [4. 本地开发部署](#4-本地开发部署)
+- [5. 生产服务器部署](#5-生产服务器部署)
+- [6. Docker 镜像构建](#6-docker-镜像构建)
+- [7. 常见问题排查](#7-常见问题排查)
+- [8. 数据备份与恢复](#8-数据备份与恢复)
 
 ---
 
-## 3. docker-compose.yml（本地构建 + 运行）
+## 1. 文件结构概览
 
-`docker-compose.yml` 适用于你在**本机**开发或构建镜像，包含：MySQL、MinIO、Milvus（etcd+MinIO+standalone）、后端、前端。
+项目根目录下与 Docker 部署相关的文件：
 
-关键点：
-
-1. **mysql**
-    - 镜像：`mysql:8.0`
-    - 端口映射：`13306:3306`
-    - 卷：`mysql_data:/var/lib/mysql`
-
-2. **minio**（业务文件存储）
-    - 镜像：`minio/minio:RELEASE.2024-01-05T22-17-24Z`
-    - 端口：`9000`（API）、`9001`（控制台）
-    - 卷：`minio_data:/data`
-
-3. **milvus-etcd / milvus-minio / milvus-standalone**（向量数据库）
-    - `milvus-etcd`：自定义 `command`，监听 `0.0.0.0:2379`，单节点模式。
-    - `milvus-minio`：Milvus 内部使用的 MinIO。
-    - `milvus-standalone`：Milvus 主服务，端口 `19530`（gRPC）和 `9091`（监控）。
-
-4. **backend**（smartDoc 后端，Spring Boot）
-    - 使用 `Dockerfile.backend` 构建：
-
-       ```yaml
-       backend:
-          build:
-             context: .
-             dockerfile: Dockerfile.backend
-          env_file:
-             - .env.docker
-          environment:
-             DB_HOST: mysql
-             DB_PORT: 3306
-             MILVUS_HOST: milvus-standalone
-             MILVUS_PORT: 19530
-             MINIO_ENDPOINT: http://minio:9000
-             JWT_ISSUER_URI: http://backend:8088
-          ports:
-             - "8088:8088"
-       ```
-
-    - 外部访问：`http://localhost:8088`
-
-5. **frontend**（smartDoc 前端）
-    - 使用 `frontend/Dockerfile.frontend` 构建。
-    - 端口映射：`3000:80`，即 `http://localhost:3000`。
-    - `REACT_APP_API_BASE` 在 compose 中设为 `http://localhost:8088`，指向后端。
-
-所有服务都在 `smartdoc-net` 网络中，容器之间通过服务名互相访问（如 `mysql`、`minio`、`milvus-standalone` 等）。
-
----
-
-## 4. docker-compose.runtime.yml（服务器运行）
-
-`docker-compose.runtime.yml` 假设：
-
-- 你已经在服务器上构建或加载好了镜像：`smartdoc-backend`、`smartdoc-frontend`；
-- 服务器上**不需要** Maven 和 Node，仅用 Docker 运行。
-
-差异要点：
-
-- `backend` 和 `frontend` 使用 `image:` 字段，不再包含 `build`：
-
-   ```yaml
-   backend:
-      image: smartdoc-backend
-      env_file:
-         - .env
-      ports:
-         - "8080:8080"
-
-   frontend:
-      image: smartdoc-frontend
-      environment:
-         - REACT_APP_API_BASE=http://localhost:8080
-      ports:
-         - "3000:80"
-   ```
-
-- 其它服务（MySQL/MinIO/Milvus）配置与 `docker-compose.yml` 基本一致，只是去掉了 `build`。
-
-服务器上只需要：
-
-1. 一个 `.env`（生产配置）。
-2. `docker-compose.runtime.yml`。
-3. 已加载的镜像（通过 `docker load` 导入）。
-
----
-
-## 5. 后端 Dockerfile.backend（已在仓库中）
-
-当前 `Dockerfile.backend` 内容如下（已适配 JDK17、Jammy 基础镜像）：
-
-```dockerfile
-# 构建阶段
-FROM maven:3.9.9-eclipse-temurin-17 AS build
-WORKDIR /app
-
-COPY pom.xml .
-RUN mvn -B dependency:go-offline
-
-COPY src ./src
-RUN mvn -B package -DskipTests
-
-# 运行阶段
-FROM eclipse-temurin:17-jdk-jammy
-WORKDIR /app
-
-COPY --from=build /app/target/smartDoc-0.0.1-SNAPSHOT.jar app.jar
-
-EXPOSE 8080
-
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+```
+smartDoc/
+├── docker-compose.yml                 # 开发/构建用 compose（本地使用）
+├── docker-compose.runtime.yml         # 生产/运行时 compose（服务器使用）
+├── Dockerfile.backend                 # 后端 Java 镜像构建文件
+├── frontend/
+│   ├── Dockerfile.frontend            # 前端 React + Nginx 镜像构建文件
+│   └── nginx.conf                     # Nginx 反向代理配置（包含 API 代理）
+├── .env.example                       # 环境变量参考示例（仅供参考）
+└── src/                               # 后端 Java 源代码
+    └── main/java/
 ```
 
-> 注意：如果将来修改了项目版本或 jar 名称，请同步更新 `COPY --from=build` 这一行。
+### 文件用途
+
+| 文件 | 用途 | 说明 |
+|------|------|------|
+| `docker-compose.yml` | 开发/构建用 compose | 自动构建后端/前端镜像，所有配置直接定义在文件中 |
+| `docker-compose.runtime.yml` | 生产/运行时 compose | 只使用预构建镜像，所有配置直接定义在文件中 |
+| `Dockerfile.backend` | 后端镜像构建 | 多阶段构建：Maven → OpenJDK 运行时 |
+| `Dockerfile.frontend` | 前端镜像构建 | 多阶段构建：Node.js → Nginx |
+| `nginx.conf` | Nginx 反向代理配置 | API 反向代理和 SSE 流式连接支持 |
+| `.env.example` | 环境变量参考 | 仅供参考，不参与部署，所有配置已在 docker-compose 中定义 |
 
 ---
 
-## 6. 前端 Dockerfile.frontend 与 Nginx 配置
+## 2. 端口配置说明
 
-`frontend/Dockerfile.frontend`：
+### 标准端口映射
 
-```dockerfile
-FROM node:20-bullseye AS build
-WORKDIR /app
+| 服务 | 容器内端口 | 宿主机端口 | 访问地址 | 说明 |
+|------|-----------|---------|--------|------|
+| **Frontend** | 80 | 3000 | http://localhost:3000 | 前端 Web 应用 |
+| **Backend** | 8080 | 8080 | http://localhost:8080 | 后端 API |
+| **MySQL** | 3306 | 13306 | localhost:13306 | 关系型数据库 |
+| **MinIO (API)** | 9000 | 9000 | http://localhost:9000 | 对象存储 API |
+| **MinIO (Console)** | 9001 | 9001 | http://localhost:9001 | MinIO 管理控制台 |
+| **Milvus** | 19530 | 19530 | localhost:19530 | 向量数据库 gRPC 服务 |
+| **Milvus Metrics** | 9091 | 9091 | http://localhost:9091 | Milvus 监控指标 |
 
-COPY package.json package-lock.json ./
-RUN npm install
+### 重要说明
 
-COPY . .
-RUN npm run build
+- **后端端口**：开发和生产均使用 `8080`
+- **容器间通信**：容器内部使用服务名（如 `mysql`、`minio`、`backend`）而不是 `localhost`
+- **容器外访问**：在宿主机上使用 `localhost:宿主机端口` 访问
 
-FROM nginx:1.27
-COPY --from=build /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+---
 
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
+## 3. 环境变量配置
+
+### 3.1 配置方式说明
+
+**所有环境变量现在都直接定义在 docker-compose 文件中的 `environment` 字段中**，无需额外的 `.env` 或 `.env.docker` 文件。这样做的优势：
+
+✅ 配置更加清晰，所有设置都在 compose 文件中可见
+✅ 避免了环境变量文件的复杂性
+✅ 与 Kubernetes 等容器编排工具更兼容
+✅ 易于通过环境变量覆盖（`export VAR=value` 或 `docker compose -e VAR=value`）
+
+### 3.2 后端环境变量详解
+
+#### 数据库配置
+```yaml
+DB_HOST: mysql              # MySQL 服务名或 IP（Docker 中使用服务名）
+DB_PORT: 3306              # MySQL 端口
+DB_NAME: smart_doc         # 数据库名
+DB_USERNAME: root          # 数据库用户
+DB_PASSWORD: 123456        # 数据库密码（生产环境请修改）
 ```
 
-`frontend/nginx.conf`（支持前端路由的 SPA）：
+#### JWT 认证配置
+```yaml
+JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+# 用于签名 JWT Token，生产环境建议修改为强随机密钥
+# 生成方法: openssl rand -base64 32
+
+JWT_ISSUER_URI: http://backend:8080
+# 令牌颁发者 URI，用于验证令牌有效性
+# 在 Docker Compose 中使用服务名 backend
+```
+
+#### GitHub OAuth 配置（可选）
+```yaml
+GITHUB_CLIENT_ID: your_github_client_id
+GITHUB_CLIENT_SECRET: your_github_client_secret
+GITHUB_REDIRECT_URI: http://localhost:8080/api/auth/callback/github
+# 如不使用 GitHub OAuth，可保留默认值
+```
+
+#### AI 模型配置
+```yaml
+# 至少需要配置一个 AI 模型
+
+# 智谱 GLM（推荐）
+GLM_API_KEY: your_glm_api_key_here
+
+# OpenAI（可选）
+OPENAI_API_KEY: your_openai_api_key_here
+
+# Google Gemini（可选）
+GEMINI_API_KEY: your_gemini_api_key_here
+```
+
+#### 嵌入模型配置
+```yaml
+EMBEDDING_API_KEY: notnull
+EMBEDDING_BASE_URL: http://embedding-service:9997/v1/
+EMBEDDING_MODEL_NAME: bge-m3
+# 用于将文档分块转换为向量表示
+# 可使用本地 Xinference 或 API 服务
+```
+
+#### 向量数据库配置（Milvus）
+```yaml
+MILVUS_HOST: milvus-standalone
+MILVUS_PORT: 19530
+# 在 Docker Compose 中使用服务名
+# 在生产环境中可改为 Milvus 集群地址
+```
+
+#### 对象存储配置（MinIO）
+```yaml
+MINIO_ENDPOINT: http://minio:9000
+MINIO_ACCESS_KEY: root
+MINIO_SECRET_KEY: 12345678
+# 用于存储用户上传的文档
+# 在 Docker Compose 中使用服务名
+# 在生产环境中可改为 AWS S3 或其他兼容服务
+```
+
+### 3.3 修改环境变量的方法
+
+#### 方法 1：修改 docker-compose 文件（推荐）
+
+直接编辑 `docker-compose.yml` 或 `docker-compose.runtime.yml` 中的 `environment` 部分：
+
+```yaml
+backend:
+  environment:
+    DB_PASSWORD: your_new_password
+    GLM_API_KEY: your_actual_glm_key
+```
+
+然后重新启动服务：
+```bash
+docker compose down
+docker compose up -d
+```
+
+#### 方法 2：使用环境变量覆盖（临时）
+
+在启动前导出环境变量：
+
+```bash
+export DB_PASSWORD=your_new_password
+export GLM_API_KEY=your_actual_glm_key
+docker compose up -d
+```
+
+#### 方法 3：使用 -e 参数（临时）
+
+```bash
+docker compose up -d -e DB_PASSWORD=your_new_password -e GLM_API_KEY=your_actual_glm_key
+```
+
+### 3.4 前端环境变量
+
+前端是 Create React App（CRA），环境变量规则：
+
+- **只有 `REACT_APP_` 前缀**的变量会被注入到前端代码
+- **必须在构建时设置**，运行时修改无效
+- 在 `docker-compose.yml` 中通过 `build.args` 传递
+
+```yaml
+# docker-compose.yml 中的配置
+frontend:
+  build:
+    context: ./frontend
+    dockerfile: Dockerfile.frontend
+    args:
+      - REACT_APP_API_BASE=http://localhost:8080
+```
+
+**重要**：修改 `REACT_APP_API_BASE` 需要重新构建镜像：
+```bash
+docker compose build frontend
+docker compose up -d frontend
+```
+
+---
+
+## 4. 本地开发部署
+
+### 4.1 前置准备
+
+1. **确保文件存在**：
+   ```bash
+   ls -la docker-compose.yml Dockerfile.backend
+   ls -la frontend/Dockerfile.frontend frontend/nginx.conf
+   ```
+
+2. **检查 Docker 安装**：
+   ```bash
+   docker --version
+   docker compose version
+   ```
+
+3. **可选：调整资源限制**
+
+   如果 Docker 内存/CPU 不足，可以在 Docker Desktop 设置中增加分配的资源。
+
+### 4.2 一键启动所有服务
+
+在项目根目录执行：
+
+```bash
+# 构建镜像并启动所有服务
+docker compose up -d --build
+
+# 查看容器运行状态
+docker compose ps
+
+# 查看详细日志
+docker compose logs -f
+```
+
+### 4.3 验证部署成功
+
+等待约 30-60 秒，服务完全启动。然后验证：
+
+```bash
+# 1. 检查后端健康状态
+curl http://localhost:8080/api/health
+
+# 2. 检查前端页面
+curl http://localhost:3000
+
+# 3. 检查 MySQL 连接
+docker compose exec mysql mysql -uroot -p123456 -e "SELECT 1;"
+
+# 4. 检查 Milvus 连接
+docker compose exec backend curl http://milvus-standalone:19530/
+```
+
+### 4.4 访问应用
+
+| 组件 | 访问地址 | 用途 |
+|------|--------|------|
+| 前端页面 | http://localhost:3000 | 用户交互界面 |
+| 后端 API | http://localhost:8080 | REST API 端点 |
+| MinIO 控制台 | http://localhost:9001 | 查看上传的文件 |
+| Milvus 监控 | http://localhost:9091 | 向量库监控指标 |
+
+### 4.5 实时开发工作流
+
+```bash
+# 修改代码后重新构建镜像
+docker compose build backend    # 仅构建后端
+docker compose build frontend   # 仅构建前端
+
+# 重启服务
+docker compose up -d backend frontend
+
+# 查看新构建的容器日志
+docker compose logs -f backend
+```
+
+---
+
+## 5. 生产服务器部署
+
+### 5.1 前置要求
+
+1. **服务器环境**：
+   - Linux 服务器（CentOS 7.x 或 Ubuntu 18.04+）
+   - Docker >= 20.10
+   - Docker Compose >= 2.0
+   - 至少 4GB 内存、20GB 磁盘空间
+
+2. **网络配置**：
+   - 开放对外端口：3000（前端）、8080（后端 API）、9001（MinIO 控制台，可选）
+   - 建议使用防火墙隔离内部通信端口
+
+### 5.2 镜像构建与传输
+
+#### 方案 A：在服务器上直接构建（推荐）
+
+```bash
+# 登录服务器
+ssh user@your-server-ip
+
+# 克隆项目（或上传代码）
+cd /root
+git clone https://github.com/your-org/smartDoc.git
+# 或
+scp -r ./smartDoc user@your-server-ip:/root/
+
+# 进入项目目录
+cd /root/smartDoc
+
+# 构建后端和前端镜像
+docker compose build backend frontend
+
+# 确认镜像已构建
+docker images | grep smartdoc
+```
+
+#### 方案 B：在开发机构建并导出
+
+```bash
+# 在开发机上构建镜像
+docker compose build backend frontend
+
+# 导出镜像为 tar 文件
+docker save -o smartdoc-images.tar smartdoc-backend:latest smartdoc-frontend:latest
+
+# 上传到服务器
+scp smartdoc-images.tar user@your-server-ip:/root/
+
+# 在服务器上加载镜像
+ssh user@your-server-ip
+docker load -i smartdoc-images.tar
+
+# 验证镜像已加载
+docker images | grep smartdoc
+```
+
+**注意**：如果开发机和服务器架构不同（如 ARM64 vs AMD64），不建议使用方案 B，应该在服务器上重新构建。
+
+### 5.3 配置生产环境
+
+编辑 `docker-compose.runtime.yml` 中的 `environment` 部分，修改关键配置：
+
+```bash
+# 打开编辑器
+vi docker-compose.runtime.yml
+```
+
+**必须修改的内容**：
+
+```yaml
+backend:
+  environment:
+    # 1. 数据库密码（使用强密码）
+    DB_PASSWORD: your-strong-password-here
+
+    # 2. JWT 密钥（使用强随机密钥）
+    JWT_SECRET: $(openssl rand -base64 32)
+
+    # 3. MinIO 凭证
+    MINIO_ACCESS_KEY: your-minio-access-key
+    MINIO_SECRET_KEY: your-strong-secret-key
+
+    # 4. AI 模型配置
+    GLM_API_KEY: your-production-glm-key
+    OPENAI_API_KEY: your-production-openai-key
+    # 其他模型密钥...
+
+    # 5. 数据库连接（如使用外部数据库）
+    DB_HOST: your-mysql-server-ip-or-domain
+    MILVUS_HOST: your-milvus-server-ip-or-domain
+    MINIO_ENDPOINT: http://your-minio-server-ip:9000
+```
+
+### 5.4 启动生产环境
+
+```bash
+cd /root/smartDoc
+
+# 使用 runtime compose 启动（不再构建）
+docker compose -f docker-compose.runtime.yml up -d
+
+# 检查所有容器状态
+docker compose -f docker-compose.runtime.yml ps
+
+# 查看后端日志（检查启动是否有错误）
+docker compose -f docker-compose.runtime.yml logs -f backend
+```
+
+### 5.5 健康检查和验证
+
+```bash
+# 检查容器健康状态
+docker compose -f docker-compose.runtime.yml ps
+# Status 应该显示 "Up" 且没有 "(unhealthy)"
+
+# 检查后端 API 是否响应
+curl -I http://localhost:8080/api/health
+
+# 检查前端是否加载
+curl -I http://localhost:3000
+
+# 检查数据库是否运行
+docker compose -f docker-compose.runtime.yml exec mysql mysql -uroot -pYOUR_PASSWORD -e "SELECT 1;"
+```
+
+### 5.6 反向代理配置（可选但推荐）
+
+使用 Nginx 或 Apache 作为反向代理，提升安全性和性能：
 
 ```nginx
+# /etc/nginx/sites-available/smartdoc
 server {
-   listen 80;
-   server_name _;
+    listen 80;
+    server_name your-domain.com;
 
-   root /usr/share/nginx/html;
-   index index.html;
+    # 重定向到 HTTPS（可选但推荐）
+    return 301 https://$server_name$request_uri;
+}
 
-   location / {
-      try_files $uri $uri/ /index.html;
-   }
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /etc/ssl/certs/your-cert.crt;
+    ssl_certificate_key /etc/ssl/private/your-key.key;
+
+    # 前端服务
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API 服务
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
 ---
 
-## 7. 在本机构建与启动（开发/构建环境）
+## 6. Docker 镜像构建
 
-### 7.1 准备
+### 6.1 后端镜像构建（Dockerfile.backend）
 
-1. 在项目根目录准备 `.env.docker`（参见上文示例）。
-2. 确保本机可以访问 Maven 和 npm 源。
+```dockerfile
+# 构建阶段：Maven 编译
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn -B dependency:go-offline    # 预下载依赖
+COPY src ./src
+RUN mvn -B package -DskipTests      # 编译打包
 
-### 7.2 一键启动
-
-在项目根目录执行：
-
-```bash
-# 构建并启动所有服务
-docker compose up -d --build
-
-# 查看容器状态
-docker compose ps
+# 运行阶段：OpenJDK 17
+FROM eclipse-temurin:17-jdk-jammy
+WORKDIR /app
+COPY --from=build /app/target/smartDoc-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
-启动成功后：
+**构建特点**：
+- 多阶段构建：减小最终镜像大小
+- 第一阶段使用 Maven 编译，第二阶段只保留 JDK 和 jar
+- jar 文件在构建时被复制，容器内部不需要编译工具
 
-- 后端 API：<http://localhost:8088>
-- 前端页面：<http://localhost:3000>
-- MinIO 控制台：<http://localhost:9001>
+### 6.2 前端镜像构建（Dockerfile.frontend）
+
+```dockerfile
+# 构建阶段：Node.js + npm
+FROM node:20-bullseye AS build
+WORKDIR /app
+ARG REACT_APP_API_BASE=http://localhost:8080  # 接收构建参数
+ENV REACT_APP_API_BASE=${REACT_APP_API_BASE}  # 设置环境变量
+COPY package.json package-lock.json ./
+RUN npm install --prefer-offline --no-audit
+COPY . .
+RUN npm run build                              # 构建 React 应用
+
+# 运行阶段：Nginx
+FROM nginx:1.27
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**构建特点**：
+- 多阶段构建：第一阶段构建，第二阶段只保留静态文件和 Nginx
+- 构建参数 `REACT_APP_API_BASE` 在构建时注入
+- Nginx 配置支持 SPA 前端路由和 API 代理
+
+### 6.3 手动构建镜像
+
+```bash
+# 仅构建后端
+docker build -f Dockerfile.backend -t smartdoc-backend:latest .
+
+# 仅构建前端（可以指定不同的 API 地址）
+docker build \
+  --build-arg REACT_APP_API_BASE=http://api.your-domain.com:8080 \
+  -f frontend/Dockerfile.frontend \
+  -t smartdoc-frontend:latest ./frontend
+
+# 验证镜像已创建
+docker images | grep smartdoc
+```
 
 ---
 
-## 8. 构建镜像并在服务器部署（推荐流程）
+## 7. 常见问题排查
 
-### 8.1 在本机构建镜像
+### 7.1 前端无法连接后端（API 请求失败）
 
-在开发机（如 macOS）执行：
+**现象**：浏览器控制台显示 `404` 或 `ERR_CONNECTION_REFUSED`
 
-```bash
-# 仅构建后端、前端镜像
-docker compose build backend frontend
-
-# 导出镜像（注意这里名称与你 compose 中的 image 一致）
-docker save -o smartdoc-images.tar smartdoc-backend smartdoc-frontend
-```
-
-> 如果开发机是 Apple Silicon（arm64），而服务器是 x86（amd64），**不建议**直接在本机构建后导出给服务器使用，请在服务器上重新 `docker compose build backend frontend` 构建 amd64 镜像。
-
-### 8.2 在服务器上构建/加载镜像
-
-两种方式：
-
-1. **在服务器上重新构建（推荐）**：
-
-    - 将整个项目目录拷贝到服务器（如 `/root/smartdoc`）。
-    - 在服务器执行：
-
-       ```bash
-       cd /root/smartdoc
-       docker compose build backend frontend
-       ```
-
-2. **在服务器上加载导出的镜像**（只适用于架构一致的情况）：
-
-    ```bash
-    docker load -i smartdoc-images.tar
-    ```
-
-### 8.3 使用 runtime compose 一键启动
-
-在服务器项目目录中：
+**排查步骤**：
 
 ```bash
-cd /root/smartdoc
+# 1. 检查后端容器是否运行
+docker compose ps | grep backend
+# 应该显示 "Up" 状态
 
-# 确认 .env 已根据服务器环境配置好
-ls .env
+# 2. 检查后端服务是否响应
+curl http://localhost:8080/api/health
 
-# 使用 runtime 版本启动
-docker compose -f docker-compose.runtime.yml up -d
+# 3. 检查前端配置的 API 地址
+# 在 docker-compose.yml 中查看 REACT_APP_API_BASE 是否正确
+grep -A5 "REACT_APP_API_BASE" docker-compose.yml
 
-# 查看运行状态
-docker compose -f docker-compose.runtime.yml ps
+# 4. 重新构建前端镜像（如果修改过 API 地址）
+docker compose build --no-cache frontend
+docker compose up -d frontend
+
+# 5. 检查 Nginx 反向代理日志
+docker compose logs frontend | grep -i proxy
 ```
 
-服务器上访问：
+**解决方案**：
+- 本地开发：确保 `REACT_APP_API_BASE=http://localhost:8080`
+- 生产环境：使用实际的域名或 IP，如 `http://api.your-domain.com` 或 `http://your-server-ip:8080`
 
-- 前端：`http://<服务器IP>:3000`
-- 后端：`http://<服务器IP>:8080`
+### 7.2 后端连接数据库失败
+
+**现象**：后端日志显示 `Connection refused` 或 `Authentication failed`
+
+**排查步骤**：
+
+```bash
+# 1. 检查 MySQL 容器是否运行
+docker compose ps | grep mysql
+
+# 2. 进入后端容器测试 MySQL 连接
+docker compose exec backend sh
+ping mysql        # 检查网络连接
+telnet mysql 3306 # 检查端口是否开放
+
+# 3. 验证 MySQL 用户和密码
+docker compose exec mysql mysql -uroot -p123456 -e "SELECT 1;"
+
+# 4. 检查环境变量是否正确
+docker compose exec backend env | grep DB_
+```
+
+**解决方案**：
+- 确保 `docker-compose.yml` 中的数据库凭证正确
+- 确保 `DB_HOST=mysql`（服务名，不是 localhost）
+- 重新启动 MySQL：`docker compose restart mysql`
+
+### 7.3 Milvus 连接失败
+
+**现象**：后端日志显示 `Milvus connection timeout` 或 `etcd connection error`
+
+**排查步骤**：
+
+```bash
+# 1. 检查 Milvus 所有组件是否运行
+docker compose ps | grep milvus
+
+# 2. 检查 etcd 健康状态
+docker compose logs milvus-etcd | head -20
+
+# 3. 检查 Milvus 日志
+docker compose logs milvus-standalone | grep -i error
+
+# 4. 清理并重启 Milvus 及其依赖
+docker compose down
+docker volume rm smartdoc_milvus_etcd smartdoc_milvus_minio smartdoc_milvus_data
+docker compose up -d milvus-etcd milvus-minio milvus-standalone
+```
+
+**解决方案**：
+- 给 Milvus 足够的启动时间（通常需要 30-60 秒）
+- 确保有足够的磁盘空间
+- 检查 Docker 日志查看具体错误：`docker compose logs milvus-standalone`
+
+### 7.4 MinIO 连接失败或文件上传失败
+
+**现象**：上传文件时返回 `403 Forbidden` 或 `Connection refused`
+
+**排查步骤**：
+
+```bash
+# 1. 检查 MinIO 容器运行状态
+docker compose ps | grep minio
+
+# 2. 访问 MinIO 控制台
+# 浏览器打开 http://localhost:9001
+# 使用默认凭证登录：root / 12345678
+
+# 3. 检查 MinIO API 响应
+curl http://localhost:9000/
+
+# 4. 验证环境变量
+docker compose exec backend env | grep MINIO_
+```
+
+**解决方案**：
+- 确保 `MINIO_ENDPOINT=http://minio:9000`（容器内服务名）
+- 确保凭证与 docker-compose 中的配置一致
+- 重启 MinIO：`docker compose restart minio`
+
+### 7.5 磁盘空间不足
+
+**现象**：Docker 容器启动失败或构建中止
+
+**解决方案**：
+
+```bash
+# 1. 检查磁盘使用
+df -h
+
+# 2. 清理 Docker 未使用的资源
+docker system prune -a
+
+# 3. 查看各卷的大小
+docker volume ls
+du -sh /var/lib/docker/volumes/*
+
+# 4. 删除不需要的卷
+docker volume rm smartdoc_mysql_data  # 谨慎操作，会丢失数据
+```
+
+### 7.6 端口已被占用
+
+**现象**：启动 Docker 服务时报错 `Address already in use`
+
+**解决方案**：
+
+```bash
+# 1. 查找占用端口的进程
+sudo lsof -i :8080   # 查找占用 8080 的进程
+sudo lsof -i :3000
+
+# 2. 修改 docker-compose.yml 中的端口映射
+# 例如，改为 8081:8080 和 3001:80
+ports:
+  - "8081:8080"
+  - "3001:80"
+
+# 3. 重启服务
+docker compose down
+docker compose up -d
+```
 
 ---
 
-## 9. 数据持久化与备份
+## 8. 数据备份与恢复
 
-在两个 compose 文件中都为以下组件配置了命名卷：
+### 8.1 备份数据卷
 
-- `mysql_data`：MySQL 数据
-- `minio_data`：业务 MinIO 对象数据
-- `milvus_etcd` / `milvus_minio` / `milvus_data`：Milvus 相关数据
-- `backend_doc_data` / `backend_processed_docs`：后端文档数据与处理结果
+#### 备份 MySQL 数据
 
-这些卷由 Docker 管理，备份示例（以 `mysql_data` 为例）：
+```bash
+# 方式 1：使用 mysqldump（推荐，可读性强）
+docker compose exec -T mysql mysqldump -uroot -p123456 smart_doc > smart_doc_backup.sql
+
+# 方式 2：备份整个卷
+docker run --rm \
+  -v smartdoc_mysql_data:/data \
+  -v $(pwd):/backup \
+  alpine \
+  sh -c "tar czf /backup/mysql_data.tar.gz -C /data ."
+```
+
+#### 备份 MinIO 数据
 
 ```bash
 docker run --rm \
-   -v mysql_data:/data \
-   -v $(pwd):/backup \
-   alpine \
-   sh -c "cd /data && tar czf /backup/mysql_data.tar.gz ."
+  -v smartdoc_minio_data:/data \
+  -v $(pwd):/backup \
+  alpine \
+  sh -c "tar czf /backup/minio_data.tar.gz -C /data ."
 ```
 
-恢复时可将 tar 包解压回对应卷中（注意在服务停止状态下操作）。
-
----
-
-## 10. 常见问题
-
-1. **前端能打开，但接口请求失败 / 跨域 / 404**
-    - 检查前端的 `REACT_APP_API_BASE` 是否与后端对外地址一致（例如服务器上是 `http://<IP>:8080`）。
-    - 本地开发时建议在 `frontend/.env.development.local` 中设置；Docker 中通过 compose 的 `environment` 注入。
-
-2. **后端连不上 MySQL / MinIO / Milvus**
-    - 容器内部访问请使用服务名：`mysql`、`minio`、`milvus-standalone`。
-    - 用 `docker compose exec backend sh` 进入后端容器，尝试：
-
-       ```bash
-       ping mysql
-       ping minio
-       ping milvus-standalone
-       ```
-
-3. **Milvus 报 etcd 连接错误**
-    - 确认 `milvus-etcd` 的 `command` 中已监听 `0.0.0.0:2379`，且 `--name default` 与 `--initial-cluster default=...` 名称一致。
-    - 如修改过 etcd 配置，建议删除 `milvus_etcd` 卷后重新启动：
-
-       ```bash
-       docker compose down
-       docker volume rm smartdoc_milvus_etcd  # 实际卷名以 docker volume ls 为准
-       docker compose up -d
-       ```
-
-4. **端口冲突**
-    - 修改 compose 中的宿主机端口映射，例如：
-
-       ```yaml
-       backend:
-          ports:
-             - "18080:8080"
-       frontend:
-          ports:
-             - "13000:80"
-       ```
-
-5. **构建很慢或失败**
-    - 确认网络可访问 Maven 中央仓库和 npm registry。
-    - 可先在本机运行：
-
-       ```bash
-       mvn -B package -DskipTests
-       cd frontend && npm install && npm run build
-       ```
-
-    - 确认通过后再进行 Docker 构建。
-
----
-
-## 11. 停止与清理
+#### 备份 Milvus 数据
 
 ```bash
-# 停止服务，保留数据卷
-docker compose down
+docker run --rm \
+  -v smartdoc_milvus_data:/data \
+  -v $(pwd):/backup \
+  alpine \
+  sh -c "tar czf /backup/milvus_data.tar.gz -C /data ."
+```
 
-# 使用 runtime 文件时
+### 8.2 恢复数据
+
+#### 恢复 MySQL 数据
+
+```bash
+# 前置：确保 MySQL 容器已启动
+docker compose up -d mysql
+
+# 方式 1：从 SQL 文件恢复
+docker compose exec -T mysql mysql -uroot -p123456 smart_doc < smart_doc_backup.sql
+
+# 方式 2：从压缩包恢复
+docker run --rm \
+  -v smartdoc_mysql_data:/data \
+  -v $(pwd):/backup \
+  alpine \
+  sh -c "tar xzf /backup/mysql_data.tar.gz -C /data"
+```
+
+#### 恢复 MinIO 数据
+
+```bash
+# 停止 MinIO 容器（重要：防止数据冲突）
+docker compose stop minio
+
+# 恢复数据卷
+docker run --rm \
+  -v smartdoc_minio_data:/data \
+  -v $(pwd):/backup \
+  alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/minio_data.tar.gz -C /data"
+
+# 启动 MinIO
+docker compose up -d minio
+```
+
+### 8.3 定期备份脚本
+
+创建 `backup.sh`：
+
+```bash
+#!/bin/bash
+set -e
+
+BACKUP_DIR="/mnt/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+echo "Starting backup at $(date)"
+
+# 备份 MySQL
+echo "Backing up MySQL..."
+docker compose exec -T mysql mysqldump -uroot -p123456 smart_doc | gzip > "$BACKUP_DIR/mysql_$DATE.sql.gz"
+
+# 备份 MinIO
+echo "Backing up MinIO..."
+docker run --rm \
+  -v smartdoc_minio_data:/data \
+  -v $BACKUP_DIR:/backup \
+  alpine \
+  sh -c "tar czf /backup/minio_$DATE.tar.gz -C /data ."
+
+# 删除 7 天前的备份
+find $BACKUP_DIR -type f -mtime +7 -delete
+
+echo "Backup completed at $(date)"
+```
+
+运行脚本：
+
+```bash
+chmod +x backup.sh
+./backup.sh
+
+# 使用 cron 实现定期备份（每天凌晨 2 点）
+echo "0 2 * * * /root/smartDoc/backup.sh" | crontab -
+```
+
+---
+
+## 9. 关键配置检查清单
+
+部署前完整检查：
+
+- [ ] `docker-compose.yml` 存在且包含所有必需的 environment 配置
+- [ ] `docker-compose.runtime.yml` 存在且包含所有必需的 environment 配置
+- [ ] `Dockerfile.backend` 和 `frontend/Dockerfile.frontend` 存在
+- [ ] `frontend/nginx.conf` 存在且包含 API 代理配置
+- [ ] Docker 和 Docker Compose 已安装
+- [ ] 宿主机磁盘空间 >= 20GB
+- [ ] 宿主机内存 >= 4GB（或 Docker 分配 >= 2GB）
+- [ ] 所有必需的端口未被占用
+- [ ] 生产环境中的关键密码和 API Key 已修改
+
+---
+
+## 10. 常用命令速查
+
+```bash
+# 启动服务
+docker compose up -d
+docker compose -f docker-compose.runtime.yml up -d
+
+# 停止服务（保留数据）
+docker compose down
 docker compose -f docker-compose.runtime.yml down
 
-# 停止并删除数据卷（谨慎操作，会丢失所有数据）
+# 停止服务（删除数据卷，谨慎）
 docker compose down -v
-docker compose -f docker-compose.runtime.yml down -v
+
+# 查看容器状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f                    # 所有容器
+docker compose logs -f backend            # 仅后端
+docker compose logs backend --tail 100    # 最后 100 行
+
+# 进入容器
+docker compose exec backend sh
+docker compose exec mysql bash
+
+# 重建镜像
+docker compose build --no-cache backend frontend
+
+# 查看卷和磁盘用量
+docker volume ls
+docker volume inspect smartdoc_mysql_data
+
+# 清理资源
+docker system prune -a        # 删除所有未使用的镜像和容器
+docker volume prune           # 删除未使用的卷
 ```
+
+---
+
+## 11. 获取帮助
+
+### 查看详细日志
+
+```bash
+# 查看所有日志
+docker compose logs
+
+# 查看特定服务的日志
+docker compose logs backend --follow
+
+# 查看特定时间范围的日志
+docker compose logs --since "2024-01-01" --until "2024-01-02"
+```
+
+### 检查系统资源
+
+```bash
+# 查看容器资源使用
+docker stats
+
+# 查看镜像大小
+docker images --format "table {{.Repository}}\t{{.Size}}"
+
+# 查看网络连接
+docker network ls
+docker network inspect smartdoc-net
+```
+
+### 联系与反馈
+
+如遇到问题，请：
+
+1. 查看 [常见问题排查](#7-常见问题排查) 部分
+2. 查看详细日志找到错误信息
+3. 确认所有环境变量配置正确
+4. 尝试重新构建镜像并重启服务
+
+---
+
+**最后更新**：2025 年
+**版本**：v2.1（采用方案 A - 所有配置直接在 docker-compose 中定义）
