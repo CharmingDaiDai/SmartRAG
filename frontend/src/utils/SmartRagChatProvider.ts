@@ -36,7 +36,7 @@ const getIcon = (name: string) => {
     }
 };
 
-export class SmartDocChatProvider extends AbstractChatProvider<ChatMessage, ChatInput, ChatOutput> {
+export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, ChatInput, ChatOutput> {
   constructor(token?: string, endpoint: string = '/api/chat/test/full-rag-emitter') {
     super({
       request: XRequest(endpoint, {

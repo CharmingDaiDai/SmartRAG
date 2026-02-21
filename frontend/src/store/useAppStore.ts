@@ -37,8 +37,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   llmModels: [],
   embeddingModels: [],
   rerankModels: [],
-  localSettings: JSON.parse(localStorage.getItem('smartDoc_localSettings') || '{}'),
-  themeMode: (localStorage.getItem('smartDoc_theme') as 'light' | 'dark') || 'light',
+  localSettings: JSON.parse(localStorage.getItem('SmartRAG_localSettings') || '{}'),
+  themeMode: (localStorage.getItem('SmartRAG_theme') as 'light' | 'dark') || 'light',
   
   setUserInfo: (user) => set({ userInfo: user }),
   setCurrentKbId: (id) => set({ currentKbId: id }),
@@ -98,13 +98,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateLocalSettings: (settings) => {
       const newSettings = { ...get().localSettings, ...settings };
-      localStorage.setItem('smartDoc_localSettings', JSON.stringify(newSettings));
+      localStorage.setItem('SmartRAG_localSettings', JSON.stringify(newSettings));
       set({ localSettings: newSettings });
   },
 
   toggleTheme: () => {
       const newTheme = get().themeMode === 'light' ? 'dark' : 'light';
-      localStorage.setItem('smartDoc_theme', newTheme);
+      localStorage.setItem('SmartRAG_theme', newTheme);
       set({ themeMode: newTheme });
   }
 }));

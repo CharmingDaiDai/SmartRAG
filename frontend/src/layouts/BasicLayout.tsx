@@ -1,143 +1,426 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Dropdown, Avatar, theme, Button, Tooltip } from 'antd';
+import { useState, useEffect } from 'react';
+import { Layout, Menu, Dropdown, Avatar, theme, Button, Tooltip, Typography, Drawer } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  DashboardOutlined, 
-  FileTextOutlined, 
-  ReadOutlined, 
-  RobotOutlined, 
-  UserOutlined, 
-  LogoutOutlined, 
-  MenuUnfoldOutlined, 
-  MenuFoldOutlined, 
+import {
+  DashboardOutlined,
+  FileTextOutlined,
+  ReadOutlined,
+  RobotOutlined,
+  UserOutlined,
+  LogoutOutlined,
   ExperimentOutlined,
   SunOutlined,
-  MoonOutlined
+  MoonOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 
 const { Header, Sider, Content } = Layout;
+const { Text } = Typography;
+
+const PAGE_NAMES: Record<string, string> = {
+  '/dashboard': '仪表盘',
+  '/documents': '文档管理',
+  '/kb': '知识库管理',
+  '/chat': '知识库问答',
+  '/test-chat': '测试问答',
+  '/profile': '个人资料',
+};
+
+// Breakpoint: treat ≤768px as mobile
+const MOBILE_BREAKPOINT = 768;
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= MOBILE_BREAKPOINT);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
+
+// Shared sidebar nav content — used by both Sider (desktop) and Drawer (mobile)
+function SidebarContent({
+  collapsed,
+  themeMode,
+  token,
+  menuItems,
+  selectedKey,
+}: {
+  collapsed: boolean;
+  themeMode: string;
+  token: ReturnType<typeof theme.useToken>['token'];
+  menuItems: any[];
+  selectedKey: string;
+}) {
+  return (
+    <>
+      {/* Logo 区域 */}
+      <div style={{
+        height: 68,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        padding: collapsed ? '0' : '0 18px',
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+        gap: 10,
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}>
+        <img
+          src="/logo.png"
+          alt="logo"
+          style={{ height: 28, width: 28, flexShrink: 0, borderRadius: 6 }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              fontWeight: 600,
+              fontSize: 16,
+              letterSpacing: '0.02em',
+              color: token.colorText,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            SmartRAG
+          </motion.span>
+        )}
+      </div>
+
+      {/* 导航菜单 */}
+      <Menu
+        theme={themeMode === 'dark' ? 'dark' : 'light'}
+        mode="inline"
+        selectedKeys={[selectedKey]}
+        items={menuItems}
+        style={{
+          borderRight: 0,
+          paddingTop: 8,
+          flex: 1,
+          overflow: 'auto',
+        }}
+      />
+    </>
+  );
+}
 
 export default function BasicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, themeMode, toggleTheme } = useAppStore();
+  const { userInfo, themeMode, toggleTheme, logout } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const { token } = theme.useToken();
+  const isMobile = useIsMobile();
 
-  const menuItems = [
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+  }, [location.pathname]);
+
+  // Auto-collapse sidebar on resize to small
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile]);
+
+  const isFullPage = location.pathname === '/chat' || location.pathname === '/test-chat';
+
+  const currentPageName = Object.entries(PAGE_NAMES).find(([key]) =>
+    location.pathname === key || location.pathname.startsWith(key + '/')
+  )?.[1] || '';
+
+  const makeMenuItems = (isDrawer = false) => [
     {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: '仪表盘',
-      onClick: () => navigate('/dashboard'),
+      type: 'group' as const,
+      label: (!collapsed || isDrawer) ? 'WORKSPACE' : '',
+      children: [
+        {
+          key: '/dashboard',
+          icon: <DashboardOutlined />,
+          label: '仪表盘',
+          onClick: () => navigate('/dashboard'),
+        },
+        {
+          key: '/documents',
+          icon: <FileTextOutlined />,
+          label: '文档管理',
+          onClick: () => navigate('/documents'),
+        },
+      ],
     },
     {
-      key: '/documents',
-      icon: <FileTextOutlined />,
-      label: '文档管理',
-      onClick: () => navigate('/documents'),
+      type: 'group' as const,
+      label: (!collapsed || isDrawer) ? 'KNOWLEDGE' : '',
+      children: [
+        {
+          key: '/kb',
+          icon: <ReadOutlined />,
+          label: '知识库管理',
+          onClick: () => navigate('/kb'),
+        },
+      ],
     },
     {
-      key: '/kb',
-      icon: <ReadOutlined />,
-      label: '知识库管理',
-      onClick: () => navigate('/kb'),
-    },
-    {
-      key: '/chat',
-      icon: <RobotOutlined />,
-      label: '知识库问答',
-      onClick: () => navigate('/chat'),
-    },
-    {
-      key: '/test-chat',
-      icon: <ExperimentOutlined />,
-      label: '测试问答',
-      onClick: () => navigate('/test-chat'),
+      type: 'group' as const,
+      label: (!collapsed || isDrawer) ? 'AI TOOLS' : '',
+      children: [
+        {
+          key: '/chat',
+          icon: <RobotOutlined />,
+          label: '知识库问答',
+          onClick: () => navigate('/chat'),
+        },
+        {
+          key: '/test-chat',
+          icon: <ExperimentOutlined />,
+          label: '测试问答',
+          onClick: () => navigate('/test-chat'),
+        },
+      ],
     },
   ];
 
   const userMenu = {
     items: [
-        {
-            key: 'profile',
-            icon: <UserOutlined />,
-            label: '个人资料',
-            onClick: () => navigate('/profile'),
+      {
+        key: 'profile',
+        icon: <UserOutlined />,
+        label: '个人资料',
+        onClick: () => navigate('/profile'),
+      },
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: '退出登录',
+        danger: true,
+        onClick: () => {
+          logout();
+          navigate('/login');
         },
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: '退出登录',
-            onClick: () => {
-                // TODO: Clear token
-                navigate('/login');
-            },
-        },
+      },
     ],
   };
 
+  const headerHeight = 56;
+
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed} 
-        theme={themeMode === 'dark' ? 'dark' : 'light'} 
-        style={{ 
-            borderRight: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' 
-        }}
-      >
-        <div className="demo-logo-vertical" style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
-            <img src="/logo.png" alt="logo" style={{ height: 32 }} />
-            {!collapsed && <span style={{ marginLeft: 8, fontWeight: 'bold', fontSize: 18, color: themeMode === 'dark' ? '#fff' : 'inherit' }}>SmartRAG</span>}
-        </div>
-        <Menu
+    <Layout style={{ height: '100dvh', overflow: 'hidden' }}>
+      {/* ── Desktop Sider ── */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          width={220}
+          collapsedWidth={64}
           theme={themeMode === 'dark' ? 'dark' : 'light'}
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
+          style={{
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden',
+          }}
+        >
+          <SidebarContent
+            collapsed={collapsed}
+            themeMode={themeMode}
+            token={token}
+            menuItems={makeMenuItems(false)}
+            selectedKey={location.pathname}
+          />
+        </Sider>
+      )}
+
+      {/* ── Mobile Drawer ── */}
+      {isMobile && (
+        <Drawer
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          placement="left"
+          width={240}
+          closeIcon={null}
+          styles={{
+            body: { padding: 0, display: 'flex', flexDirection: 'column', background: token.colorBgContainer },
+            header: { display: 'none' },
+          }}
+          style={{ zIndex: 1001 }}
+        >
+          <SidebarContent
+            collapsed={false}
+            themeMode={themeMode}
+            token={token}
+            menuItems={makeMenuItems(true)}
+            selectedKey={location.pathname}
+          />
+        </Drawer>
+      )}
+
       <Layout style={{ height: '100%', overflow: 'hidden' }}>
-        <Header style={{ padding: '0 24px', background: colorBgContainer, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
-          {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-            className: 'trigger',
-            onClick: () => setCollapsed(!collapsed),
-            style: { fontSize: '18px', cursor: 'pointer' }
-          })}
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-             <Tooltip title={themeMode === 'light' ? '切换暗色模式' : '切换亮色模式'}>
-                <Button 
-                    type="text" 
-                    icon={themeMode === 'light' ? <MoonOutlined /> : <SunOutlined />} 
-                    onClick={toggleTheme}
-                    style={{ fontSize: 16 }}
+        {/* ── 顶部栏 ── */}
+        <Header style={{
+          padding: isMobile ? '0 12px' : '0 20px',
+          background: token.colorBgContainer,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          height: headerHeight,
+          flexShrink: 0,
+        }}>
+          {/* 左侧：折叠/菜单按钮 + 页面标题 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+            <Button
+              type="text"
+              icon={
+                isMobile
+                  ? <MenuOutlined />
+                  : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+              }
+              onClick={() => {
+                if (isMobile) {
+                  setMobileDrawerOpen(true);
+                } else {
+                  setCollapsed(!collapsed);
+                }
+              }}
+              style={{
+                fontSize: 16,
+                color: token.colorTextSecondary,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            />
+            {currentPageName && (
+              <Text style={{
+                fontSize: isMobile ? 13 : 14,
+                fontWeight: 500,
+                color: token.colorTextSecondary,
+                letterSpacing: '0.01em',
+              }}>
+                {currentPageName}
+              </Text>
+            )}
+          </div>
+
+          {/* 右侧：主题切换 + 用户菜单 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* 主题切换按钮（带动画） */}
+            <Tooltip title={themeMode === 'light' ? '切换深色模式' : '切换浅色模式'}>
+              <Button
+                type="text"
+                onClick={toggleTheme}
+                style={{
+                  width: 36,
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: token.colorTextSecondary,
+                  borderRadius: 8,
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <AnimatePresence mode="wait">
+                  {themeMode === 'light' ? (
+                    <motion.span
+                      key="moon"
+                      initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 30, scale: 0.7 }}
+                      transition={{ duration: 0.22 }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
+                    >
+                      <MoonOutlined />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="sun"
+                      initial={{ opacity: 0, rotate: 30, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: -30, scale: 0.7 }}
+                      transition={{ duration: 0.22 }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
+                    >
+                      <SunOutlined />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Button>
+            </Tooltip>
+
+            {/* 用户下拉菜单 */}
+            <Dropdown menu={userMenu} placement="bottomRight" arrow>
+              <div
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: isMobile ? '4px 6px' : '4px 8px',
+                  borderRadius: 8,
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = token.colorFill;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                }}
+              >
+                <Avatar
+                  size={28}
+                  src={userInfo?.avatarUrl || userInfo?.avatar}
+                  icon={<UserOutlined />}
+                  style={{ flexShrink: 0 }}
                 />
-             </Tooltip>
-             <Dropdown menu={userMenu}>
-                <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                    <Avatar size="small" src={userInfo?.avatarUrl || userInfo?.avatar} icon={<UserOutlined />} />
-                    <span style={{ marginLeft: 8 }}>{userInfo?.username || 'User'}</span>
-                </div>
-             </Dropdown>
+                {!isMobile && (
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: token.colorTextSecondary,
+                    maxWidth: 80,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {userInfo?.username || 'User'}
+                  </Text>
+                )}
+              </div>
+            </Dropdown>
           </div>
         </Header>
+
+        {/* ── 内容区 ── */}
         <Content
           style={{
-            margin: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 0 : '24px 16px',
-            padding: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 0 : 24,
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-            overflow: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'hidden' : 'auto',
-            height: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'calc(100vh - 64px)' : undefined,
-            flex: (location.pathname === '/chat' || location.pathname === '/test-chat') ? 'none' : 1,
+            margin: isFullPage ? 0 : (isMobile ? '12px 8px' : `${token.marginLG}px ${token.margin}px`),
+            padding: isFullPage ? 0 : (isMobile ? 12 : token.paddingLG),
+            background: isFullPage ? token.colorBgLayout : token.colorBgContainer,
+            borderRadius: isFullPage ? 0 : (isMobile ? 8 : token.borderRadiusLG),
+            overflow: isFullPage ? 'hidden' : 'auto',
+            height: isFullPage ? `calc(100dvh - ${headerHeight}px)` : undefined,
+            flex: isFullPage ? 'none' : 1,
+            minHeight: 0,
           }}
         >
           <Outlet />

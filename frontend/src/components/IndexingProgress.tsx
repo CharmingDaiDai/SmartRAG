@@ -1,8 +1,8 @@
-import { Progress, Card, Typography, Space, Tag, Alert } from 'antd';
+import { Progress, Typography, Tag, Alert, theme } from 'antd';
 import { useEffect, useState, useRef } from 'react';
 import { LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface IndexingProgressProps {
   kbId: string;
@@ -46,7 +46,8 @@ const STEP_COLORS: Record<string, string> = {
   STORING: 'orange',
 };
 
-export default function IndexingProgress({ kbId, onComplete, onClose }: IndexingProgressProps) {
+export default function IndexingProgress({ kbId, onComplete }: IndexingProgressProps) {
+  const { token } = theme.useToken();
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [currentStep, setCurrentStep] = useState<StepData | null>(null);
   const [errors, setErrors] = useState<ErrorData[]>([]);
@@ -55,10 +56,9 @@ export default function IndexingProgress({ kbId, onComplete, onClose }: Indexing
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    // 创建 SSE 连接
-    const token = localStorage.getItem('token');
+    const authToken = localStorage.getItem('token');
     const eventSource = new EventSource(
-      `/api/documents/index-progress/${kbId}?token=${token}`
+      `/api/documents/index-progress/${kbId}?token=${authToken}`
     );
     eventSourceRef.current = eventSource;
 
@@ -70,27 +70,23 @@ export default function IndexingProgress({ kbId, onComplete, onClose }: Indexing
       setIsConnected(false);
     };
 
-    // 监听进度事件
     eventSource.addEventListener('progress', (event) => {
-      const data: ProgressData = JSON.parse(event.data);
+      const data: ProgressData = JSON.parse((event as MessageEvent).data);
       setProgress(data);
     });
 
-    // 监听步骤事件
     eventSource.addEventListener('step', (event) => {
-      const data: StepData = JSON.parse(event.data);
+      const data: StepData = JSON.parse((event as MessageEvent).data);
       setCurrentStep(data);
     });
 
-    // 监听错误事件
     eventSource.addEventListener('error', (event) => {
-      const data: ErrorData = JSON.parse(event.data);
+      const data: ErrorData = JSON.parse((event as MessageEvent).data);
       setErrors(prev => [...prev, data]);
     });
 
-    // 监听完成事件
     eventSource.addEventListener('done', (event) => {
-      const data: DoneData = JSON.parse(event.data);
+      const data: DoneData = JSON.parse((event as MessageEvent).data);
       setProgress({
         taskId: data.taskId,
         total: data.total,
@@ -102,7 +98,6 @@ export default function IndexingProgress({ kbId, onComplete, onClose }: Indexing
       setCurrentStep(null);
       eventSource.close();
 
-      // 延迟调用完成回调
       setTimeout(() => {
         onComplete?.();
       }, 1500);
@@ -113,96 +108,100 @@ export default function IndexingProgress({ kbId, onComplete, onClose }: Indexing
     };
   }, [kbId, onComplete]);
 
-  const getStatusIcon = () => {
-    if (isDone) {
-      return progress?.failed === 0
-        ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 24 }} />
-        : <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 24 }} />;
-    }
-    return <LoadingOutlined style={{ color: '#1677ff', fontSize: 24 }} spin />;
-  };
+  const isSuccess = isDone && (!progress || progress.failed === 0);
 
-  const getStatusText = () => {
-    if (isDone) {
-      if (progress?.failed === 0) {
-        return '索引构建完成';
-      }
-      return `索引构建完成，${progress?.failed} 个文档失败`;
-    }
-    return '索引构建中...';
-  };
+  // Banner 背景和边框颜色
+  const bannerBg = isDone
+    ? (isSuccess ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)')
+    : 'rgba(99, 102, 241, 0.06)';
+  const bannerBorder = isDone
+    ? (isSuccess ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)')
+    : 'rgba(99, 102, 241, 0.20)';
 
-  const progressStatus = isDone
-    ? (progress?.failed === 0 ? 'success' : 'exception')
-    : 'active';
+  const statusIcon = isDone
+    ? (isSuccess
+        ? <CheckCircleOutlined style={{ color: '#10b981', fontSize: 16 }} />
+        : <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 16 }} />)
+    : <LoadingOutlined style={{ color: token.colorPrimary, fontSize: 16 }} spin />;
+
+  const statusText = isDone
+    ? (isSuccess ? '索引构建完成' : `构建完成，${progress?.failed} 个文档失败`)
+    : '索引构建中...';
 
   return (
-    <Card
-      size="small"
-      style={{
-        marginBottom: 16,
-        borderColor: isDone ? (progress?.failed === 0 ? '#b7eb8f' : '#ffccc7') : '#91caff',
-        backgroundColor: isDone ? (progress?.failed === 0 ? '#f6ffed' : '#fff2f0') : '#e6f4ff'
-      }}
-    >
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Space>
-          {getStatusIcon()}
-          <Title level={5} style={{ margin: 0 }}>{getStatusText()}</Title>
-          {!isConnected && !isDone && (
-            <Tag color="warning">连接中...</Tag>
-          )}
-        </Space>
+    <div style={{
+      marginBottom: 12,
+      padding: '10px 14px',
+      borderRadius: 8,
+      border: `1px solid ${bannerBorder}`,
+      background: bannerBg,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+    }}>
+      {/* 主行：图标 + 状态 + 进度条 + 统计 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {statusIcon}
+
+        <Text style={{ fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{statusText}</Text>
+
+        {!isConnected && !isDone && (
+          <Tag color="warning" style={{ flexShrink: 0 }}>连接中...</Tag>
+        )}
 
         {progress && (
           <>
-            <Progress
-              percent={progress.percentage}
-              status={progressStatus}
-              size="small"
-            />
-            <Space>
-              <Text type="secondary">
-                已完成: {progress.completed}/{progress.total}
-              </Text>
+            <div style={{ flex: 1, minWidth: 60 }}>
+              <Progress
+                percent={progress.percentage}
+                status={isDone ? (isSuccess ? 'success' : 'exception') : 'active'}
+                size="small"
+                showInfo={false}
+                strokeColor={isDone ? undefined : token.colorPrimary}
+              />
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+              {progress.completed}/{progress.total}
               {progress.failed > 0 && (
-                <Text type="danger">
-                  失败: {progress.failed}
+                <Text type="danger" style={{ marginLeft: 6, fontSize: 12 }}>
+                  · {progress.failed} 失败
                 </Text>
               )}
-            </Space>
+            </Text>
           </>
         )}
 
         {currentStep && (
-          <Space>
-            <FileTextOutlined />
-            <Text ellipsis style={{ maxWidth: 200 }}>{currentStep.docName}</Text>
-            <Tag color={STEP_COLORS[currentStep.step] || 'default'}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <FileTextOutlined style={{ fontSize: 12, color: token.colorTextTertiary }} />
+            <Text ellipsis style={{ maxWidth: 120, fontSize: 12, color: token.colorTextSecondary }}>
+              {currentStep.docName}
+            </Text>
+            <Tag color={STEP_COLORS[currentStep.step] || 'default'} style={{ margin: 0, fontSize: 11 }}>
               {currentStep.stepName}
             </Tag>
-          </Space>
-        )}
-
-        {errors.length > 0 && (
-          <div style={{ maxHeight: 100, overflowY: 'auto' }}>
-            {errors.slice(-3).map((err, index) => (
-              <Alert
-                key={index}
-                type="error"
-                size="small"
-                message={
-                  <Text ellipsis style={{ maxWidth: 300 }}>
-                    {err.docName}: {err.error}
-                  </Text>
-                }
-                style={{ marginTop: 4, padding: '4px 8px' }}
-                showIcon
-              />
-            ))}
           </div>
         )}
-      </Space>
-    </Card>
+      </div>
+
+      {/* 错误行（只在有错误时显示） */}
+      {errors.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {errors.slice(-2).map((err, index) => (
+            <Alert
+              key={index}
+              type="error"
+              message={
+                <Text ellipsis style={{ maxWidth: 400, fontSize: 12 }}>
+                  {err.docName}: {err.error}
+                </Text>
+              }
+              style={{ padding: '3px 10px', borderRadius: 6 }}
+              showIcon
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

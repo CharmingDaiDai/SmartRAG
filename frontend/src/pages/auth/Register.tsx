@@ -16,6 +16,9 @@ import {
   MailOutlined,
   EyeTwoTone,
   EyeInvisibleOutlined,
+  ThunderboltOutlined,
+  RobotOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
@@ -23,6 +26,24 @@ import { FadeIn, SlideInUp } from '../../components/common/Motion';
 import './login.css';
 
 const { Title, Text } = Typography;
+
+const FEATURES = [
+  {
+    icon: <RobotOutlined />,
+    title: '检索增强生成',
+    desc: '多策略 RAG，智能检索，精准回答',
+  },
+  {
+    icon: <BookOutlined />,
+    title: '多知识库管理',
+    desc: '结构化组织文档，随时扩展知识边界',
+  },
+  {
+    icon: <ThunderboltOutlined />,
+    title: '实时流式输出',
+    desc: '流式响应，思考过程透明可见',
+  },
+];
 
 const PasswordStrength: React.FC<{ value?: string }> = ({ value }) => {
   const score = useMemo(() => {
@@ -39,7 +60,7 @@ const PasswordStrength: React.FC<{ value?: string }> = ({ value }) => {
   return (
     <div className="pwd-strength">
       <div className={`bar bar-${score}`} />
-      <Text type="secondary">
+      <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
         {score > 0 ? labels[Math.max(0, score - 1)] : '未设置密码'}
       </Text>
     </div>
@@ -74,18 +95,44 @@ const Register: React.FC = () => {
       <div className="auth-page">
         <SlideInUp>
           <Card className="auth-card">
-            <Row gutter={24} align="middle">
-              <Col xs={24} sm={10} className="auth-illustration">
+            <Row align="stretch">
+              <Col xs={0} sm={10} className="auth-illustration">
                 <div className="illus-box">
-                  <img src="/logo.png" alt="SmartRAG" style={{ width: 64, height: 64, marginBottom: 12 }} />
-                  <Title level={4}>加入 SmartDoc</Title>
-                  <Text type="secondary">开启您的智能知识库之旅</Text>
+                  <div style={{ marginBottom: 28 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <img
+                        src="/logo.png"
+                        alt="SmartRAG"
+                        style={{ width: 32, height: 32, borderRadius: 8 }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <Text style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>SmartRAG</Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13, lineHeight: 1.6 }}>
+                      加入智能知识库平台
+                    </Text>
+                  </div>
+
+                  <div className="illus-feature-list">
+                    {FEATURES.map((f) => (
+                      <div key={f.title} className="illus-feature-item">
+                        <div className="illus-feature-icon">{f.icon}</div>
+                        <div className="illus-feature-text">
+                          <Text style={{ fontWeight: 600, fontSize: 14 }}>{f.title}</Text>
+                          <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.5 }}>{f.desc}</Text>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </Col>
 
               <Col xs={24} sm={14}>
                 <div className="auth-form">
-                  <Title level={3}>创建新账户</Title>
+                  <Title level={3} style={{ marginBottom: 6 }}>创建新账户</Title>
+                  <Text type="secondary" style={{ fontSize: 14, display: 'block', marginBottom: 28 }}>
+                    开启您的智能文档之旅
+                  </Text>
 
                   <Form
                     name="register"
@@ -102,7 +149,7 @@ const Register: React.FC = () => {
                         { min: 3, message: '用户名至少3个字符' }
                       ]}
                     >
-                      <Input prefix={<UserOutlined />} placeholder="用户名" />
+                      <Input prefix={<UserOutlined />} placeholder="用户名（至少3个字符）" />
                     </Form.Item>
 
                     <Form.Item
@@ -113,7 +160,7 @@ const Register: React.FC = () => {
                         { required: true, message: '请输入邮箱!' },
                       ]}
                     >
-                      <Input prefix={<MailOutlined />} placeholder="邮箱" />
+                      <Input prefix={<MailOutlined />} placeholder="邮箱地址" />
                     </Form.Item>
 
                     <Form.Item
@@ -127,7 +174,7 @@ const Register: React.FC = () => {
                     >
                       <Input.Password
                         prefix={<LockOutlined />}
-                        placeholder="密码"
+                        placeholder="设置密码"
                         iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                         onChange={(e) => setPassword(e.target.value)}
                       />
@@ -152,12 +199,12 @@ const Register: React.FC = () => {
                         }),
                       ]}
                     >
-                      <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
+                      <Input.Password prefix={<LockOutlined />} placeholder="再次输入密码" />
                     </Form.Item>
 
                     <Form.Item>
                       <Button type="primary" htmlType="submit" block loading={loading}>
-                        注册
+                        注册账户
                       </Button>
                     </Form.Item>
 

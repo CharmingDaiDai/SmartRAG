@@ -18,7 +18,7 @@ import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import { useAppStore } from '../../store/useAppStore';
-import { SmartDocChatProvider } from '../../utils/SmartRagChatProvider';
+import { SmartRAGChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { ThoughtItem, ReferenceItem } from '../../types';
@@ -56,7 +56,7 @@ const TestChatPage = () => {
 
     // 1. Initialize Provider
     const provider = useMemo(() => {
-        return new SmartDocChatProvider(authToken || undefined);
+        return new SmartRAGChatProvider(authToken || undefined);
     }, [authToken]);
 
     // 2. Use XChat Hook
@@ -99,7 +99,7 @@ const TestChatPage = () => {
                 avatar: extendedMsg.role === 'user' ? (
                     <Avatar src={userInfo?.avatarUrl || userInfo?.avatar} icon={<UserOutlined />} />
                 ) : (
-                    <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1677ff' }} />
+                    <Avatar icon={<RobotOutlined />} style={{ backgroundColor: token.colorPrimary }} />
                 ),
                 header: extendedMsg.thoughts && extendedMsg.thoughts.length > 0 ? (
                     <AnimatedThoughtChain items={extendedMsg.thoughts} />
@@ -114,12 +114,35 @@ const TestChatPage = () => {
     return (
         <XProvider theme={{ token: { colorPrimary: token.colorPrimary } }}>
             <Layout style={{ height: '100%', background: token.colorBgContainer }}>
-                <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                <Content style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+                    <div ref={scrollRef} className="chat-messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24, minHeight: 0, overscrollBehavior: 'contain' as const }}>
                         {messages.length === 0 ? (
-                            <div style={{ textAlign: 'center', marginTop: 100, color: '#999' }}>
-                                <RobotOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-                                <p>开始一个新的测试对话吧</p>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '60%',
+                                gap: 12,
+                                paddingTop: 60,
+                                textAlign: 'center',
+                            }}>
+                                <div style={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 14,
+                                    background: 'rgba(99, 102, 241, 0.10)',
+                                    border: '1px solid rgba(99, 102, 241, 0.20)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginBottom: 4,
+                                }}>
+                                    <RobotOutlined style={{ fontSize: 22, color: token.colorPrimary }} />
+                                </div>
+                                <Typography.Text style={{ fontSize: 14, color: token.colorTextSecondary }}>
+                                    开始一个新的测试对话吧
+                                </Typography.Text>
                             </div>
                         ) : (
                             <Bubble.List 
@@ -180,7 +203,7 @@ const TestChatPage = () => {
                             />
                         )}
                     </div>
-                    <div style={{ padding: '16px 24px', borderTop: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
+                    <div className="chat-input-bar" style={{ padding: '12px 20px 16px', borderTop: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0, background: token.colorBgContainer }}>
                         <Sender
                             value={input}
                             onChange={setInput}
@@ -190,16 +213,17 @@ const TestChatPage = () => {
                         />
                     </div>
                 </Content>
-                <Sider 
-                    width={300} 
-                    theme={themeMode === 'dark' ? 'dark' : 'light'} 
-                    style={{ 
-                        borderLeft: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0', 
-                        padding: 24,
+                <Sider
+                    width={300}
+                    className="chat-sidebar-right"
+                    theme={themeMode === 'dark' ? 'dark' : 'light'}
+                    style={{
+                        borderLeft: `1px solid ${token.colorBorderSecondary}`,
+                        padding: 20,
                         background: token.colorBgContainer
                     }}
                 >
-                    <Typography.Title level={5}>测试控制台</Typography.Title>
+                    <Typography.Title level={5} style={{ marginBottom: 6 }}>测试控制台</Typography.Title>
                     <Typography.Paragraph type="secondary">
                         这是一个前端模拟的问答界面，用于测试 UI 交互和流式响应效果。
                     </Typography.Paragraph>

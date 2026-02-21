@@ -1,20 +1,23 @@
-import React, { useEffect } from 'react';
-import { Card, Form, Input, Button, Upload, Select, Avatar, Row, Col, Divider, App } from 'antd';
-import { UserOutlined, UploadOutlined, SettingOutlined, IdcardOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { Card, Form, Input, Button, Upload, Select, Avatar, Row, Col, Collapse, App, theme, Typography } from 'antd';
+import { UserOutlined, CameraOutlined, SettingOutlined, IdcardOutlined, LockOutlined } from '@ant-design/icons';
 import { useAppStore } from '../../store/useAppStore';
 import { userService } from '../../services/userService';
 
+const { Text } = Typography;
+
 const UserProfile: React.FC = () => {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const { userInfo, setUserInfo, llmModels, embeddingModels, rerankModels, fetchModelLists, localSettings, updateLocalSettings } = useAppStore();
   const [profileForm] = Form.useForm();
   const [settingsForm] = Form.useForm();
+  const [avatarHovered, setAvatarHovered] = useState(false);
 
   useEffect(() => {
       const init = async () => {
           await fetchModelLists();
-          
-          // Validate settings against fetched lists
+
           const { llmModels, embeddingModels, rerankModels } = useAppStore.getState();
           const currentSettings = settingsForm.getFieldsValue();
 
@@ -48,10 +51,9 @@ const UserProfile: React.FC = () => {
   const handleUpdateProfile = async (values: any) => {
     try {
         const { password, confirmPassword, ...profileData } = values;
-        
-        // Update Profile Info
+
         const res: any = await userService.updateProfile(profileData);
-        
+
         if (res.code === 200) {
             setUserInfo(res.data);
             message.success('个人信息更新成功');
@@ -60,7 +62,6 @@ const UserProfile: React.FC = () => {
             return;
         }
 
-        // Change Password if provided
         if (password) {
              const pwdRes: any = await userService.changePassword({ password });
             if (pwdRes.code === 200) {
@@ -105,22 +106,54 @@ const UserProfile: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div style={{ height: '100%', overflowY: 'auto', padding: '0 8px 24px' }}>
       <Row gutter={[24, 24]} justify="center">
         <Col xs={24} lg={10}>
             <Card
-                title={<><IdcardOutlined /> 个人资料</>}
-                variant="borderless"
+                title={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <IdcardOutlined style={{ color: token.colorPrimary }} />
+                        个人资料
+                    </span>
+                }
             >
-                <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                    <Avatar size={100} src={userInfo?.avatarUrl || userInfo?.avatar} icon={<UserOutlined />} />
-                    <div style={{ marginTop: 16 }}>
-                        <Upload 
-                            showUploadList={false}
-                            customRequest={handleAvatarUpload}
+                {/* 头像区域（hover 显示相机遮罩） */}
+                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                    <Upload
+                        showUploadList={false}
+                        customRequest={handleAvatarUpload}
+                    >
+                        <div
+                            style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}
+                            onMouseEnter={() => setAvatarHovered(true)}
+                            onMouseLeave={() => setAvatarHovered(false)}
                         >
-                            <Button icon={<UploadOutlined />}>更换头像</Button>
-                        </Upload>
+                            <Avatar
+                                size={96}
+                                src={userInfo?.avatarUrl || userInfo?.avatar}
+                                icon={<UserOutlined />}
+                                style={{ border: `2px solid ${token.colorBorderSecondary}` }}
+                            />
+                            {/* 相机遮罩 */}
+                            <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                borderRadius: '50%',
+                                background: 'rgba(0,0,0,0.42)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: avatarHovered ? 1 : 0,
+                                transition: 'opacity 0.2s ease',
+                            }}>
+                                <CameraOutlined style={{ fontSize: 22, color: '#fff' }} />
+                            </div>
+                        </div>
+                    </Upload>
+                    <div style={{ marginTop: 10 }}>
+                        <Text style={{ fontWeight: 600, fontSize: 15 }}>{userInfo?.username || 'User'}</Text>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 13 }}>{userInfo?.email || ''}</Text>
                     </div>
                 </div>
 
@@ -137,33 +170,51 @@ const UserProfile: React.FC = () => {
                         <Input disabled />
                     </Form.Item>
 
-                    <Divider plain>安全设置</Divider>
+                    {/* 密码修改用 Collapse 折叠（默认关闭） */}
+                    <Collapse
+                        ghost
+                        style={{ marginBottom: 16, marginLeft: -8, marginRight: -8 }}
+                        items={[
+                            {
+                                key: 'password',
+                                label: (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: token.colorTextSecondary }}>
+                                        <LockOutlined />
+                                        修改密码
+                                    </span>
+                                ),
+                                children: (
+                                    <div>
+                                        <Form.Item label="新密码" name="password" style={{ marginBottom: 12 }}>
+                                            <Input.Password placeholder="如果不修改请留空" />
+                                        </Form.Item>
 
-                    <Form.Item label="新密码" name="password">
-                        <Input.Password placeholder="如果不修改请留空" />
-                    </Form.Item>
-
-                    <Form.Item 
-                        label="确认新密码" 
-                        name="confirmPassword"
-                        dependencies={['password']}
-                        rules={[
-                            ({ getFieldValue }) => ({
-                                validator(_, value) {
-                                    if (!value || getFieldValue('password') === value) {
-                                        return Promise.resolve();
-                                    }
-                                    return Promise.reject(new Error('两次输入的密码不一致!'));
-                                },
-                            }),
+                                        <Form.Item
+                                            label="确认新密码"
+                                            name="confirmPassword"
+                                            dependencies={['password']}
+                                            rules={[
+                                                ({ getFieldValue }) => ({
+                                                    validator(_, value) {
+                                                        if (!value || getFieldValue('password') === value) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        return Promise.reject(new Error('两次输入的密码不一致!'));
+                                                    },
+                                                }),
+                                            ]}
+                                        >
+                                            <Input.Password placeholder="请再次输入新密码" />
+                                        </Form.Item>
+                                    </div>
+                                ),
+                            },
                         ]}
-                    >
-                        <Input.Password placeholder="请再次输入新密码" />
-                    </Form.Item>
+                    />
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block>
-                        保存个人信息
+                            保存个人信息
                         </Button>
                     </Form.Item>
                 </Form>
@@ -172,8 +223,12 @@ const UserProfile: React.FC = () => {
 
         <Col xs={24} lg={10}>
             <Card
-                title={<><SettingOutlined /> 偏好设置</>}
-                variant="borderless"
+                title={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <SettingOutlined style={{ color: token.colorPrimary }} />
+                        偏好设置
+                    </span>
+                }
             >
                 <Form
                     form={settingsForm}
@@ -206,7 +261,7 @@ const UserProfile: React.FC = () => {
 
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block>
-                        保存偏好设置
+                            保存偏好设置
                         </Button>
                     </Form.Item>
                 </Form>

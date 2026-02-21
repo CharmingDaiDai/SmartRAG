@@ -1,7 +1,7 @@
-import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Form, Card, Descriptions, Alert, Typography, Tooltip, App } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Table, Input, Form, Alert, Typography, Tooltip, App, Breadcrumb, Statistic, theme } from 'antd';
 import { useState, useEffect } from 'react';
-import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, ArrowLeftOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined, HomeOutlined, FileSearchOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { useParams } from 'react-router-dom';
 import { documentService, IndexingTaskResponse } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
@@ -10,23 +10,110 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import IndexingProgress from '../../components/IndexingProgress';
 
+// Augment component to use theme token
+const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
+    const { token } = theme.useToken();
+    const STRATEGY_LABELS: Record<string, { label: string; color: string }> = {
+        NAIVE_RAG: { label: 'Naive RAG', color: '#6366f1' },
+        HISEM_RAG: { label: 'HiSem RAG', color: '#8b5cf6' },
+        HISEM_RAG_FAST: { label: 'HiSem Fast', color: '#06b6d4' },
+    };
+    const strategy = kbInfo?.indexStrategyType || 'NAIVE_RAG';
+    const strategyInfo = STRATEGY_LABELS[strategy] || { label: strategy, color: '#6366f1' };
+
+    const stats = [
+        {
+            key: 'docs',
+            icon: <FileSearchOutlined />,
+            color: '#6366f1',
+            title: '文档数量',
+            value: kbInfo?.documentCount ?? 0,
+        },
+        {
+            key: 'indexed',
+            icon: <DatabaseOutlined />,
+            color: '#10b981',
+            title: '已索引',
+            value: kbInfo?.indexedDocumentCount ?? kbInfo?.documentCount ?? 0,
+        },
+        {
+            key: 'strategy',
+            icon: <RobotOutlined />,
+            color: strategyInfo.color,
+            title: 'RAG 策略',
+            value: strategyInfo.label,
+            isText: true,
+        },
+        {
+            key: 'model',
+            icon: <RobotOutlined />,
+            color: '#f59e0b',
+            title: 'Embedding 模型',
+            value: kbInfo?.embeddingModelId || '-',
+            isText: true,
+        },
+    ];
+
+    return (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {stats.map(stat => (
+                <div
+                    key={stat.key}
+                    style={{
+                        flex: '1 1 140px',
+                        padding: '12px 16px',
+                        borderRadius: 10,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        background: token.colorBgContainer,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                    }}
+                >
+                    <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 9,
+                        background: `${stat.color}18`,
+                        border: `1px solid ${stat.color}30`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: stat.color,
+                        fontSize: 15,
+                        flexShrink: 0,
+                    }}>
+                        {stat.icon}
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>{stat.title}</div>
+                        {stat.isText ? (
+                            <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{stat.value}</div>
+                        ) : (
+                            <Statistic
+                                value={stat.value as number}
+                                valueStyle={{ fontSize: 20, fontWeight: 700, color: token.colorText, fontFamily: "'JetBrains Mono', monospace" }}
+                                style={{ lineHeight: 1 }}
+                            />
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
-    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ff4d4f' }} />;
-    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#1677ff' }} />;
-    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#52c41a' }} />;
-    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#fa8c16' }} />;
-    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#722ed1' }} />;
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#13c2c2' }} />;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#faad14' }} />;
-    return <FileTextOutlined style={{ ...style, color: '#8c8c8c' }} />;
-};
-
-const STRATEGY_LABELS: Record<string, string> = {
-    NAIVE_RAG: 'Naive RAG',
-    HISEM_RAG: 'HiSem RAG',
-    HISEM_RAG_FAST: 'HiSem RAG Fast',
+    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
+    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#6366f1' }} />;
+    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
+    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
+    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#06b6d4' }} />;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#f59e0b' }} />;
+    return <FileTextOutlined style={{ ...style, color: '#a8a29e' }} />;
 };
 
 const toNativeFile = (file: UploadFile): File | null => {
@@ -43,7 +130,6 @@ const formatFileSize = (size: number) => {
 
 export default function KnowledgeBaseDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { message } = App.useApp();
   const [kbInfo, setKbInfo] = useState<KnowledgeBaseItem | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -293,15 +379,20 @@ export default function KnowledgeBaseDetail() {
       width: 120,
       render: (status) => {
           const statusMap: any = {
-              UPLOADED: { text: '已上传', color: 'default' },
-              CHUNKING: { text: '切分中', color: 'processing' },
-              CHUNKED: { text: '已切分', color: 'warning' },
-              INDEXING: { text: '索引中', color: 'processing' },
-              INDEXED: { text: '已索引', color: 'success' },
-              ERROR: { text: '错误', color: 'error' },
+              UPLOADED: { text: '已上传', color: '#a8a29e', dot: '#a8a29e' },
+              CHUNKING: { text: '切分中', color: '#6366f1', dot: '#6366f1' },
+              CHUNKED: { text: '已切分', color: '#f59e0b', dot: '#f59e0b' },
+              INDEXING: { text: '索引中', color: '#6366f1', dot: '#6366f1' },
+              INDEXED: { text: '已索引', color: '#10b981', dot: '#10b981' },
+              ERROR: { text: '错误', color: '#ef4444', dot: '#ef4444' },
           };
-          const s = statusMap[status] || { text: status, color: 'default' };
-          return <Tag color={s.color}>{s.text}</Tag>;
+          const s = statusMap[status] || { text: status, color: '#a8a29e', dot: '#a8a29e' };
+          return (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ color: s.color, fontWeight: 500 }}>{s.text}</span>
+              </span>
+          );
       }
     },
     {
@@ -350,22 +441,35 @@ export default function KnowledgeBaseDetail() {
 
   return (
     <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="p-6 bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       <SlideInUp>
-      <div style={{ marginBottom: 24, flexShrink: 0 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/kb')} style={{ marginBottom: 16 }}>
-            返回知识库列表
-        </Button>
-        <Card>
-            <Descriptions title={kbInfo?.name || '知识库详情'} column={2}>
-                <Descriptions.Item label="描述">{kbInfo?.description || '暂无描述'}</Descriptions.Item>
-                <Descriptions.Item label="Embedding 模型">{kbInfo?.embeddingModelId}</Descriptions.Item>
-                <Descriptions.Item label="RAG 方法">
-                    <Tag color="blue">{STRATEGY_LABELS[kbInfo?.indexStrategyType || 'NAIVE_RAG']}</Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="文档数量">{kbInfo?.documentCount || 0}</Descriptions.Item>
-            </Descriptions>
-        </Card>
+      <div style={{ marginBottom: 20, flexShrink: 0 }}>
+        {/* 面包屑导航 */}
+        <Breadcrumb
+          style={{ marginBottom: 16 }}
+          items={[
+            {
+              href: '/kb',
+              title: <><HomeOutlined style={{ marginRight: 4 }} />知识库列表</>,
+            },
+            {
+              title: kbInfo?.name || '知识库详情',
+            },
+          ]}
+        />
+        {/* 知识库名称 + 描述 */}
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Title level={4} style={{ margin: 0, marginBottom: 4 }}>
+            {kbInfo?.name || '知识库详情'}
+          </Typography.Title>
+          {kbInfo?.description && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {kbInfo.description}
+            </Typography.Text>
+          )}
+        </div>
+        {/* Mini 统计卡片 */}
+        <KbInfoCards kbInfo={kbInfo} />
       </div>
       </SlideInUp>
 
@@ -431,7 +535,7 @@ export default function KnowledgeBaseDetail() {
         />
       )}
 
-      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Table
         columns={columns}
         dataSource={filteredData}
@@ -441,8 +545,8 @@ export default function KnowledgeBaseDetail() {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
         }}
-        scroll={{ y: 'calc(100vh - 350px)' }}
-        pagination={{ 
+        scroll={{ y: 'calc(100vh - 420px)' }}
+        pagination={{
             current: currentPage,
             pageSize: pageSize,
             total: total,
@@ -500,7 +604,7 @@ export default function KnowledgeBaseDetail() {
                 </Upload.Dragger>
               </Form.Item>
               {fileList.length > 0 && (
-                  <div style={{ background: '#fafbff', border: '1px solid #e5e7ff', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                           <Typography.Text strong>已选择 {fileList.length} 个文件</Typography.Text>
                           <Typography.Text type="secondary">共 {formatFileSize(totalSelectedSize)}</Typography.Text>
@@ -508,10 +612,10 @@ export default function KnowledgeBaseDetail() {
                       <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                           {fileList.map(file => (
                               <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
-                                  <FileTextOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                                  <FileTextOutlined style={{ color: '#6366f1', marginRight: 8 }} />
                                   <div style={{ flex: 1 }}>
                                       <div style={{ fontSize: 14 }}>{file.name}</div>
-                                      <div style={{ fontSize: 12, color: '#999' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
+                                      <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                   </div>
                                   <Button type="text" icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                               </div>

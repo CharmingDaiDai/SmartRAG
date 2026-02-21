@@ -18,6 +18,9 @@ import {
   GithubOutlined,
   EyeTwoTone,
   EyeInvisibleOutlined,
+  ThunderboltOutlined,
+  RobotOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
@@ -26,6 +29,24 @@ import { FadeIn, SlideInUp } from '../../components/common/Motion';
 import './login.css';
 
 const { Title, Text } = Typography;
+
+const FEATURES = [
+  {
+    icon: <RobotOutlined />,
+    title: '检索增强生成',
+    desc: '多策略 RAG，智能检索，精准回答',
+  },
+  {
+    icon: <BookOutlined />,
+    title: '多知识库管理',
+    desc: '结构化组织文档，随时扩展知识边界',
+  },
+  {
+    icon: <ThunderboltOutlined />,
+    title: '实时流式输出',
+    desc: '流式响应，思考过程透明可见',
+  },
+];
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -73,18 +94,44 @@ const Login: React.FC = () => {
       <div className="auth-page">
         <SlideInUp>
           <Card className="auth-card">
-            <Row gutter={24} align="middle">
-              <Col xs={24} sm={10} className="auth-illustration">
+            <Row align="stretch">
+              <Col xs={0} sm={10} className="auth-illustration">
                 <div className="illus-box">
-                  <img src="/logo.png" alt="SmartRAG" style={{ width: 64, height: 64, marginBottom: 12 }} />
-                  <Title level={4}>欢迎使用 SmartDoc</Title>
-                  <Text type="secondary">安全 · 智能 · 高效的知识检索与问答平台</Text>
+                  <div style={{ marginBottom: 28 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <img
+                        src="/logo.png"
+                        alt="SmartRAG"
+                        style={{ width: 32, height: 32, borderRadius: 8 }}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <Text style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>SmartRAG</Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 13, lineHeight: 1.6 }}>
+                      智能知识库检索与问答平台
+                    </Text>
+                  </div>
+
+                  <div className="illus-feature-list">
+                    {FEATURES.map((f) => (
+                      <div key={f.title} className="illus-feature-item">
+                        <div className="illus-feature-icon">{f.icon}</div>
+                        <div className="illus-feature-text">
+                          <Text style={{ fontWeight: 600, fontSize: 14 }}>{f.title}</Text>
+                          <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.5 }}>{f.desc}</Text>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </Col>
 
               <Col xs={24} sm={14}>
                 <div className="auth-form">
-                  <Title level={3}>登录到您的账户</Title>
+                  <Title level={3} style={{ marginBottom: 6 }}>欢迎回来</Title>
+                  <Text type="secondary" style={{ fontSize: 14, display: 'block', marginBottom: 28 }}>
+                    登录您的 SmartRAG 账户
+                  </Text>
 
                   <Form name="login" initialValues={{ remember: true }} onFinish={onFinish} layout="vertical">
                     <Form.Item
@@ -130,10 +177,12 @@ const Login: React.FC = () => {
                       </Space>
                     </div>
 
-                    <Divider>其他登录方式</Divider>
+                    <Divider plain>
+                      <Text type="secondary" style={{ fontSize: 12 }}>其他登录方式</Text>
+                    </Divider>
 
                     <div className="social-row">
-                      <Button icon={<GithubOutlined />} onClick={handleGithubLogin}>
+                      <Button icon={<GithubOutlined />} onClick={handleGithubLogin} style={{ minWidth: 160 }}>
                         使用 GitHub 登录
                       </Button>
                     </div>

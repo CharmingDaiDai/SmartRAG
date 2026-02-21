@@ -12,14 +12,14 @@ import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
-    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ff4d4f' }} />;
-    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#1677ff' }} />;
-    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#52c41a' }} />;
-    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#fa8c16' }} />;
-    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#722ed1' }} />;
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#13c2c2' }} />;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#faad14' }} />;
-    return <FileTextOutlined style={{ ...style, color: '#8c8c8c' }} />;
+    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
+    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#6366f1' }} />;
+    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
+    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
+    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#06b6d4' }} />;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#f59e0b' }} />;
+    return <FileTextOutlined style={{ ...style, color: '#a8a29e' }} />;
 };
 
 const toNativeFile = (file: UploadFile): File | null => {
@@ -229,15 +229,20 @@ export default function DocumentsPage() {
       width: 120,
       render: (status) => {
           const statusMap: any = {
-              UPLOADED: { text: '已上传', color: 'default' },
-              CHUNKING: { text: '切分中', color: 'processing' },
-              CHUNKED: { text: '已切分', color: 'warning' },
-              INDEXING: { text: '索引中', color: 'processing' },
-              INDEXED: { text: '已索引', color: 'success' },
-              ERROR: { text: '错误', color: 'error' },
+              UPLOADED: { text: '已上传', color: '#a8a29e' },
+              CHUNKING: { text: '切分中', color: '#6366f1' },
+              CHUNKED: { text: '已切分', color: '#f59e0b' },
+              INDEXING: { text: '索引中', color: '#6366f1' },
+              INDEXED: { text: '已索引', color: '#10b981' },
+              ERROR: { text: '错误', color: '#ef4444' },
           };
-          const s = statusMap[status] || { text: status, color: 'default' };
-          return <Tag color={s.color}>{s.text}</Tag>;
+          const s = statusMap[status] || { text: status, color: '#a8a29e' };
+          return (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ color: s.color, fontWeight: 500 }}>{s.text}</span>
+              </span>
+          );
       }
     },
     {
@@ -278,7 +283,7 @@ export default function DocumentsPage() {
 
   return (
     <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div className="p-[15px] bg-gray-50" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         <SlideInUp>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
                 <Space>
@@ -322,7 +327,7 @@ export default function DocumentsPage() {
             </div>
         </SlideInUp>
 
-        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <Table
                 columns={columns}
                 dataSource={filteredData}
@@ -399,7 +404,7 @@ export default function DocumentsPage() {
                     </Upload.Dragger>
                 </Form.Item>
                 {fileList.length > 0 && (
-                    <div style={{ background: '#fafbff', border: '1px solid #e5e7ff', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                             <Typography.Text strong>已选择 {fileList.length} 个文件</Typography.Text>
                             <Typography.Text type="secondary">共 {formatFileSize(totalSelectedSize)}</Typography.Text>
@@ -407,10 +412,10 @@ export default function DocumentsPage() {
                         <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                             {fileList.map(file => (
                                 <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
-                                    <FileTextOutlined style={{ color: '#1677ff', marginRight: 8 }} />
+                                    <FileTextOutlined style={{ color: '#6366f1', marginRight: 8 }} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: 14 }}>{file.name}</div>
-                                        <div style={{ fontSize: 12, color: '#999' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
+                                        <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                     </div>
                                     <Button type="text" icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                                 </div>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Modal, Space, Typography, Button } from 'antd';
-import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined } from '@ant-design/icons';
+import React, { useState, memo } from 'react';
+import { Modal, Space, Button, Typography, theme } from 'antd';
+import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined, CaretDownOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
 import Latex from '@ant-design/x-markdown/plugins/Latex';
@@ -18,99 +18,113 @@ interface ReferenceViewerProps {
     references: Reference[];
 }
 
-// Define custom Code component for syntax highlighting
 const Code: React.FC<ComponentProps> = (props) => {
-  const { className, children } = props;
-  const lang = className?.match(/language-(\w+)/)?.[1] || '';
-
-  if (typeof children !== 'string') return null;
-  return <HighlightCode lang={lang}>{children}</HighlightCode>;
+    const { className, children } = props;
+    const lang = className?.match(/language-(\w+)/)?.[1] || '';
+    if (typeof children !== 'string') return null;
+    return <HighlightCode lang={lang}>{children}</HighlightCode>;
 };
 
 const MD_PLUGINS = [Latex(), Mermaid];
-const MD_COMPONENTS = {
-    code: Code,
-};
+const MD_COMPONENTS = { code: Code };
 
-const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
+const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [expanded, setExpanded] = useState(false);
     const { themeMode } = useAppStore();
+    const { token } = theme.useToken();
 
     if (!references || references.length === 0) return null;
 
-    const handleOpen = (index: number) => {
-        setCurrentIndex(index);
+    const currentRef = references[currentIndex];
+
+    const handleItemClick = (idx: number) => {
+        setCurrentIndex(idx);
         setIsModalOpen(true);
     };
 
-    const handleNext = () => {
-        setCurrentIndex((prev) => (prev + 1) % references.length);
-    };
-
-    const handlePrev = () => {
-        setCurrentIndex((prev) => (prev - 1 + references.length) % references.length);
-    };
-
-    const currentRef = references[currentIndex];
+    const handleNext = () => setCurrentIndex((prev) => (prev + 1) % references.length);
+    const handlePrev = () => setCurrentIndex((prev) => (prev - 1 + references.length) % references.length);
 
     return (
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: themeMode === 'dark' ? '1px solid #303030' : '1px solid #f0f0f0' }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>参考文档：</Typography.Text>
-            {/* @ts-ignore */}
-            <Space orientation="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
-                {references.slice(0, 5).map((ref, idx) => (
-                    <div 
-                        key={idx} 
-                        style={{ 
-                            padding: '8px 12px', 
-                            background: themeMode === 'dark' ? '#1f1f1f' : '#f9f9f9', 
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            border: '1px solid transparent'
-                        }}
-                        className="reference-item"
-                        onClick={() => handleOpen(idx)}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = themeMode === 'dark' ? '#141414' : '#e6f7ff';
-                            e.currentTarget.style.borderColor = themeMode === 'dark' ? '#1677ff' : '#91caff';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = themeMode === 'dark' ? '#1f1f1f' : '#f9f9f9';
-                            e.currentTarget.style.borderColor = 'transparent';
-                        }}
-                    >
-                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                            <Space>
-                                <FileTextOutlined style={{ color: '#1677ff' }} />
-                                <Typography.Text ellipsis style={{ maxWidth: 200, fontSize: 12, color: themeMode === 'dark' ? 'rgba(255,255,255,0.85)' : undefined }}>
-                                    {ref.title}
-                                </Typography.Text>
-                            </Space>
-                            <Space>
-                                <Typography.Text type="success" style={{ fontSize: 12 }}>
-                                    {(ref.score * 100).toFixed(0)}%
-                                </Typography.Text>
-                                <EyeOutlined style={{ color: '#999', fontSize: 12 }} />
-                            </Space>
-                        </Space>
-                    </div>
-                ))}
-                {references.length > 5 && (
-                    <Typography.Text type="secondary" style={{ fontSize: 12, paddingLeft: 8 }}>
-                        ... 等共 {references.length} 个文档
-                    </Typography.Text>
-                )}
-            </Space>
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
+            {/* 标题行（点击展开/收缩） */}
+            <div
+                onClick={() => setExpanded(!expanded)}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    marginBottom: expanded ? 8 : 0,
+                    userSelect: 'none',
+                }}
+            >
+                {expanded
+                    ? <CaretDownOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} />
+                    : <CaretRightOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} />
+                }
+                <Typography.Text style={{
+                    fontSize: 11,
+                    color: token.colorTextTertiary,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                }}>
+                    参考文档 ({references.length})
+                </Typography.Text>
+            </div>
 
+            {/* 文档列表（展开后显示） */}
+            {expanded && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {references.slice(0, 5).map((ref, idx) => (
+                        <div
+                            key={idx}
+                            onClick={() => handleItemClick(idx)}
+                            style={{
+                                padding: '7px 10px',
+                                borderRadius: 7,
+                                cursor: 'pointer',
+                                transition: 'all 0.18s ease',
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                background: token.colorBgContainer,
+                            }}
+                            className="reference-item"
+                        >
+                            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                                <Space>
+                                    <FileTextOutlined style={{ color: token.colorPrimary, fontSize: 12 }} />
+                                    <Typography.Text ellipsis style={{ maxWidth: 200, fontSize: 12 }}>
+                                        {ref.title}
+                                    </Typography.Text>
+                                </Space>
+                                <Space size={4}>
+                                    <Typography.Text style={{ fontSize: 11, color: token.colorPrimary, fontWeight: 600 }}>
+                                        {(ref.score * 100).toFixed(0)}%
+                                    </Typography.Text>
+                                    <EyeOutlined style={{ color: token.colorTextTertiary, fontSize: 11 }} />
+                                </Space>
+                            </Space>
+                        </div>
+                    ))}
+                    {references.length > 5 && (
+                        <Typography.Text type="secondary" style={{ fontSize: 12, paddingLeft: 8 }}>
+                            ... 等共 {references.length} 个文档
+                        </Typography.Text>
+                    )}
+                </div>
+            )}
+
+            {/* 详情 Modal */}
             <Modal
                 title={
                     <Space>
-                        <FileTextOutlined />
+                        <FileTextOutlined style={{ color: token.colorPrimary }} />
                         <span>{currentRef?.title}</span>
-                        <span style={{ fontSize: 12, color: '#52c41a', fontWeight: 'normal' }}>
-                            (相关度: {(currentRef?.score * 100).toFixed(0)}%)
+                        <span style={{ fontSize: 12, color: token.colorPrimary, fontWeight: 500 }}>
+                            ({(currentRef?.score * 100).toFixed(0)}% 相关)
                         </span>
                     </Space>
                 }
@@ -120,7 +134,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
                     <Button key="prev" icon={<LeftOutlined />} onClick={handlePrev} disabled={references.length <= 1}>
                         上一篇
                     </Button>,
-                    <span key="indicator" style={{ margin: '0 16px' }}>
+                    <span key="indicator" style={{ margin: '0 16px', color: token.colorTextSecondary, fontSize: 13 }}>
                         {currentIndex + 1} / {references.length}
                     </span>,
                     <Button key="next" icon={<RightOutlined />} onClick={handleNext} disabled={references.length <= 1}>
@@ -131,7 +145,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
             >
                 <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 16px' }}>
                     {currentRef?.content ? (
-                        <XMarkdown 
+                        <XMarkdown
                             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                             // @ts-ignore
                             plugins={MD_PLUGINS}
@@ -140,7 +154,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
                             {currentRef.content}
                         </XMarkdown>
                     ) : (
-                        <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                        <div style={{ textAlign: 'center', padding: 40, color: token.colorTextTertiary }}>
                             暂无预览内容
                         </div>
                     )}
@@ -148,6 +162,6 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = ({ references }) => {
             </Modal>
         </div>
     );
-};
+});
 
 export default ReferenceViewer;

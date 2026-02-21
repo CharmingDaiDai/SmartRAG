@@ -1,6 +1,10 @@
 import React from 'react';
 import { motion, HTMLMotionProps, Variants } from 'framer-motion';
 
+// 统一的贝塞尔曲线（ease-out-quart，比弹簧更克制）
+const EASE_OUT = [0.25, 0.46, 0.45, 0.94] as const;
+const EASE_IN_OUT = [0.4, 0, 0.2, 1] as const;
+
 // ==================== 基础动画 ====================
 
 // 基础淡入动画
@@ -9,20 +13,20 @@ export const FadeIn: React.FC<HTMLMotionProps<"div">> = ({ children, ...props })
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.22, ease: EASE_OUT }}
         {...props}
     >
         {children}
     </motion.div>
 );
 
-// 向上滑入动画
+// 向上滑入动画（减小 y 距离，使用贝塞尔曲线，更克制）
 export const SlideInUp: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.28, ease: EASE_OUT }}
         {...props}
     >
         {children}
@@ -32,10 +36,10 @@ export const SlideInUp: React.FC<HTMLMotionProps<"div">> = ({ children, ...props
 // 向下滑入动画
 export const SlideInDown: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        exit={{ opacity: 0, y: 8 }}
+        transition={{ duration: 0.28, ease: EASE_OUT }}
         {...props}
     >
         {children}
@@ -45,10 +49,10 @@ export const SlideInDown: React.FC<HTMLMotionProps<"div">> = ({ children, ...pro
 // 从左滑入动画
 export const SlideInLeft: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, x: -30 }}
+        initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 30 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        exit={{ opacity: 0, x: 16 }}
+        transition={{ duration: 0.28, ease: EASE_OUT }}
         {...props}
     >
         {children}
@@ -58,23 +62,23 @@ export const SlideInLeft: React.FC<HTMLMotionProps<"div">> = ({ children, ...pro
 // 从右滑入动画
 export const SlideInRight: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, x: 30 }}
+        initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -30 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        exit={{ opacity: 0, x: -16 }}
+        transition={{ duration: 0.28, ease: EASE_OUT }}
         {...props}
     >
         {children}
     </motion.div>
 );
 
-// 缩放动画
+// 缩放动画（用于 Modal 内容）
 export const ScaleIn: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{ duration: 0.22, ease: EASE_OUT }}
         {...props}
     >
         {children}
@@ -83,7 +87,7 @@ export const ScaleIn: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }
 
 // ==================== 列表动画 ====================
 
-// 列表容器（子元素依次出现）
+// 列表容器（子元素依次出现，减小 stagger 间隔）
 export const StaggerContainer: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
         initial="hidden"
@@ -91,7 +95,8 @@ export const StaggerContainer: React.FC<HTMLMotionProps<"div">> = ({ children, .
         variants={{
             visible: {
                 transition: {
-                    staggerChildren: 0.1
+                    staggerChildren: 0.06,
+                    delayChildren: 0.04,
                 }
             }
         }}
@@ -105,8 +110,13 @@ export const StaggerContainer: React.FC<HTMLMotionProps<"div">> = ({ children, .
 export const StaggerItem: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
         variants={{
-            hidden: { opacity: 0, y: 20 },
-            visible: { opacity: 1, y: 0 }
+            hidden: { opacity: 0, y: 10, scale: 0.98 },
+            visible: {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                transition: { duration: 0.22, ease: EASE_OUT }
+            }
         }}
         {...props}
     >
@@ -116,39 +126,39 @@ export const StaggerItem: React.FC<HTMLMotionProps<"div">> = ({ children, ...pro
 
 // ==================== 交互动画 ====================
 
-// 悬停放大效果
+// 悬停放大效果（轻量版）
 export const HoverScale: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.18, ease: EASE_IN_OUT }}
         {...props}
     >
         {children}
     </motion.div>
 );
 
-// 悬停上浮效果
+// 悬停上浮效果（用上移替代 scale，更优雅）
 export const HoverLift: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        whileHover={{ y: -4, boxShadow: "0 8px 16px rgba(0,0,0,0.12)" }}
+        whileHover={{ y: -3, boxShadow: "0 8px 20px rgba(28,25,23,0.12)" }}
         whileTap={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        transition={{ duration: 0.2, ease: EASE_OUT }}
         {...props}
     >
         {children}
     </motion.div>
 );
 
-// 悬停高亮效果（卡片）
+// 悬停卡片效果（上移 + 阴影加深，替代 scale 避免膨胀感）
 export const HoverCard: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        whileHover={{ 
-            scale: 1.02,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-            transition: { duration: 0.2 }
+        whileHover={{
+            y: -3,
+            boxShadow: "0 10px 28px rgba(28,25,23,0.12), 0 4px 10px rgba(28,25,23,0.06)",
+            transition: { duration: 0.2, ease: EASE_OUT }
         }}
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ y: 0, transition: { duration: 0.1 } }}
         {...props}
     >
         {children}
@@ -157,11 +167,11 @@ export const HoverCard: React.FC<HTMLMotionProps<"div">> = ({ children, ...props
 
 // ==================== 状态动画 ====================
 
-// 脉冲动画（用于加载状态）
+// 脉冲动画（用于加载状态，更柔和）
 export const Pulse: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ opacity: [0.45, 1, 0.45] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         {...props}
     >
         {children}
@@ -182,8 +192,8 @@ export const Spin: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) =
 // 弹跳动画
 export const Bounce: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 0.7, repeat: Infinity, ease: "easeInOut" }}
         {...props}
     >
         {children}
@@ -193,8 +203,8 @@ export const Bounce: React.FC<HTMLMotionProps<"div">> = ({ children, ...props })
 // 抖动动画（用于错误提示）
 export const Shake: React.FC<HTMLMotionProps<"div"> & { trigger?: boolean }> = ({ children, trigger, ...props }) => (
     <motion.div
-        animate={trigger ? { x: [-10, 10, -10, 10, 0] } : {}}
-        transition={{ duration: 0.4 }}
+        animate={trigger ? { x: [-8, 8, -8, 8, 0] } : {}}
+        transition={{ duration: 0.35 }}
         {...props}
     >
         {children}
@@ -203,26 +213,26 @@ export const Shake: React.FC<HTMLMotionProps<"div"> & { trigger?: boolean }> = (
 
 // ==================== 组合动画 ====================
 
-// 渐显放大组合（适用于模态框）
+// 渐显缩放（用于 Modal 内容）
 export const FadeInScale: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        transition={{ duration: 0.2, ease: EASE_OUT }}
         {...props}
     >
         {children}
     </motion.div>
 );
 
-// 渐显向上滑入组合（适用于通知）
+// 渐显向上滑入（用于卡片/通知）
 export const FadeInSlideUp: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ type: "spring", stiffness: 500, damping: 35 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.28, ease: EASE_OUT }}
         {...props}
     >
         {children}
@@ -237,42 +247,42 @@ export const cardGridVariants: Variants = {
     visible: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.08,
-            delayChildren: 0.1
+            staggerChildren: 0.06,
+            delayChildren: 0.05
         }
     }
 };
 
 export const cardItemVariants: Variants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    hidden: { opacity: 0, y: 14, scale: 0.97 },
     visible: {
         opacity: 1,
         y: 0,
         scale: 1,
         transition: {
-            type: "spring",
-            stiffness: 300,
-            damping: 24
+            duration: 0.24,
+            ease: [0.25, 0.46, 0.45, 0.94]
         }
     }
 };
 
-// 页面过渡动画变体
+// 页面过渡动画变体（简洁淡入+上移）
 export const pageVariants: Variants = {
-    initial: { opacity: 0, x: -20 },
-    animate: { 
-        opacity: 1, 
-        x: 0,
+    initial: { opacity: 0, y: 10 },
+    animate: {
+        opacity: 1,
+        y: 0,
         transition: {
-            duration: 0.3,
-            ease: "easeOut"
+            duration: 0.26,
+            ease: [0.25, 0.46, 0.45, 0.94]
         }
     },
-    exit: { 
-        opacity: 0, 
-        x: 20,
+    exit: {
+        opacity: 0,
+        y: -8,
         transition: {
-            duration: 0.2
+            duration: 0.18,
+            ease: [0.4, 0, 1, 1]
         }
     }
 };
