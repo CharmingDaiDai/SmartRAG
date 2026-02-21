@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: dev # 激活开发环境配置
   application:
     name: smart-doc
   datasource:
@@ -54,41 +56,83 @@ application:
 # 模型配置
 models:
   # 当前激活的模型
-  activeLlm: glm
-  activeEmbedding: bge-m3
+  active:
+    llm: zhipuai@glm-4-flash
+    embedding: qwen@Qwen3-Embedding-4B
   
-  # 大语言模型配置
-  llm:
-    glm:
+  # 缓存配置
+  cache:
+    enabled: true
+    max-size: 10
+    expire-after-access: 1h
+    
+  # 并发控制配置
+  concurrency:
+    enabled: true
+    default-max-concurrent-llm-requests: 1
+    default-max-concurrent-embedding-requests: 1
+    acquire-timeout: 30
+
+  # 模型提供商配置
+  providers:
+    zhipuai:
+      type: zhipuai
+      enabled: true
       api-key: ${GLM_API_KEY:your_glm_api_key}
       base-url: https://open.bigmodel.cn/api/paas/v4/
-      model-name: glm-4-flash
-    glm-250414:
-      api-key: ${GLM_API_KEY:your_glm_api_key}
-      base-url: https://open.bigmodel.cn/api/paas/v4
-      model-name: GLM-4-Flash-250414
-    chatgpt:
+      timeout: 60s
+      max-retries: 3
+      llm-models:
+        - name: glm-4-flash
+          description: 智谱GLM-4-Flash模型
+        - name: GLM-4-Flash-250414
+          description: 智谱GLM-4-Flash-250414模型
+    
+    openai:
+      type: openai
+      enabled: true
       api-key: ${OPENAI_API_KEY:your-openai-api-key}
       base-url: https://api.openai.com/v1
-      model-name: gpt-4
+      timeout: 60s
+      max-retries: 3
+      llm-models:
+        - name: gpt-4
+          description: OpenAI GPT-4模型
+          
     gemini:
+      type: gemini
+      enabled: true
       api-key: ${GEMINI_API_KEY:your-gemini-api-key}
       base-url: https://generativelanguage.googleapis.com
-      model-name: gemini-pro
-  
-  # 嵌入模型配置
-  embedding:
-    bge-m3:
-      description: 支持 8K 长度的输入
-      api-key: ${EMBEDDING_API_KEY:notnull}
-      base-url: ${EMBEDDING_BASE_URL:http://localhost:9997/v1/}
-      model-name: ${EMBEDDING_MODEL_NAME:bge-m3}
-    text-embedding-v4:
-      description: 在线的 qwen embedding
+      timeout: 60s
+      max-retries: 3
+      llm-models:
+        - name: gemini-pro
+          description: Google Gemini Pro模型
+          
+    qwen:
+      type: qwen
+      enabled: true
       api-key: ${Qwen_EMBEDDING_API_KEY:your-openai-api-key}
       base-url: ${Qwen_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-      model-name: ${Qwen_EMBEDDING_MODEL_NAME:text-embedding-v4}
-
+      timeout: 60s
+      max-retries: 3
+      embedding-models:
+        - name: text-embedding-v4
+          description: 在线的 qwen embedding
+        - name: Qwen/Qwen3-Embedding-4B
+          description: 魔搭社区提供的Qwen3-Embedding-4B（2048维度）
+          
+    xinference:
+      type: xinference
+      enabled: true
+      api-key: ${EMBEDDING_API_KEY:notnull}
+      base-url: ${EMBEDDING_BASE_URL:http://localhost:9997/v1/}
+      timeout: 60s
+      max-retries: 3
+      embedding-models:
+        - name: bge-m3
+          description: 支持 8K 长度的输入
 
 # RAG 方法
 rag:

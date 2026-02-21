@@ -64,6 +64,9 @@ public class OpenAIEmbeddingClient extends AbstractEmbeddingClient {
         // 设置批量大小 (OpenAI 默认支持很大的批次)
         builder.maxSegmentsPerBatch(batchSize);
 
+        // 显式指定 encoding_format=float，兼容魔搭等要求必填该字段的 OpenAI 兼容 API
+        builder.encodingFormat("float");
+
         return builder.build();
     }
 
