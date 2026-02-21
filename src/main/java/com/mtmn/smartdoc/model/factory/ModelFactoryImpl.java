@@ -377,16 +377,31 @@ public class ModelFactoryImpl implements ModelFactory {
             ModelProperties.ModelConfig modelConfig) {
 
         String providerType = providerConfig.getType().toLowerCase();
-        log.debug("根据提供商类型创建LLM客户端: instanceId={}, type={}", instanceId, providerType);
+        log.info("创建LLM客户端: instanceId={}, type={}, model={}", instanceId, providerType, modelConfig.getName());
 
         return switch (providerType) {
-            case "zhipuai" -> new ZhiPuAILLMClient(instanceId, providerConfig, modelConfig);
-            case "qwen" -> new QwenLLMClient(instanceId, providerConfig, modelConfig);
-            case "xinference" -> new XinferenceLLMClient(instanceId, providerConfig, modelConfig);
-            case "openai" -> new OpenAILLMClient(instanceId, providerConfig, modelConfig);
-            case "openai-official" -> new OpenAIOfficialLLMClient(instanceId, providerConfig, modelConfig);
+            case "zhipuai" -> {
+                log.info(">>> 使用 ZhiPuAILLMClient");
+                yield new ZhiPuAILLMClient(instanceId, providerConfig, modelConfig);
+            }
+            case "qwen" -> {
+                log.info(">>> 使用 QwenLLMClient");
+                yield new QwenLLMClient(instanceId, providerConfig, modelConfig);
+            }
+            case "xinference" -> {
+                log.info(">>> 使用 XinferenceLLMClient");
+                yield new XinferenceLLMClient(instanceId, providerConfig, modelConfig);
+            }
+            case "openai" -> {
+                log.info(">>> 使用 OpenAILLMClient");
+                yield new OpenAILLMClient(instanceId, providerConfig, modelConfig);
+            }
+            case "openai-official" -> {
+                log.info(">>> 使用 OpenAIOfficialLLMClient");
+                yield new OpenAIOfficialLLMClient(instanceId, providerConfig, modelConfig);
+            }
             default -> {
-                log.warn("未知的提供商类型: {}, 尝试使用OpenAI兼容接口", providerType);
+                log.warn(">>> 未知提供商类型: {}, fallback 到 OpenAILLMClient", providerType);
                 yield new OpenAILLMClient(instanceId, providerConfig, modelConfig);
             }
         };
