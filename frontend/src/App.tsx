@@ -25,6 +25,8 @@ import {
   type UIStyleDef,
 } from './config/themeConfig';
 
+import ThemeBackground from './components/ThemeBackground';
+
 // ==================== Token 构建函数 ====================
 
 function hexToRgb(hex: string): string {
@@ -127,15 +129,34 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     motionEaseInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
     motionEaseOut: 'cubic-bezier(0, 0, 0.2, 1)',
     motionEaseIn: 'cubic-bezier(0.4, 0, 1, 1)',
+    
+    // 科技主题特殊覆盖
+    ...(us.key === 'tech' ? {
+      colorBgBase: '#050505',
+      colorBgContainer: 'rgba(20, 20, 20, 0.6)',
+      colorBgElevated: 'rgba(30, 30, 30, 0.8)',
+      colorBgLayout: 'transparent',
+      colorBorder: ct.primaryBorder,
+      colorBorderSecondary: ct.primarySoft,
+      wireframe: true,
+    } : {}),
+    
+    // 花哨主题特殊覆盖
+    ...(us.key === 'playful' ? {
+      lineWidth: 2,
+      colorBgLayout: 'transparent',
+      colorBgContainer: 'rgba(255, 255, 255, 0.85)',
+      colorBgElevated: 'rgba(255, 255, 255, 0.95)',
+    } : {}),
   };
 
   if (isDark) {
     return {
       ...base,
-      colorBgBase: '#141210',
-      colorBgContainer: '#1c1917',
-      colorBgElevated: '#292524',
-      colorBgLayout: '#141210',
+      colorBgBase: us.key === 'tech' ? '#050505' : '#141210',
+      colorBgContainer: us.key === 'tech' ? 'rgba(20, 20, 20, 0.6)' : '#1c1917',
+      colorBgElevated: us.key === 'tech' ? 'rgba(30, 30, 30, 0.8)' : '#292524',
+      colorBgLayout: us.key === 'tech' ? 'transparent' : '#141210',
       colorBgSpotlight: '#292524',
       colorBgMask: 'rgba(0,0,0,0.65)',
 
@@ -186,6 +207,14 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
       iconMarginInlineEnd: 10,
       collapsedIconSize: 18,
       itemPaddingInline: 14,
+      ...(us.key === 'playful' ? {
+        itemBg: 'transparent',
+        subMenuItemBg: 'transparent',
+      } : {}),
+      ...(us.key === 'tech' ? {
+        itemBg: 'transparent',
+        subMenuItemBg: 'transparent',
+      } : {}),
     },
     Card: {
       borderRadius: us.cardRadius,
@@ -277,6 +306,29 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
     Alert: {
       borderRadius: us.borderRadiusLG,
     },
+    ...(us.key === 'playful' ? {
+      Button: {
+        controlHeight: fs.controlHeight + 4,
+        borderRadius: us.buttonRadius,
+        fontWeight: 600,
+      },
+      Card: {
+        boxShadowTertiary: '0 8px 0 rgba(0,0,0,0.1)',
+      },
+      Layout: {
+        headerBg: 'rgba(255, 255, 255, 0.85)',
+        siderBg: 'rgba(255, 255, 255, 0.85)',
+      },
+    } : {}),
+    ...(us.key === 'tech' ? {
+      Button: {
+        defaultShadow: `0 0 10px ${primarySoft}`,
+      },
+      Layout: {
+        headerBg: 'rgba(20, 20, 20, 0.6)',
+        siderBg: 'rgba(20, 20, 20, 0.6)',
+      },
+    } : {})
   };
 }
 
@@ -340,10 +392,15 @@ function App() {
     <ConfigProvider
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-        token: tokenObj,
+        token: {
+          ...tokenObj,
+          // 科技主题强制暗色，花哨主题强制亮色（可选，这里仅做动画控制）
+          motion: us.key === 'playful' ? false : true, // 花哨主题关闭原生动画，交由 CSS/Framer 处理
+        },
         components: componentTokens,
       }}
     >
+      <ThemeBackground />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

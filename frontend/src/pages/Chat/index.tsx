@@ -460,7 +460,6 @@ const ChatPage: React.FC = () => {
         <Sider
             width={240}
             className="chat-sidebar-left"
-            theme={themeMode === 'dark' ? 'dark' : 'light'}
             style={{
                 borderRight: `1px solid ${token.colorBorderSecondary}`,
                 background: token.colorBgContainer,
@@ -724,7 +723,6 @@ const ChatPage: React.FC = () => {
         <Sider
             width={300}
             className="chat-sidebar-right"
-            theme={themeMode === 'dark' ? 'dark' : 'light'}
             style={{
                 borderLeft: `1px solid ${token.colorBorderSecondary}`,
                 background: token.colorBgContainer,

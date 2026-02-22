@@ -11,6 +11,7 @@ SmartRag 是一个基于 RAG (检索增强生成) 技术的智能知识库系统
 - **状态管理**: Zustand - 轻量级、易用的全局状态管理
 - **路由管理**: React Router DOM (v6)
 - **样式方案**: Tailwind CSS (原子化 CSS) + CSS Modules + AntD Token 系统
+- **动画与特效**: Framer Motion (页面过渡) + tsParticles (Canvas 粒子背景)
 - **Markdown 渲染**: @ant-design/x-markdown (支持代码高亮、数学公式 LaTeX、Mermaid 图表)
 
 ## 2. 目录结构说明 (Directory Structure)
@@ -20,7 +21,9 @@ src/
 ├── components/         # 公共组件目录
 │   ├── common/        # 通用基础组件 (Loading, Error, 按钮封装等)
 │   ├── rag/           # RAG 业务特定组件 (思维链展示, 引用卡片等)
-│   └── ReferenceViewer.tsx # 文档引用来源展示组件
+│   ├── ReferenceViewer.tsx # 文档引用来源展示组件
+│   ├── ThemeBackground.tsx # 全局 Canvas 粒子特效背景
+│   └── ThemePopover.tsx    # 主题与个性化设置面板
 ├── config/            # 全局配置文件 (API 地址, 常量定义)
 ├── layouts/           # 页面布局组件
 │   └── BasicLayout.tsx # 核心布局：包含侧边栏导航、顶部 Header、主题切换
@@ -58,15 +61,16 @@ src/
   - `AnimatedThoughtChain`: 展示 AI 的 "执行流程" (CoT)，支持展开/折叠。
   - `ReferenceViewer`: 在回答下方展示引用的知识库文档片段及相关度分数。
 
-### 3.2 主题系统 (深色/浅色模式)
-实现了系统级的深色模式切换，并持久化存储。
-- **状态管理**: 在 `useAppStore.ts` 中维护 `themeMode` ('light' | 'dark')。
+### 3.2 主题系统 (深色/浅色模式与多风格)
+实现了系统级的深色模式切换、多套 UI 风格（默认、科技、花哨）并持久化存储。
+- **状态管理**: 在 `useAppStore.ts` 中维护 `themeMode` ('light' | 'dark')、`uiStyle` ('default' | 'tech' | 'playful')、`colorTheme` 和 `fontFamily`。
 - **持久化**: 状态变化时自动同步到 `localStorage`，刷新页面不丢失。
 - **实现原理**:
   1.  **组件级**: `App.tsx` 使用 Ant Design 的 `ConfigProvider`，根据模式动态切换 `theme.defaultAlgorithm` (浅色) 和 `theme.darkAlgorithm` (深色)。
-  2.  **全局级**: `App.tsx` 会在 `<html>` 标签上动态添加 `data-theme='dark'` 属性。
+  2.  **全局级**: `App.tsx` 会在 `<html>` 标签上动态添加 `data-theme='dark'` 和 `data-ui-style='tech'` 属性。
   3.  **样式覆盖**: `index.css` 使用 CSS 变量定义全局颜色 (如滚动条、背景色)，并针对 `[data-theme='dark']` 编写特定覆盖样式。
-  4.  **切换入口**: `BasicLayout.tsx` 顶部导航栏包含切换按钮。
+  4.  **Token 穿透**: 对于需要复杂背景（如 `tsparticles` 粒子特效）的主题，通过 `ConfigProvider` 将 `colorBgLayout` 设为 `transparent`，将 `colorBgContainer` 设为半透明的 `rgba`，让底层 Canvas 透视出来。
+  5.  **切换入口**: `BasicLayout.tsx` 顶部导航栏包含 `ThemePopover` 个性化设置面板。
 
 ### 3.3 Markdown 高级渲染
 系统集成了 `@ant-design/x-markdown` 以支持丰富的 Markdown 渲染能力，包括代码高亮、数学公式和图表。
@@ -140,7 +144,8 @@ const Code: React.FC<ComponentProps> = (props) => {
 - **类型安全**: 严禁使用 `any` 类型。所有数据结构都应在 `src/types` 中定义接口。
 - **性能优化**: 对于复杂的列表渲染 (如聊天记录)，使用 `useMemo` 和 `useCallback` 避免不必要的重渲染。
 - **深色模式适配**: 开发新组件时，不要写死颜色值 (如 `#fff`, `#000`)。请使用 Ant Design 的 Design Token (如 `token.colorBgContainer`, `token.colorText`)，这样组件能自动适配深色模式。
+- **样式覆盖规范**: Ant Design v5 使用 CSS-in-JS，**严禁**在全局 CSS 中使用 `.ant-card` 等类名强行覆盖样式。必须通过 `ConfigProvider` 的 `token` 和 `components` 属性进行修改。
 - **代码提交**: 保持 Git 提交原子性，每次提交只包含一个逻辑变更。
 
 ---
-*文档最后更新时间: 2025-11-28*
+*文档最后更新时间: 2026-02-22*

@@ -309,14 +309,9 @@
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%234f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>') 12 12, pointer !important;
 }
 
-/* 2. 赛博网格背景 */
+/* 2. 赛博网格背景 (已移除，改用 tsparticles) */
 [data-ui-style="tech"] .ant-layout {
-  background-image: 
-    linear-gradient(to right, var(--color-border-subtle) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--color-border-subtle) 1px, transparent 1px) !important;
-  background-size: 40px 40px !important;
-  background-position: center center !important;
-  background-color: var(--color-bg-base) !important;
+  background: transparent !important;
 }
 
 /* 3. 科技感滚动条 */
@@ -384,11 +379,11 @@
 /* 5. 卡片全息扫描与发光 */
 [data-ui-style="tech"] .ant-card,
 [data-ui-style="tech"] .kb-card {
-  background: linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-base) 100%) !important;
   border: 1px solid var(--color-border) !important;
   transition: all 0.3s ease !important;
   position: relative;
   overflow: hidden;
+  background: var(--color-bg-container) !important;
 }
 
 [data-ui-style="tech"] .ant-card::before,
@@ -511,12 +506,9 @@
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23f472b6" stroke="%23ffffff" stroke-width="2"><path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"></path></svg>') 12 12, pointer !important;
 }
 
-/* 2. 波点背景 */
+/* 2. 波点背景 (已移除，改用 tsparticles) */
 [data-ui-style="playful"] .ant-layout {
-  background-image: radial-gradient(var(--color-border-subtle) 2px, transparent 2px) !important;
-  background-size: 30px 30px !important;
-  background-position: 0 0 !important;
-  background-color: var(--color-bg-base) !important;
+  background: transparent !important;
 }
 
 /* 3. 趣味滚动条 */

@@ -2,7 +2,7 @@ import { Button, Space, Popconfirm, Upload, Modal, Table, Input, Form, Alert, Ty
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined, HomeOutlined, FileSearchOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
-import { documentService, IndexingTaskResponse } from '../../services/documentService';
+import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
@@ -166,7 +166,6 @@ export default function KnowledgeBaseDetail() {
     const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
     const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
     // 索引任务状态
-    const [indexingTask, setIndexingTask] = useState<IndexingTaskResponse | null>(null);
     const [showIndexingProgress, setShowIndexingProgress] = useState(false);
 
   // 动态计算表格滚动高度
@@ -286,7 +285,6 @@ export default function KnowledgeBaseDetail() {
           if (res.code === 200) {
               if (res.data) {
                   // 有任务返回，显示进度组件
-                  setIndexingTask(res.data);
                   setShowIndexingProgress(true);
                   message.success(res.data.isNew ? '索引任务已提交' : '正在继续之前的索引任务');
               } else {
@@ -305,15 +303,8 @@ export default function KnowledgeBaseDetail() {
   // 索引完成回调
   const handleIndexingComplete = () => {
       setShowIndexingProgress(false);
-      setIndexingTask(null);
       fetchData();
       fetchKbInfo();
-  };
-
-  // 关闭进度组件
-  const handleIndexingClose = () => {
-      setShowIndexingProgress(false);
-      setIndexingTask(null);
   };
 
   // 重建单个文档索引
@@ -323,7 +314,6 @@ export default function KnowledgeBaseDetail() {
           const res: any = await documentService.rebuildIndex(docId);
           if (res.code === 200) {
               if (res.data) {
-                  setIndexingTask(res.data);
                   setShowIndexingProgress(true);
                   message.success(res.data.isNew ? '重建索引任务已提交' : '正在继续之前的任务');
               } else {
@@ -354,7 +344,6 @@ export default function KnowledgeBaseDetail() {
           const res: any = await documentService.batchRebuildIndex(selectedRowKeys as string[]);
           if (res.code === 200) {
               if (res.data) {
-                  setIndexingTask(res.data);
                   setShowIndexingProgress(true);
                   message.success(res.data.isNew ? `已提交 ${selectedRowKeys.length} 个文档的重建索引` : '正在继续之前的任务');
                   setSelectedRowKeys([]);
@@ -587,9 +576,7 @@ export default function KnowledgeBaseDetail() {
       {showIndexingProgress && id && (
         <IndexingProgress
           kbId={id}
-          taskId={indexingTask?.id}
           onComplete={handleIndexingComplete}
-          onClose={handleIndexingClose}
         />
       )}
 

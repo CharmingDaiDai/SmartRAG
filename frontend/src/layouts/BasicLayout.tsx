@@ -44,13 +44,11 @@ function useIsMobile() {
 // Shared sidebar nav content — used by both Sider (desktop) and Drawer (mobile)
 function SidebarContent({
   collapsed,
-  themeMode,
   token,
   menuItems,
   selectedKey,
 }: {
   collapsed: boolean;
-  themeMode: string;
   token: ReturnType<typeof theme.useToken>['token'];
   menuItems: any[];
   selectedKey: string;
@@ -98,7 +96,6 @@ function SidebarContent({
 
       {/* 导航菜单 */}
       <Menu
-        theme={themeMode === 'dark' ? 'dark' : 'light'}
         mode="inline"
         selectedKeys={[selectedKey]}
         items={menuItems}
@@ -107,6 +104,7 @@ function SidebarContent({
           paddingTop: 8,
           flex: 1,
           overflow: 'auto',
+          background: 'transparent',
         }}
       />
     </>
@@ -116,7 +114,7 @@ function SidebarContent({
 export default function BasicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, themeMode, logout, uiStyle } = useAppStore();
+  const { userInfo, logout, uiStyle } = useAppStore();
   const us = UI_STYLES[uiStyle];
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -222,15 +220,14 @@ export default function BasicLayout() {
           collapsed={collapsed}
           width={220}
           collapsedWidth={64}
-          theme={themeMode === 'dark' ? 'dark' : 'light'}
           style={{
             borderRight: us.sidebarBorderStyle === 'solid' ? `1px solid ${token.colorBorderSecondary}` : 'none',
             overflow: 'hidden',
+            background: token.colorBgContainer,
           }}
         >
           <SidebarContent
             collapsed={collapsed}
-            themeMode={themeMode}
             token={token}
             menuItems={makeMenuItems(false)}
             selectedKey={location.pathname}
@@ -254,7 +251,6 @@ export default function BasicLayout() {
         >
           <SidebarContent
             collapsed={false}
-            themeMode={themeMode}
             token={token}
             menuItems={makeMenuItems(true)}
             selectedKey={location.pathname}

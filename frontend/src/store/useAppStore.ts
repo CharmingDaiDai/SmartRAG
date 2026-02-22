@@ -167,9 +167,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (uiStyle === 'tech') {
           updates.fontFamily = 'system';
           updates.colorTheme = 'indigo';
+          localStorage.setItem('SmartRAG_theme', 'dark');
+          set({ themeMode: 'dark' });
       } else if (uiStyle === 'playful') {
           updates.fontFamily = 'lxgw';
           updates.colorTheme = 'pink';
+          localStorage.setItem('SmartRAG_theme', 'light');
+          set({ themeMode: 'light' });
       }
       savePersonalization(updates);
       set(updates);
