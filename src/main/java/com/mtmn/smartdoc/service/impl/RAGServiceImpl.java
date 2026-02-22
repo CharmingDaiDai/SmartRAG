@@ -10,6 +10,9 @@ import com.mtmn.smartdoc.model.client.SseEventBuilder;
 import com.mtmn.smartdoc.model.dto.ReferenceDocument;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
 import com.mtmn.smartdoc.po.DocumentPo;
+import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
+import com.mtmn.smartdoc.rag.sadp.SadpPlanner;
+import com.mtmn.smartdoc.rag.sadp.TaskNode;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.MilvusService;
@@ -47,6 +50,8 @@ public class RAGServiceImpl implements RAGService {
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final DocumentRepository documentRepository;
     private final RAGQueryProcessor ragQueryProcessor;
+    private final AdaptiveRetriever adaptiveRetriever;
+    private final SadpPlanner sadpPlanner;
 
     /**
      * @param request
@@ -468,12 +473,183 @@ public class RAGServiceImpl implements RAGService {
     }
 
     /**
-     * @param request
-     * @return
+     * HisemRAG 完整版对话（含自适应层级检索 + SADP 多跳规划）
+     *
+     * @param request 对话请求
+     * @return SSE 事件流
      */
     @Override
     public SseEmitter hisemRagChat(HisemRagChatRequest request) {
-        return null;
+        log.info("收到 HisemRAG 对话请求: kbId={}, question={}", request.getKbId(), request.getQuestion());
+
+        SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Long kbId = request.getKbId();
+                String question = request.getQuestion();
+                LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
+                EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
+
+                // 1. 意图识别
+                if (Boolean.TRUE.equals(request.getEnableIntentRecognition())) {
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
+                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
+                    if (!needRetrieval) {
+                        log.info("意图识别结果: 不需要检索，直接聊天");
+                        llmClient.streamChatWithEmitter(question, emitter);
+                        return;
+                    }
+                    log.info("意图识别结果: 需要检索");
+                }
+
+                // 收集检索查询语句
+                Set<String> searchQueries = new HashSet<>();
+
+                // 2. 查询重写
+                String finalQuery = question;
+                if (Boolean.TRUE.equals(request.getEnableQueryRewrite())) {
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在重写查询语句...", "edit");
+                    String rewritten = ragQueryProcessor.rewriteQuery(question);
+                    if (rewritten != null && !rewritten.equals(question)) {
+                        finalQuery = rewritten;
+                        log.info("查询重写结果: {}", finalQuery);
+                    }
+                }
+                searchQueries.add(finalQuery);
+
+                // 3. 问题分解
+                if (Boolean.TRUE.equals(request.getEnableQueryDecomposition())) {
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在问题分解...", "edit");
+                    List<String> subQueries = ragQueryProcessor.decomposeQuery(question);
+                    if (subQueries != null && !subQueries.isEmpty()) {
+                        searchQueries.addAll(subQueries);
+                        log.info("问题分解结果: {}", subQueries);
+                    }
+                }
+
+                // 4. HyDE
+                if (Boolean.TRUE.equals(request.getEnableHyde())) {
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在生成假想答案(HyDE)...", "think");
+                    List<CompletableFuture<String>> hydeFutures = searchQueries.stream()
+                            .map(q -> CompletableFuture.supplyAsync(() -> {
+                                String doc = ragQueryProcessor.generateHydeDoc(q);
+                                return (doc != null && !doc.isEmpty()) ? doc : q;
+                            }))
+                            .toList();
+                    CompletableFuture.allOf(hydeFutures.toArray(new CompletableFuture[0])).join();
+                    searchQueries = hydeFutures.stream()
+                            .map(CompletableFuture::join)
+                            .collect(Collectors.toSet());
+                    log.info("HyDE处理完成，生成 {} 个假设文档用于检索", searchQueries.size());
+                }
+
+                // 5. SADP 复杂度判断
+                SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在判断问题复杂度...", "edit");
+                boolean isComplex = sadpPlanner.isComplexQuery(question, llmClient);
+                log.info("SADP 复杂度判断: isComplex={}", isComplex);
+
+                if (isComplex) {
+                    // ======== SADP 多跳分支 ========
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing",
+                            "检测到复杂多跳问题，正在规划任务...", "edit");
+
+                    List<TaskNode> tasks = sadpPlanner.decomposeToDag(question, llmClient);
+                    String taskCountMsg = String.format("任务拆解完成，共 %d 个子任务", tasks.size());
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", taskCountMsg, "check");
+
+                    // 执行 DAG（内部每个子任务完成时推送 thought 事件）
+                    String finalAnswer = sadpPlanner.executeDag(
+                            tasks, question, kbId, emitter, llmClient, embeddingClient);
+
+                    SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
+
+                    // 流式发送最终答案（分片逐字推送）
+                    llmClient.streamChatWithEmitter(
+                            AppConstants.PromptTemplates.SADP_FINAL_SYNTHESIS
+                                    .replace("{query}", question)
+                                    .replace("{subtask_results}", finalAnswer),
+                            emitter);
+
+                } else {
+                    // ======== 标准自适应检索分支 ========
+                    List<RetrievalResult> results = adaptiveRetriever.retrieve(
+                            searchQueries, kbId, embeddingClient, emitter);
+
+                    String hitMsg = String.format("检索完成，共命中 %d 个相关片段", results.size());
+                    SseEventBuilder.sendThoughtEvent(emitter, "success", hitMsg, "check");
+
+                    // 获取文档标题
+                    List<Long> docIds = results.stream()
+                            .map(r -> {
+                                Object docIdObj = r.getMetadata().get("document_id");
+                                return docIdObj instanceof Number ? ((Number) docIdObj).longValue() : null;
+                            })
+                            .filter(java.util.Objects::nonNull)
+                            .distinct()
+                            .collect(Collectors.toList());
+
+                    Map<Long, String> docTitles = documentRepository.findAllById(docIds).stream()
+                            .collect(Collectors.toMap(DocumentPo::getId, DocumentPo::getFilename));
+
+                    // 转换为 ReferenceDocument
+                    List<ReferenceDocument> documents = results.stream()
+                            .map(r -> {
+                                Object docIdObj = r.getMetadata().get("document_id");
+                                Long docId = docIdObj instanceof Number
+                                        ? ((Number) docIdObj).longValue() : null;
+                                return ReferenceDocument.builder()
+                                        .title(docId != null
+                                                ? docTitles.getOrDefault(docId, "Unknown Document")
+                                                : "Unknown Document")
+                                        .score(r.getScore())
+                                        .content(r.getContent())
+                                        .documentId(docId)
+                                        .chunkId(r.getSourceId())
+                                        .build();
+                            })
+                            .collect(Collectors.toList());
+
+                    // 发送参考文档
+                    if (!documents.isEmpty()) {
+                        SseEventBuilder.sendRefEvent(emitter, documents);
+                    }
+
+                    // 构建 Context
+                    String context = IntStream.range(0, documents.size())
+                            .mapToObj(i -> {
+                                ReferenceDocument doc = documents.get(i);
+                                String safeContent = doc.getContent()
+                                        .replace("<", "&lt;").replace(">", "&gt;");
+                                return String.format("""
+                                        <doc id="%d" title="%s">
+                                        %s
+                                        </doc>""", i + 1, doc.getTitle(), safeContent);
+                            })
+                            .collect(Collectors.joining("\n"));
+
+                    String prompt = AppConstants.PromptTemplates.RAG_ANSWER
+                            .replace("{query}", question)
+                            .replace("{context}", context);
+
+                    llmClient.streamChatWithEmitter(prompt, emitter);
+                }
+
+            } catch (MilvusConnectionException e) {
+                log.error("向量数据库连接失败: {}", e.getMessage());
+                try {
+                    SseEventBuilder.sendThoughtEvent(emitter, "error",
+                            "向量数据库服务暂时不可用，请稍后重试。(" + e.getMessage() + ")", "error");
+                } catch (Exception ignored) {
+                }
+                emitter.completeWithError(e);
+            } catch (Exception e) {
+                log.error("HisemRAG 对话失败: {}", e.getMessage(), e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        return emitter;
     }
 
     @NotNull

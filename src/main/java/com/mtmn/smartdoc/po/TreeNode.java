@@ -51,7 +51,7 @@ public class TreeNode {
     @Column(name = "parent_node_id")
     private String parentNodeId;
 
-    @Column(name = "title_path", columnDefinition = "JSON", nullable = false)
+    @Column(name = "title_path", length = 1000, nullable = false)
     private String titlePath;
 
     @Column(name = "block_index")

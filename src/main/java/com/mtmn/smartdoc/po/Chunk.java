@@ -49,6 +49,24 @@ public class Chunk {
     @Column(name = "vector_id")
     private String vectorId;
 
+    /**
+     * 语义压缩提取的核心知识点（JSON 数组，HiSem-Fast 使用）
+     */
+    @Column(name = "key_knowledge", columnDefinition = "TEXT")
+    private String keyKnowledge;
+
+    /**
+     * 语义压缩提取的内容摘要（HiSem-Fast 使用）
+     */
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    /**
+     * 索引策略类型：NAIVE_RAG / HISEM_RAG_FAST / HISEM_RAG
+     */
+    @Column(name = "strategy_type", length = 50)
+    private String strategyType;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

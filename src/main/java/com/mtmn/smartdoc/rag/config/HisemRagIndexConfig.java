@@ -28,26 +28,20 @@ public class HisemRagIndexConfig extends IndexStrategyConfig {
     private Integer maxLength = 2048;
 
     /**
-     * 是否启用标题增强
+     * 是否启用标题增强（自上而下路径传递）
      */
     @Builder.Default
     private Boolean enableTitleEnhancement = true;
 
-    // TODO 摘要和知识点提取是一个功能，需要进行合并
     /**
-     * 是否启用摘要提取
+     * 是否启用语义压缩（自下而上 LLM 摘要 + 知识点聚合）
+     * 对应前端"语义压缩"开关，开启后需提供 llmModelId
      */
     @Builder.Default
-    private Boolean enableSummary = true;
+    private Boolean enableSemanticCompression = true;
 
     /**
-     * 是否启用核心知识点提取
-     */
-    @Builder.Default
-    private Boolean enableKeyKnowledge = true;
-
-    /**
-     * 用于提取摘要和知识点的 LLM 模型 ID
+     * 用于提取摘要和知识点的 LLM 模型 ID（enableSemanticCompression=true 时必填）
      */
     private String llmModelId;
 
@@ -70,8 +64,9 @@ public class HisemRagIndexConfig extends IndexStrategyConfig {
         if (maxTreeDepth == null || maxTreeDepth < 1 || maxTreeDepth > 10) {
             throw new IllegalArgumentException("maxTreeDepth must be between 1 and 10");
         }
-        if ((enableSummary || enableKeyKnowledge) && (llmModelId == null || llmModelId.isEmpty())) {
-            throw new IllegalArgumentException("llmModelId is required when summary or keyKnowledge is enabled");
+        if (Boolean.TRUE.equals(enableSemanticCompression)
+                && (llmModelId == null || llmModelId.isEmpty())) {
+            throw new IllegalArgumentException("llmModelId is required when enableSemanticCompression is enabled");
         }
     }
 }
