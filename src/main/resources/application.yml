@@ -149,7 +149,7 @@ rag:
     search:
       topK: 5
 
-  # HiSem 基础配置
+  # HiSem 快速版 基础配置
   hisem:
     name: HiSem-RAG-Fast
     description: 层级语义驱动的 RAG 方法（不构建树）
@@ -162,18 +162,25 @@ rag:
     threshold:
       beta: 0.9
       gamma: 0.8
+      theta_min: 0.3
       k_min: 1
+      k_max: 20
 
-  # 使用树结构的高级语义检索方法
-  hisemTree:
-    name: HiSem-RAG-Tree
-    description: 层级语义驱动的 RAG 方法（构建树）
+  # 完整版
+  hisem-sadp:
+    name: HiSem-SADP-RAG
+    description: 完整的 HiSem-SADP-RAG 方法
     index:
       chunkSize: 2048
       titleEnhance: true
-      anAbstract: true
     search:
       maxRes: 10
+    threshold:
+      beta: 0.9
+      gamma: 0.8
+      theta_min: 0.3
+      k_min: 1
+      k_max: 20
 
 # Milvus配置
 milvus:
