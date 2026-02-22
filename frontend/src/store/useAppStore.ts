@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { User } from '../types';
 import { userService } from '../services/userService';
 import { modelService } from '../services/modelService';
+import {
+  ColorTheme, FontFamily, FontSize, UIStyle,
+  PersonalizationSettings, DEFAULT_PERSONALIZATION,
+  FONT_FAMILIES, COLOR_THEMES, UI_STYLES, FONT_SIZES,
+} from '../config/themeConfig';
 
 interface LocalSettings {
   defaultModel?: string;
@@ -18,7 +23,11 @@ interface AppState {
   rerankModels: string[];
   localSettings: LocalSettings;
   themeMode: 'light' | 'dark';
-  
+  colorTheme: ColorTheme;
+  fontFamily: FontFamily;
+  fontSize: FontSize;
+  uiStyle: UIStyle;
+
   setUserInfo: (user: User | null) => void;
   setCurrentKbId: (id: string | null) => void;
   setToken: (token: string | null) => void;
@@ -28,7 +37,34 @@ interface AppState {
   fetchModelLists: () => Promise<void>;
   updateLocalSettings: (settings: LocalSettings) => void;
   toggleTheme: () => void;
+  setColorTheme: (theme: ColorTheme) => void;
+  setFontFamily: (font: FontFamily) => void;
+  setFontSize: (size: FontSize) => void;
+  setUIStyle: (style: UIStyle) => void;
 }
+
+const loadPersonalization = (): PersonalizationSettings => {
+  try {
+    const raw = localStorage.getItem('SmartRAG_personalization');
+    if (raw) {
+      const parsed = { ...DEFAULT_PERSONALIZATION, ...JSON.parse(raw) };
+      // Validate saved keys still exist (handles removed fonts etc.)
+      if (!(parsed.fontFamily in FONT_FAMILIES)) parsed.fontFamily = DEFAULT_PERSONALIZATION.fontFamily;
+      if (!(parsed.colorTheme in COLOR_THEMES)) parsed.colorTheme = DEFAULT_PERSONALIZATION.colorTheme;
+      if (!(parsed.uiStyle in UI_STYLES)) parsed.uiStyle = DEFAULT_PERSONALIZATION.uiStyle;
+      if (!(parsed.fontSize in FONT_SIZES)) parsed.fontSize = DEFAULT_PERSONALIZATION.fontSize;
+      return parsed;
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_PERSONALIZATION;
+};
+
+const savePersonalization = (patch: Partial<PersonalizationSettings>) => {
+  const current = loadPersonalization();
+  localStorage.setItem('SmartRAG_personalization', JSON.stringify({ ...current, ...patch }));
+};
+
+const persisted = loadPersonalization();
 
 export const useAppStore = create<AppState>((set, get) => ({
   userInfo: null,
@@ -39,7 +75,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   rerankModels: [],
   localSettings: JSON.parse(localStorage.getItem('SmartRAG_localSettings') || '{}'),
   themeMode: (localStorage.getItem('SmartRAG_theme') as 'light' | 'dark') || 'light',
-  
+  colorTheme: persisted.colorTheme,
+  fontFamily: persisted.fontFamily,
+  fontSize: persisted.fontSize,
+  uiStyle: persisted.uiStyle,
+
   setUserInfo: (user) => set({ userInfo: user }),
   setCurrentKbId: (id) => set({ currentKbId: id }),
   setToken: (token) => {
@@ -69,7 +109,6 @@ export const useAppStore = create<AppState>((set, get) => ({
               if (res.code === 200) {
                   set({ userInfo: res.data, token });
               } else {
-                  // Token invalid
                   get().logout();
               }
           } catch (e) {
@@ -85,7 +124,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               modelService.getEmbeddings(),
               modelService.getReranks()
           ]);
-          
+
           set({
               llmModels: (llmRes as any).data || [],
               embeddingModels: (embedRes as any).data || [],
@@ -106,5 +145,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       const newTheme = get().themeMode === 'light' ? 'dark' : 'light';
       localStorage.setItem('SmartRAG_theme', newTheme);
       set({ themeMode: newTheme });
-  }
+  },
+
+  setColorTheme: (colorTheme) => {
+      savePersonalization({ colorTheme });
+      set({ colorTheme });
+  },
+
+  setFontFamily: (fontFamily) => {
+      savePersonalization({ fontFamily });
+      set({ fontFamily });
+  },
+
+  setFontSize: (fontSize) => {
+      savePersonalization({ fontSize });
+      set({ fontSize });
+  },
+
+  setUIStyle: (uiStyle) => {
+      savePersonalization({ uiStyle });
+      set({ uiStyle });
+  },
 }));

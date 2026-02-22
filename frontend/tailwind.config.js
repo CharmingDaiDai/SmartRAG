@@ -35,7 +35,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["'LXGW WenKai Screen'", "'PingFang SC'", "'Noto Sans SC'", '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', "'Segoe UI'", "'PingFang SC'", "'Microsoft YaHei'", 'sans-serif'],
         mono: ["'JetBrains Mono'", "'SFMono-Regular'", 'Consolas', "'Liberation Mono'", 'Menlo', 'monospace'],
       },
     },

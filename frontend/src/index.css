@@ -258,6 +258,300 @@ code {
   }
 }
 
+/* ==================== UI 风格：科技 - 全局 ==================== */
+
+/* 科技 - 页面背景加网格扫描线 */
+[data-ui-style='tech'] body {
+  background-image:
+    linear-gradient(var(--color-primary-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-primary-soft) 1px, transparent 1px) !important;
+  background-size: 48px 48px !important;
+}
+
+/* 科技 - CRT 扫描线叠加效果 */
+[data-ui-style='tech'] .ant-layout::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.015) 2px,
+    rgba(0,0,0,0.015) 4px
+  );
+}
+
+[data-theme='dark'][data-ui-style='tech'] .ant-layout::after {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.04) 2px,
+    rgba(0,0,0,0.04) 4px
+  );
+}
+
+/* 科技 - 代码块：方角 */
+[data-ui-style='tech'] .ant-markdown pre {
+  border-radius: 2px;
+  border-color: var(--color-primary-border);
+}
+
+[data-ui-style='tech'] .x-markdown-light pre,
+[data-ui-style='tech'] .x-markdown-dark pre {
+  border-radius: 2px;
+  border-color: var(--color-primary-border);
+}
+
+/* 科技 - 滚动条：方角、主色调 */
+[data-ui-style='tech'] ::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  background: var(--color-primary-border);
+}
+
+[data-ui-style='tech'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* 科技 - 侧边栏角落装饰 */
+[data-ui-style='tech'] .ant-layout-sider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* 科技 - 顶部栏数据流动画 */
+@keyframes tech-data-flow {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+[data-ui-style='tech'] .ant-layout-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--color-primary-border) 20%,
+    var(--color-primary) 50%,
+    var(--color-primary-border) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: tech-data-flow 8s linear infinite;
+}
+
+/* 科技 - 内容区扫描线 */
+@keyframes tech-scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+[data-ui-style='tech'] .ant-layout-content {
+  position: relative;
+}
+
+[data-ui-style='tech'] .ant-layout-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(180deg,
+    var(--color-primary-soft) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.3;
+  animation: tech-scanline 12s linear infinite;
+}
+
+/* 科技 - 内容区右下角 HUD 装饰 */
+[data-ui-style='tech'] .ant-layout-content::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-bottom: 2px solid var(--color-primary-border);
+  border-right: 2px solid var(--color-primary-border);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.4;
+}
+
+/* ==================== UI 风格：花哨 - 全局 ==================== */
+
+/* 花哨 - 滚动条：大圆角、主色调 */
+[data-ui-style='fancy'] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-ui-style='fancy'] ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--color-primary-border);
+}
+
+[data-ui-style='fancy'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* 花哨 - 代码块：大圆角 */
+[data-ui-style='fancy'] .ant-markdown pre {
+  border-radius: 16px;
+  border-width: 2px;
+}
+
+[data-ui-style='fancy'] .x-markdown-light pre,
+[data-ui-style='fancy'] .x-markdown-dark pre {
+  border-radius: 16px;
+  border-width: 2px;
+}
+
+/* 花哨 - Markdown 表格：大圆角 */
+[data-ui-style='fancy'] .ant-markdown table {
+  border-radius: 16px;
+  border-width: 2px;
+  overflow: hidden;
+}
+
+/* 花哨 - 彩虹渐变背景动画 */
+@keyframes fancy-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 花哨 - 侧边栏彩色渐变顶线 */
+[data-ui-style='fancy'] .ant-layout-sider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--color-primary),
+    #f472b6,
+    #fbbf24,
+    #34d399,
+    var(--color-primary)
+  );
+  background-size: 300% 100%;
+  animation: fancy-gradient-shift 6s ease infinite;
+  z-index: 10;
+}
+
+/* 花哨 - 顶部栏彩色渐变底线 */
+[data-ui-style='fancy'] .ant-layout-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--color-primary),
+    #f472b6,
+    #fbbf24,
+    #34d399,
+    var(--color-primary)
+  );
+  background-size: 300% 100%;
+  animation: fancy-gradient-shift 6s ease infinite;
+  z-index: 10;
+}
+
+/* 花哨 - 浮动气泡背景 */
+@keyframes fancy-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.1); }
+  50% { transform: translate(-10px, -40px) scale(0.95); }
+  75% { transform: translate(20px, -10px) scale(1.05); }
+}
+
+@keyframes fancy-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-40px, -30px) scale(1.15); }
+  66% { transform: translate(20px, -50px) scale(0.9); }
+}
+
+@keyframes fancy-float-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(50px, -15px) scale(1.08); }
+  60% { transform: translate(-30px, -35px) scale(0.92); }
+  80% { transform: translate(10px, -25px) scale(1.12); }
+}
+
+[data-ui-style='fancy'] .ant-layout-content {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-ui-style='fancy'] .ant-layout-content::before,
+[data-ui-style='fancy'] .ant-layout-content::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15;
+  filter: blur(60px);
+}
+
+[data-ui-style='fancy'] .ant-layout-content::before {
+  width: 300px;
+  height: 300px;
+  background: var(--color-primary);
+  top: -80px;
+  right: -80px;
+  animation: fancy-float-1 20s ease-in-out infinite;
+}
+
+[data-ui-style='fancy'] .ant-layout-content::after {
+  width: 250px;
+  height: 250px;
+  background: #f472b6;
+  bottom: -60px;
+  left: -60px;
+  animation: fancy-float-2 25s ease-in-out infinite;
+}
+
+/* 花哨 - 菜单选中项动画渐变 */
+@keyframes fancy-menu-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+[data-ui-style='fancy'] .ant-menu-item-selected {
+  background: linear-gradient(90deg,
+    var(--color-primary-soft),
+    var(--color-primary-border),
+    var(--color-primary-soft)
+  ) !important;
+  background-size: 200% 100%;
+  animation: fancy-menu-shimmer 3s ease infinite;
+}
+
 /* ==================== 移动端响应式 ==================== */
 
 /* Chat 页面三栏布局：手机折叠侧栏 */

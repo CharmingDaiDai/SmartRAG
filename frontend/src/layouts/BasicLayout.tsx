@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Dropdown, Avatar, theme, Button, Tooltip, Typography, Drawer } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, theme, Button, Typography, Drawer } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   DashboardOutlined,
@@ -8,14 +8,14 @@ import {
   RobotOutlined,
   UserOutlined,
   LogoutOutlined,
-  SunOutlined,
-  MoonOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MenuOutlined,
 } from '@ant-design/icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
+import { UI_STYLES } from '../config/themeConfig';
+import ThemePopover from '../components/ThemePopover';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -116,7 +116,8 @@ function SidebarContent({
 export default function BasicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, themeMode, toggleTheme, logout } = useAppStore();
+  const { userInfo, themeMode, logout, uiStyle } = useAppStore();
+  const us = UI_STYLES[uiStyle];
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { token } = theme.useToken();
@@ -223,7 +224,7 @@ export default function BasicLayout() {
           collapsedWidth={64}
           theme={themeMode === 'dark' ? 'dark' : 'light'}
           style={{
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            borderRight: us.sidebarBorderStyle === 'solid' ? `1px solid ${token.colorBorderSecondary}` : 'none',
             overflow: 'hidden',
           }}
         >
@@ -269,7 +270,7 @@ export default function BasicLayout() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          borderBottom: us.headerBorderStyle === 'solid' ? `1px solid ${token.colorBorderSecondary}` : 'none',
           height: headerHeight,
           flexShrink: 0,
         }}>
@@ -313,50 +314,8 @@ export default function BasicLayout() {
 
           {/* 右侧：主题切换 + 用户菜单 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {/* 主题切换按钮（带动画） */}
-            <Tooltip title={themeMode === 'light' ? '切换深色模式' : '切换浅色模式'}>
-              <Button
-                type="text"
-                onClick={toggleTheme}
-                style={{
-                  width: 36,
-                  height: 36,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: token.colorTextSecondary,
-                  borderRadius: 8,
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                <AnimatePresence mode="wait">
-                  {themeMode === 'light' ? (
-                    <motion.span
-                      key="moon"
-                      initial={{ opacity: 0, rotate: -30, scale: 0.7 }}
-                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                      exit={{ opacity: 0, rotate: 30, scale: 0.7 }}
-                      transition={{ duration: 0.22 }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
-                    >
-                      <MoonOutlined />
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="sun"
-                      initial={{ opacity: 0, rotate: 30, scale: 0.7 }}
-                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                      exit={{ opacity: 0, rotate: -30, scale: 0.7 }}
-                      transition={{ duration: 0.22 }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
-                    >
-                      <SunOutlined />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Button>
-            </Tooltip>
+            {/* 个性化设置 */}
+            <ThemePopover />
 
             {/* 用户下拉菜单 */}
             <Dropdown menu={userMenu} placement="bottomRight" arrow>
