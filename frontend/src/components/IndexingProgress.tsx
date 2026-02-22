@@ -1,116 +1,114 @@
 import { Progress, Typography, Tag, Alert, theme } from 'antd';
 import { useEffect, useState, useRef } from 'react';
 import { LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined, FileTextOutlined } from '@ant-design/icons';
+import request from '../services/api';
 
 const { Text } = Typography;
 
 interface IndexingProgressProps {
   kbId: string;
-  taskId?: number;
   onComplete?: () => void;
-  onClose?: () => void;
 }
 
-interface ProgressData {
+interface ProgressState {
   taskId: number;
+  status: string;
   total: number;
   completed: number;
   failed: number;
   percentage: number;
 }
 
-interface StepData {
+interface StepState {
   docId: number;
   docName: string;
   step: string;
   stepName: string;
 }
 
-interface ErrorData {
-  docId: number;
-  docName: string;
-  error: string;
-}
-
-interface DoneData {
-  taskId: number;
-  total: number;
-  completed: number;
-  failed: number;
-}
-
 const STEP_COLORS: Record<string, string> = {
+  READING: 'geekblue',
   PARSING: 'blue',
   CHUNKING: 'cyan',
+  TREE_BUILDING: 'lime',
+  LLM_ENRICHING: 'gold',
+  SAVING: 'volcano',
   EMBEDDING: 'purple',
   STORING: 'orange',
 };
 
+const POLL_INTERVAL_MS = 1500;
+
 export default function IndexingProgress({ kbId, onComplete }: IndexingProgressProps) {
   const { token } = theme.useToken();
-  const [progress, setProgress] = useState<ProgressData | null>(null);
-  const [currentStep, setCurrentStep] = useState<StepData | null>(null);
-  const [errors, setErrors] = useState<ErrorData[]>([]);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
+  const [currentStep, setCurrentStep] = useState<StepState | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isDoneRef = useRef(false);
 
   useEffect(() => {
-    const authToken = localStorage.getItem('token');
-    const eventSource = new EventSource(
-      `/api/documents/index-progress/${kbId}?token=${authToken}`
-    );
-    eventSourceRef.current = eventSource;
+    isDoneRef.current = false;
 
-    eventSource.onopen = () => {
-      setIsConnected(true);
+    const fetchProgress = async () => {
+      // 任务已结束后停止轮询（双重保护）
+      if (isDoneRef.current) return;
+
+      try {
+        const res = await request.get(`/documents/index-progress?kbId=${kbId}`);
+        // res 已经是 response.data（拦截器处理过）
+        const task = (res as { data: Record<string, unknown> | null }).data;
+
+        if (!task) return;
+
+        setProgress({
+          taskId: task.taskId as number,
+          status: task.status as string,
+          total: task.totalDocs as number,
+          completed: task.completedDocs as number,
+          failed: task.failedDocs as number,
+          percentage: task.percentage as number,
+        });
+
+        if (task.currentDocId) {
+          setCurrentStep({
+            docId: task.currentDocId as number,
+            docName: task.currentDocName as string,
+            step: task.currentStep as string,
+            stepName: task.currentStepName as string,
+          });
+        }
+
+        if (task.errorMessage) {
+          setErrorMessage(task.errorMessage as string);
+        }
+
+        const status = task.status as string;
+        if (status === 'COMPLETED' || status === 'FAILED') {
+          isDoneRef.current = true;
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setIsDone(true);
+          setCurrentStep(null);
+          setTimeout(() => onComplete?.(), 1500);
+        }
+      } catch {
+        // 网络错误时继续轮询，不中断
+      }
     };
 
-    eventSource.onerror = () => {
-      setIsConnected(false);
-    };
+    // 立即执行一次（刷新后立即恢复状态）
+    fetchProgress();
 
-    eventSource.addEventListener('progress', (event) => {
-      const data: ProgressData = JSON.parse((event as MessageEvent).data);
-      setProgress(data);
-    });
-
-    eventSource.addEventListener('step', (event) => {
-      const data: StepData = JSON.parse((event as MessageEvent).data);
-      setCurrentStep(data);
-    });
-
-    eventSource.addEventListener('error', (event) => {
-      const data: ErrorData = JSON.parse((event as MessageEvent).data);
-      setErrors(prev => [...prev, data]);
-    });
-
-    eventSource.addEventListener('done', (event) => {
-      const data: DoneData = JSON.parse((event as MessageEvent).data);
-      setProgress({
-        taskId: data.taskId,
-        total: data.total,
-        completed: data.completed,
-        failed: data.failed,
-        percentage: 100,
-      });
-      setIsDone(true);
-      setCurrentStep(null);
-      eventSource.close();
-
-      setTimeout(() => {
-        onComplete?.();
-      }, 1500);
-    });
+    pollingRef.current = setInterval(fetchProgress, POLL_INTERVAL_MS);
 
     return () => {
-      eventSource.close();
+      if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [kbId, onComplete]);
 
   const isSuccess = isDone && (!progress || progress.failed === 0);
 
-  // Banner 背景和边框颜色
   const bannerBg = isDone
     ? (isSuccess ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)')
     : 'rgba(99, 102, 241, 0.06)';
@@ -144,10 +142,6 @@ export default function IndexingProgress({ kbId, onComplete }: IndexingProgressP
         {statusIcon}
 
         <Text style={{ fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{statusText}</Text>
-
-        {!isConnected && !isDone && (
-          <Tag color="warning" style={{ flexShrink: 0 }}>连接中...</Tag>
-        )}
 
         {progress && (
           <>
@@ -184,23 +178,18 @@ export default function IndexingProgress({ kbId, onComplete }: IndexingProgressP
         )}
       </div>
 
-      {/* 错误行（只在有错误时显示） */}
-      {errors.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {errors.slice(-2).map((err, index) => (
-            <Alert
-              key={index}
-              type="error"
-              message={
-                <Text ellipsis style={{ maxWidth: 400, fontSize: 12 }}>
-                  {err.docName}: {err.error}
-                </Text>
-              }
-              style={{ padding: '3px 10px', borderRadius: 6 }}
-              showIcon
-            />
-          ))}
-        </div>
+      {/* 错误信息（任务级别，如配置错误等） */}
+      {errorMessage && isDone && !isSuccess && (
+        <Alert
+          type="error"
+          message={
+            <Text ellipsis style={{ maxWidth: 500, fontSize: 12 }}>
+              {errorMessage}
+            </Text>
+          }
+          style={{ padding: '3px 10px', borderRadius: 6 }}
+          showIcon
+        />
       )}
     </div>
   );

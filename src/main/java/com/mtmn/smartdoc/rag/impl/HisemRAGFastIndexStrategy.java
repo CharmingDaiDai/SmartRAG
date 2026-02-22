@@ -2,7 +2,7 @@ package com.mtmn.smartdoc.rag.impl;
 
 import com.mtmn.smartdoc.common.MyNode;
 import com.mtmn.smartdoc.constants.AppConstants;
-import com.mtmn.smartdoc.enums.DocumentIndexStatus;
+import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.enums.IndexStrategyType;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.dto.IndexUpdateItem;
@@ -15,6 +15,7 @@ import com.mtmn.smartdoc.rag.AbstractIndexStrategy;
 import com.mtmn.smartdoc.rag.config.HisemRagFastIndexConfig;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.repository.ChunkRepository;
+import com.mtmn.smartdoc.service.IndexingProgressCallback;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.MinioService;
 import com.mtmn.smartdoc.utils.MarkdownProcessor;
@@ -59,58 +60,93 @@ public class HisemRAGFastIndexStrategy extends AbstractIndexStrategy {
 
     @Override
     public void buildIndex(KnowledgeBase kb, DocumentPo documentPo, IndexStrategyConfig config) {
+        buildIndex(kb, documentPo, config, IndexingProgressCallback.NOOP);
+    }
+
+    @Override
+    public void buildIndex(KnowledgeBase kb, DocumentPo documentPo, IndexStrategyConfig config,
+                           IndexingProgressCallback callback) {
         log.info("Building HisemRAG Fast index for document: id={}, filename={}",
                 documentPo.getId(), documentPo.getFilename());
+        Long docId = documentPo.getId();
+        String docName = documentPo.getFilename();
 
         try {
             // 1. 校验文件类型必须是 Markdown
             validateMarkdownFile(documentPo);
 
             // 2. 读取文档内容
-            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
+            callback.onStepChanged(docId, docName, IndexingStep.READING);
             String content = readDocumentContent(documentPo);
 
             // 3. 使用 Markdown 解析器处理内容
-            List<TextSegment> segments = processContent(content, config, documentPo.getFilename());
-            // TODO setIndexStatus 事务没有提交，状态不会改变，交给异步任务/其他方式去执行
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKED);
+            callback.onStepChanged(docId, docName, IndexingStep.PARSING);
+            List<TextSegment> segments = processContent(content, config, docName);
 
-            // 4. 持久化
-            persist(kb, segments, documentPo.getId());
+            // 4. 持久化 Chunks 到 MySQL
+            callback.onStepChanged(docId, docName, IndexingStep.SAVING);
+            chunkRepository.deleteByDocumentId(docId);
 
-            log.info("✅ HisemRAG Fast index built successfully: documentId={}, segments={}",
-                    documentPo.getId(), segments.size());
+            Long kbId = kb.getId();
+            List<Chunk> chunkEntities = new ArrayList<>();
+            for (int i = 0; i < segments.size(); i++) {
+                TextSegment segment = segments.get(i);
+                Chunk chunk = new Chunk();
+                chunk.setKbId(kbId);
+                chunk.setDocumentId(docId);
+                chunk.setChunkIndex(i);
+                chunk.setContent(segment.text());
+                chunk.setIsModified(false);
+                chunk.setStrategyType("HISEM_RAG_FAST");
+                chunk.setCreatedAt(LocalDateTime.now());
+                chunk.setUpdatedAt(LocalDateTime.now());
+                chunkEntities.add(chunk);
+            }
+            List<Chunk> savedChunks = chunkRepository.saveAll(chunkEntities);
+
+            // 5. 向量化并存储到 Milvus
+            callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
+            vectorizeAndStore(savedChunks, kb, docId);
+
+            log.info("HisemRAG Fast index built successfully: documentId={}, segments={}",
+                    docId, segments.size());
         } catch (Exception e) {
-            log.error("❌ Failed to build HisemRAG Fast index: documentId={}", documentPo.getId(), e);
+            log.error("Failed to build HisemRAG Fast index: documentId={}", docId, e);
             throw new RuntimeException("Index building failed: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config) {
+        rebuildIndexFromChunks(kb, document, config, IndexingProgressCallback.NOOP);
+    }
+
+    @Override
+    public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                                       IndexingProgressCallback callback) {
         log.info("Rebuilding HisemRAG Fast index from chunks for document: id={}", document.getId());
+        Long docId = document.getId();
+        String docName = document.getFilename();
 
         try {
             // 1. 获取现有 Chunks
-            List<Chunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(document.getId());
+            List<Chunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(docId);
             if (chunks.isEmpty()) {
-                log.warn("No chunks found for document: {}, falling back to full build.", document.getId());
-                buildIndex(kb, document, config);
+                log.warn("No chunks found for document: {}, falling back to full build.", docId);
+                buildIndex(kb, document, config, callback);
                 return;
             }
 
-            // 2. 删除旧向量
-            deleteVectorsByDocumentIds(kb.getId(), List.of(document.getId()));
+            // 2. 删除旧向量 + 重新向量化
+            callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
+            deleteVectorsByDocumentIds(kb.getId(), List.of(docId));
+            vectorizeAndStore(chunks, kb, docId);
 
-            // 3. 重新向量化并存储
-            vectorizeAndStore(chunks, kb, document.getId());
-
-            log.info("✅ HisemRAG Fast index rebuilt from chunks successfully: documentId={}, chunks={}",
-                    document.getId(), chunks.size());
+            log.info("HisemRAG Fast index rebuilt from chunks successfully: documentId={}, chunks={}",
+                    docId, chunks.size());
 
         } catch (Exception e) {
-            log.error("❌ Failed to rebuild HisemRAG Fast index from chunks: documentId={}", document.getId(), e);
+            log.error("Failed to rebuild HisemRAG Fast index from chunks: documentId={}", docId, e);
             throw new RuntimeException("Index rebuild failed: " + e.getMessage(), e);
         }
     }
@@ -237,6 +273,7 @@ public class HisemRAGFastIndexStrategy extends AbstractIndexStrategy {
                 chunk.setChunkIndex(i);
                 chunk.setContent(segment.text());
                 chunk.setIsModified(false);
+                chunk.setStrategyType("HISEM_RAG_FAST");
                 chunk.setCreatedAt(LocalDateTime.now());
                 chunk.setUpdatedAt(LocalDateTime.now());
                 chunkEntities.add(chunk);

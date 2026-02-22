@@ -38,6 +38,11 @@ public interface IndexingTaskRepository extends JpaRepository<IndexingTask, Long
     Optional<IndexingTask> findFirstByKbIdOrderByCreatedAtDesc(Long kbId);
 
     /**
+     * 查找所有指定状态的任务（用于启动时清理孤儿任务）
+     */
+    List<IndexingTask> findByStatusIn(List<IndexingTaskStatus> statuses);
+
+    /**
      * 删除知识库的所有任务
      */
     void deleteByKbId(Long kbId);

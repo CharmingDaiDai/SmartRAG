@@ -4,6 +4,7 @@ import com.mtmn.smartdoc.enums.IndexStrategyType;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
+import com.mtmn.smartdoc.service.IndexingProgressCallback;
 
 import java.util.List;
 
@@ -35,6 +36,14 @@ public interface IndexStrategy {
     void buildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config);
 
     /**
+     * 构建索引（带进度回调）
+     */
+    default void buildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                            IndexingProgressCallback callback) {
+        buildIndex(kb, document, config);
+    }
+
+    /**
      * 删除索引
      *
      * @param documentIds 文档 ID 列表
@@ -58,6 +67,14 @@ public interface IndexStrategy {
     void rebuildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config);
 
     /**
+     * 重建索引（带进度回调）
+     */
+    default void rebuildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                              IndexingProgressCallback callback) {
+        rebuildIndex(kb, document, config);
+    }
+
+    /**
      * 基于现有 Chunk 重建索引
      *
      * @param kb       知识库
@@ -65,4 +82,12 @@ public interface IndexStrategy {
      * @param config   索引策略配置
      */
     void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config);
+
+    /**
+     * 基于现有 Chunk 重建索引（带进度回调）
+     */
+    default void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                                        IndexingProgressCallback callback) {
+        rebuildIndexFromChunks(kb, document, config);
+    }
 }

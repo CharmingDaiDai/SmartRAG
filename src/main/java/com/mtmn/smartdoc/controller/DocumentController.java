@@ -6,16 +6,15 @@ import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.User;
 import com.mtmn.smartdoc.service.DocumentService;
 import com.mtmn.smartdoc.service.IndexingTaskService;
+import com.mtmn.smartdoc.vo.IndexingTaskProgressVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -156,17 +155,16 @@ public class DocumentController {
     }
 
     /**
-     * 订阅索引进度（SSE）
+     * 查询索引进度（轮询接口）
      */
-    @GetMapping(value = "/index-progress/{kbId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "订阅索引进度", description = "通过 SSE 实时获取索引构建进度")
-    public SseEmitter subscribeIndexProgress(
-            @Parameter(description = "知识库ID") @PathVariable Long kbId,
+    @GetMapping("/index-progress")
+    @Operation(summary = "查询索引进度", description = "轮询获取指定知识库的最新索引任务进度，前端按 1-2s 间隔调用")
+    public ApiResponse<IndexingTaskProgressVO> getIndexProgress(
+            @Parameter(description = "知识库ID") @RequestParam Long kbId,
             @AuthenticationPrincipal User user) {
 
-        log.info("Subscribing to index progress for kbId={}, userId={}", kbId, user.getId());
-
-        return indexingTaskService.subscribe(user.getId(), kbId);
+        IndexingTaskProgressVO progress = indexingTaskService.getLatestTaskProgress(user.getId(), kbId);
+        return ApiResponse.success(progress);
     }
 
     /**

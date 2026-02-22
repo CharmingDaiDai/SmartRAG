@@ -1,7 +1,7 @@
 package com.mtmn.smartdoc.rag.impl;
 
 import com.mtmn.smartdoc.constants.AppConstants;
-import com.mtmn.smartdoc.enums.DocumentIndexStatus;
+import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.enums.IndexStrategyType;
 import com.mtmn.smartdoc.factory.DocumentSplitterFactory;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
@@ -15,6 +15,7 @@ import com.mtmn.smartdoc.rag.AbstractIndexStrategy;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.rag.config.NaiveRagIndexConfig;
 import com.mtmn.smartdoc.repository.ChunkRepository;
+import com.mtmn.smartdoc.service.IndexingProgressCallback;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.MinioService;
 import com.mtmn.smartdoc.utils.DocumentParseUtils;
@@ -58,18 +59,53 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
 
     @Override
     public void buildIndex(KnowledgeBase kb, DocumentPo documentPo, IndexStrategyConfig config) {
+        buildIndex(kb, documentPo, config, IndexingProgressCallback.NOOP);
+    }
+
+    @Override
+    public void buildIndex(KnowledgeBase kb, DocumentPo documentPo, IndexStrategyConfig config,
+                           IndexingProgressCallback callback) {
         log.info("Building index for document: id={}, type={}", documentPo.getId(), getType());
+        Long docId = documentPo.getId();
+        String docName = documentPo.getFilename();
 
         try {
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
+            // 1. 读取文档
+            callback.onStepChanged(docId, docName, IndexingStep.READING);
             String content = readDocumentContent(documentPo);
-            List<TextSegment> segments = processContent(content, config);
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKED);
-            persist(kb, segments, documentPo.getId());
 
-            log.info("✅ Index built successfully: documentId={}, segments={}", documentPo.getId(), segments.size());
+            // 2. 切分
+            callback.onStepChanged(docId, docName, IndexingStep.CHUNKING);
+            List<TextSegment> segments = processContent(content, config);
+
+            // 3. 保存 Chunks 到 MySQL
+            callback.onStepChanged(docId, docName, IndexingStep.SAVING);
+            chunkRepository.deleteByDocumentId(docId);
+
+            Long kbId = kb.getId();
+            List<Chunk> chunkEntities = new ArrayList<>();
+            for (int i = 0; i < segments.size(); i++) {
+                TextSegment segment = segments.get(i);
+                Chunk chunk = new Chunk();
+                chunk.setKbId(kbId);
+                chunk.setDocumentId(docId);
+                chunk.setChunkIndex(i);
+                chunk.setContent(segment.text());
+                chunk.setIsModified(false);
+                chunk.setStrategyType("NAIVE_RAG");
+                chunk.setCreatedAt(LocalDateTime.now());
+                chunk.setUpdatedAt(LocalDateTime.now());
+                chunkEntities.add(chunk);
+            }
+            List<Chunk> savedChunks = chunkRepository.saveAll(chunkEntities);
+
+            // 4. 向量化并存储到 Milvus
+            callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
+            vectorizeAndStore(savedChunks, kb, docId);
+
+            log.info("Index built successfully: documentId={}, segments={}", docId, segments.size());
         } catch (Exception e) {
-            log.error("❌ Failed to build index: documentId={}", documentPo.getId(), e);
+            log.error("Failed to build index: documentId={}", docId, e);
             throw new RuntimeException("Index building failed: " + e.getMessage(), e);
         }
     }
@@ -132,6 +168,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
                 chunk.setChunkIndex(i);
                 chunk.setContent(segment.text());
                 chunk.setIsModified(false);
+                chunk.setStrategyType("NAIVE_RAG");
                 chunk.setCreatedAt(LocalDateTime.now());
                 chunk.setUpdatedAt(LocalDateTime.now());
                 chunkEntities.add(chunk);
@@ -193,27 +230,34 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
 
     @Override
     public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config) {
+        rebuildIndexFromChunks(kb, document, config, IndexingProgressCallback.NOOP);
+    }
+
+    @Override
+    public void rebuildIndexFromChunks(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                                       IndexingProgressCallback callback) {
         log.info("Rebuilding index from chunks for document: id={}", document.getId());
+        Long docId = document.getId();
+        String docName = document.getFilename();
 
         try {
             // 1. 获取现有 Chunks
-            List<Chunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(document.getId());
+            List<Chunk> chunks = chunkRepository.findByDocumentIdOrderByChunkIndex(docId);
             if (chunks.isEmpty()) {
-                log.warn("No chunks found for document: {}, falling back to full build.", document.getId());
-                buildIndex(kb, document, config);
+                log.warn("No chunks found for document: {}, falling back to full build.", docId);
+                buildIndex(kb, document, config, callback);
                 return;
             }
 
-            // 2. 删除旧向量
-            deleteVectorsByDocumentIds(kb.getId(), List.of(document.getId()));
+            // 2. 删除旧向量 + 重新向量化
+            callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
+            deleteVectorsByDocumentIds(kb.getId(), List.of(docId));
+            vectorizeAndStore(chunks, kb, docId);
 
-            // 3. 重新向量化并存储
-            vectorizeAndStore(chunks, kb, document.getId());
-
-            log.info("✅ Index rebuilt from chunks successfully: documentId={}, chunks={}", document.getId(), chunks.size());
+            log.info("Index rebuilt from chunks successfully: documentId={}, chunks={}", docId, chunks.size());
 
         } catch (Exception e) {
-            log.error("❌ Failed to rebuild index from chunks: documentId={}", document.getId(), e);
+            log.error("Failed to rebuild index from chunks: documentId={}", docId, e);
             throw new RuntimeException("Index rebuild failed: " + e.getMessage(), e);
         }
     }

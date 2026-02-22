@@ -3,6 +3,7 @@ package com.mtmn.smartdoc.rag;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
+import com.mtmn.smartdoc.service.IndexingProgressCallback;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,14 @@ public abstract class AbstractIndexStrategy implements IndexStrategy {
 
         // 2. 重新构建
         buildIndex(kb, document, config);
+    }
+
+    @Override
+    public void rebuildIndex(KnowledgeBase kb, DocumentPo document, IndexStrategyConfig config,
+                             IndexingProgressCallback callback) {
+        log.info("Rebuilding index for document: id={}", document.getId());
+        deleteIndex(kb, List.of(document.getId()));
+        buildIndex(kb, document, config, callback);
     }
 
     @Override
