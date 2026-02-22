@@ -59,7 +59,7 @@ public class IndexingTask {
     private String currentDocName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "current_step")
+    @Column(name = "current_step", columnDefinition = "VARCHAR(50)")
     private IndexingStep currentStep;
 
     @Column(name = "error_message", columnDefinition = "TEXT")

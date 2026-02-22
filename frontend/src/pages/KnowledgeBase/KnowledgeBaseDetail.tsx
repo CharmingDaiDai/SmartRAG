@@ -1,5 +1,5 @@
 import { Button, Space, Popconfirm, Upload, Modal, Table, Input, Form, Alert, Typography, Tooltip, App, Breadcrumb, Statistic, theme } from 'antd';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined, HomeOutlined, FileSearchOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import { documentService, IndexingTaskResponse } from '../../services/documentService';
@@ -11,11 +11,27 @@ import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import IndexingProgress from '../../components/IndexingProgress';
 
 // Augment component to use theme token
+const formatDateTime = (val: string | undefined | null): string => {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (isToday) return `今天 ${time}`;
+    if (isYesterday) return `昨天 ${time}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
+};
+
+// Augment component to use theme token
 const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     const { token } = theme.useToken();
     const STRATEGY_LABELS: Record<string, { label: string; color: string }> = {
         NAIVE_RAG: { label: 'Naive RAG', color: '#6366f1' },
-        HISEM_RAG: { label: 'HiSem RAG', color: '#8b5cf6' },
+        HISEM_RAG: { label: 'HiSem-SADP', color: '#8b5cf6' },
         HISEM_RAG_FAST: { label: 'HiSem Fast', color: '#06b6d4' },
     };
     const strategy = kbInfo?.indexStrategyType || 'NAIVE_RAG';
@@ -146,9 +162,34 @@ export default function KnowledgeBaseDetail() {
     const [batchIndexLoading, setBatchIndexLoading] = useState(false);
     const [rebuildingDocIds, setRebuildingDocIds] = useState<Record<string, boolean>>({});
     const [batchRebuildLoading, setBatchRebuildLoading] = useState(false);
+    const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
+    const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
     // 索引任务状态
     const [indexingTask, setIndexingTask] = useState<IndexingTaskResponse | null>(null);
     const [showIndexingProgress, setShowIndexingProgress] = useState(false);
+
+  // 动态计算表格滚动高度
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState<number>(400);
+
+  const calcTableHeight = useCallback(() => {
+      if (!tableWrapperRef.current) return;
+      // 表格容器的总高度减去表头(~55px)和分页栏(~56px)
+      const h = tableWrapperRef.current.clientHeight - 55 - 56;
+      setTableScrollY(Math.max(h, 200));
+  }, []);
+
+  useEffect(() => {
+      calcTableHeight();
+      const obs = new ResizeObserver(calcTableHeight);
+      if (tableWrapperRef.current) obs.observe(tableWrapperRef.current);
+      return () => obs.disconnect();
+  }, [calcTableHeight]);
+
+  // 索引进度条显示/隐藏会改变可用空间，触发重新计算
+  useEffect(() => {
+      calcTableHeight();
+  }, [showIndexingProgress, calcTableHeight]);
 
   const fetchKbInfo = async () => {
       if (!id) return;
@@ -196,6 +237,7 @@ export default function KnowledgeBaseDetail() {
   }, [id, currentPage, pageSize]);
 
   const handleDelete = async (docId: string) => {
+    setDeletingDocIds(prev => ({ ...prev, [docId]: true }));
     try {
       const res: any = await documentService.delete(docId);
       if (res.code === 200) {
@@ -206,10 +248,17 @@ export default function KnowledgeBaseDetail() {
       }
     } catch (error) {
       // message.error('删除失败');
+    } finally {
+      setDeletingDocIds(prev => {
+          const next = { ...prev };
+          delete next[docId];
+          return next;
+      });
     }
   };
 
   const handleBatchDelete = async () => {
+      setBatchDeleteLoading(true);
       try {
           const res: any = await documentService.batchDelete(selectedRowKeys as string[]);
           if (res.code === 200) {
@@ -221,6 +270,8 @@ export default function KnowledgeBaseDetail() {
           }
       } catch (error) {
           // message.error('批量删除失败');
+      } finally {
+          setBatchDeleteLoading(false);
       }
   };
 
@@ -380,9 +431,14 @@ export default function KnowledgeBaseDetail() {
       render: (status) => {
           const statusMap: any = {
               UPLOADED: { text: '已上传', color: '#a8a29e', dot: '#a8a29e' },
-              CHUNKING: { text: '切分中', color: '#6366f1', dot: '#6366f1' },
-              CHUNKED: { text: '已切分', color: '#f59e0b', dot: '#f59e0b' },
-              INDEXING: { text: '索引中', color: '#6366f1', dot: '#6366f1' },
+              READING: { text: '读取中', color: '#6366f1', dot: '#6366f1' },
+              PARSING: { text: '解析中', color: '#3b82f6', dot: '#3b82f6' },
+              CHUNKING: { text: '切分中', color: '#06b6d4', dot: '#06b6d4' },
+              TREE_BUILDING: { text: '构建语义树', color: '#84cc16', dot: '#84cc16' },
+              LLM_ENRICHING: { text: '语义增强中', color: '#eab308', dot: '#eab308' },
+              SAVING: { text: '保存中', color: '#f97316', dot: '#f97316' },
+              EMBEDDING: { text: '向量化中', color: '#8b5cf6', dot: '#8b5cf6' },
+              STORING: { text: '存储向量', color: '#f97316', dot: '#f97316' },
               INDEXED: { text: '已索引', color: '#10b981', dot: '#10b981' },
               ERROR: { text: '错误', color: '#ef4444', dot: '#ef4444' },
           };
@@ -400,6 +456,7 @@ export default function KnowledgeBaseDetail() {
       dataIndex: 'uploadTime',
       width: 180,
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
+      render: (val: string) => formatDateTime(val),
     },
     {
       title: '操作',
@@ -427,7 +484,7 @@ export default function KnowledgeBaseDetail() {
                 onConfirm={() => handleDelete(record.id)}
             >
                 <Tooltip title="删除">
-                    <Button type="text" danger icon={<DeleteOutlined />} />
+                    <Button type="text" danger icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
                 </Tooltip>
             </Popconfirm>
         </Space>
@@ -440,11 +497,10 @@ export default function KnowledgeBaseDetail() {
   );
 
   return (
-    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-      <SlideInUp>
-      <div style={{ marginBottom: 20, flexShrink: 0 }}>
-        {/* 面包屑导航 */}
+    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* 面包屑 + KB 信息区 — 固定在顶部 */}
+      <SlideInUp style={{ flexShrink: 0 }}>
+      <div style={{ marginBottom: 20 }}>
         <Breadcrumb
           style={{ marginBottom: 16 }}
           items={[
@@ -457,7 +513,6 @@ export default function KnowledgeBaseDetail() {
             },
           ]}
         />
-        {/* 知识库名称 + 描述 */}
         <div style={{ marginBottom: 16 }}>
           <Typography.Title level={4} style={{ margin: 0, marginBottom: 4 }}>
             {kbInfo?.name || '知识库详情'}
@@ -468,17 +523,17 @@ export default function KnowledgeBaseDetail() {
             </Typography.Text>
           )}
         </div>
-        {/* Mini 统计卡片 */}
         <KbInfoCards kbInfo={kbInfo} />
       </div>
       </SlideInUp>
 
-      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+      {/* 工具栏 — 固定在顶部 */}
+      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }} style={{ flexShrink: 0 }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
           <Space>
-            <Input 
-                placeholder="搜索文档" 
-                prefix={<SearchOutlined />} 
+            <Input
+                placeholder="搜索文档"
+                prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
                 style={{ width: 200 }}
@@ -507,7 +562,7 @@ export default function KnowledgeBaseDetail() {
                         批量重建索引 ({selectedRowKeys.length})
                     </Button>
                     <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
-                        <Button danger>批量删除 ({selectedRowKeys.length})</Button>
+                        <Button danger loading={batchDeleteLoading}>批量删除 ({selectedRowKeys.length})</Button>
                     </Popconfirm>
                 </>
             )}
@@ -535,7 +590,9 @@ export default function KnowledgeBaseDetail() {
         />
       )}
 
-      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* 表格区域 — 占满剩余空间，内部滚动 */}
+      <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0 }}>
+      <div ref={tableWrapperRef} style={{ height: '100%' }}>
       <Table
         columns={columns}
         dataSource={filteredData}
@@ -545,7 +602,7 @@ export default function KnowledgeBaseDetail() {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
         }}
-        scroll={{ y: 'calc(100vh - 420px)' }}
+        scroll={{ y: tableScrollY }}
         pagination={{
             current: currentPage,
             pageSize: pageSize,
@@ -557,6 +614,7 @@ export default function KnowledgeBaseDetail() {
             }
         }}
       />
+      </div>
       </SlideInUp>
 
       <Modal
@@ -632,7 +690,6 @@ export default function KnowledgeBaseDetail() {
               </Space>
           </Form>
       </Modal>
-      </div>
     </FadeIn>
   );
 }

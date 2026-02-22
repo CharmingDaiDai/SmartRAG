@@ -47,7 +47,7 @@ public class DocumentPo {
     private String fileType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "index_status", nullable = false)
+    @Column(name = "index_status", nullable = false, columnDefinition = "VARCHAR(50)")
     private DocumentIndexStatus indexStatus;
 
     @Column(name = "upload_time")

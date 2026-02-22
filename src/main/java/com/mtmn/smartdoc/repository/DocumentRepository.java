@@ -46,6 +46,11 @@ public interface DocumentRepository extends JpaRepository<DocumentPo, Long> {
     List<DocumentPo> findByKbIdAndIndexStatus(Long kbId, DocumentIndexStatus indexStatus);
 
     /**
+     * 根据知识库ID和多个索引状态查询
+     */
+    List<DocumentPo> findByKbIdAndIndexStatusIn(Long kbId, List<DocumentIndexStatus> indexStatuses);
+
+    /**
      * 根据知识库ID统计文档数量
      */
     long countByKbId(Long kbId);

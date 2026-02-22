@@ -1,5 +1,5 @@
 import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App } from 'antd';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
@@ -8,6 +8,21 @@ import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
+
+const formatDateTime = (val: string | undefined | null): string => {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (isToday) return `今天 ${time}`;
+    if (isYesterday) return `昨天 ${time}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
+};
 
 const getFileIcon = (fileName: string) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -50,6 +65,26 @@ export default function DocumentsPage() {
     const [uploadForm] = Form.useForm();
         const [fileList, setFileList] = useState<UploadFile[]>([]);
         const [uploading, setUploading] = useState(false);
+        const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
+        const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+
+  // 动态计算表格滚动高度
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableScrollY, setTableScrollY] = useState<number>(400);
+
+  const calcTableHeight = useCallback(() => {
+      if (!tableWrapperRef.current) return;
+      // 表格容器的总高度减去表头(~55px)和分页栏(~56px)
+      const h = tableWrapperRef.current.clientHeight - 55 - 56;
+      setTableScrollY(Math.max(h, 200));
+  }, []);
+
+  useEffect(() => {
+      calcTableHeight();
+      const obs = new ResizeObserver(calcTableHeight);
+      if (tableWrapperRef.current) obs.observe(tableWrapperRef.current);
+      return () => obs.disconnect();
+  }, [calcTableHeight]);
 
   const fetchKbs = async () => {
       try {
@@ -112,6 +147,7 @@ export default function DocumentsPage() {
   }, [filterKbId, currentPage, pageSize]);
 
   const handleDelete = async (id: string) => {
+    setDeletingDocIds(prev => ({ ...prev, [id]: true }));
     try {
       const res: any = await documentService.delete(id);
       if (res.code === 200) {
@@ -122,10 +158,17 @@ export default function DocumentsPage() {
       }
     } catch (error) {
       // message.error('删除失败');
+    } finally {
+      setDeletingDocIds(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+      });
     }
   };
 
   const handleBatchDelete = async () => {
+      setBatchDeleteLoading(true);
       try {
           const res: any = await documentService.batchDelete(selectedRowKeys as string[]);
           if (res.code === 200) {
@@ -137,6 +180,8 @@ export default function DocumentsPage() {
           }
       } catch (error) {
           // message.error('批量删除失败');
+      } finally {
+          setBatchDeleteLoading(false);
       }
   };
 
@@ -230,9 +275,14 @@ export default function DocumentsPage() {
       render: (status) => {
           const statusMap: any = {
               UPLOADED: { text: '已上传', color: '#a8a29e' },
-              CHUNKING: { text: '切分中', color: '#6366f1' },
-              CHUNKED: { text: '已切分', color: '#f59e0b' },
-              INDEXING: { text: '索引中', color: '#6366f1' },
+              READING: { text: '读取中', color: '#6366f1' },
+              PARSING: { text: '解析中', color: '#3b82f6' },
+              CHUNKING: { text: '切分中', color: '#06b6d4' },
+              TREE_BUILDING: { text: '构建语义树', color: '#84cc16' },
+              LLM_ENRICHING: { text: '语义增强中', color: '#eab308' },
+              SAVING: { text: '保存中', color: '#f97316' },
+              EMBEDDING: { text: '向量化中', color: '#8b5cf6' },
+              STORING: { text: '存储向量', color: '#f97316' },
               INDEXED: { text: '已索引', color: '#10b981' },
               ERROR: { text: '错误', color: '#ef4444' },
           };
@@ -250,6 +300,7 @@ export default function DocumentsPage() {
       dataIndex: 'uploadTime', // Changed from createdAt
       width: 180,
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
+      render: (val: string) => formatDateTime(val),
     },
     {
       title: '操作',
@@ -269,7 +320,7 @@ export default function DocumentsPage() {
                 onConfirm={() => handleDelete(record.id)}
             >
                 <Tooltip title="删除">
-                    <Button type="text" danger icon={<DeleteOutlined />} />
+                    <Button type="text" danger icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
                 </Tooltip>
             </Popconfirm>
         </Space>
@@ -282,20 +333,20 @@ export default function DocumentsPage() {
   );
 
   return (
-    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <SlideInUp>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexShrink: 0 }}>
+    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* 工具栏 — 固定在顶部，不随表格滚动 */}
+        <SlideInUp style={{ flexShrink: 0 }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
                 <Space>
-                    <Input 
-                        placeholder="搜索文档" 
-                        prefix={<SearchOutlined />} 
+                    <Input
+                        placeholder="搜索文档"
+                        prefix={<SearchOutlined />}
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         style={{ width: 200 }}
                     />
-                    <Select 
-                        style={{ width: 200 }} 
+                    <Select
+                        style={{ width: 200 }}
                         placeholder="筛选知识库"
                         allowClear
                         value={filterKbId}
@@ -309,7 +360,7 @@ export default function DocumentsPage() {
                 <Space>
                     {selectedRowKeys.length > 0 && (
                         <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
-                            <Button danger>批量删除 ({selectedRowKeys.length})</Button>
+                            <Button danger loading={batchDeleteLoading}>批量删除 ({selectedRowKeys.length})</Button>
                         </Popconfirm>
                     )}
                     <Button
@@ -327,7 +378,9 @@ export default function DocumentsPage() {
             </div>
         </SlideInUp>
 
-        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* 表格区域 — 占满剩余空间，内部滚动 */}
+        <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0 }}>
+            <div ref={tableWrapperRef} style={{ height: '100%' }}>
             <Table
                 columns={columns}
                 dataSource={filteredData}
@@ -337,7 +390,7 @@ export default function DocumentsPage() {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
-                scroll={{ y: 'calc(100vh - 280px)' }}
+                scroll={{ y: tableScrollY }}
                 pagination={{
                     current: currentPage,
                     pageSize: pageSize,
@@ -350,6 +403,7 @@ export default function DocumentsPage() {
                     }
                 }}
             />
+            </div>
         </SlideInUp>
 
         <Modal
@@ -432,7 +486,6 @@ export default function DocumentsPage() {
                 </Space>
             </Form>
         </Modal>
-        </div>
     </FadeIn>
   );
 }

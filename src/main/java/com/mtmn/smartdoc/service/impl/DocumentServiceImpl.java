@@ -350,8 +350,9 @@ public class DocumentServiceImpl implements DocumentService {
     public IndexingTaskResponse triggerBatchIndexing(Long kbId, Long userId) {
         knowledgeBaseService.getKnowledgeBaseEntity(kbId, userId);
 
-        // 获取待索引的文档
-        List<DocumentPo> documents = documentRepository.findByKbIdAndIndexStatus(kbId, DocumentIndexStatus.UPLOADED);
+        // 获取待索引的文档（包括未索引和索引失败的）
+        List<DocumentPo> documents = documentRepository.findByKbIdAndIndexStatusIn(kbId,
+                List.of(DocumentIndexStatus.UPLOADED, DocumentIndexStatus.ERROR));
 
         if (documents.isEmpty()) {
             log.info("No documents to index for kbId={}", kbId);
