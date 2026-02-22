@@ -41,7 +41,7 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
         {
             key: 'docs',
             icon: <FileSearchOutlined />,
-            color: '#6366f1',
+            color: token.colorPrimary,
             title: '文档数量',
             value: kbInfo?.documentCount ?? 0,
         },
@@ -71,44 +71,44 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     ];
 
     return (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             {stats.map(stat => (
                 <div
                     key={stat.key}
                     style={{
-                        flex: '1 1 140px',
-                        padding: '12px 16px',
+                        padding: '6px 12px',
                         borderRadius: 10,
                         border: `1px solid ${token.colorBorderSecondary}`,
                         background: token.colorBgContainer,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 12,
+                        gap: 8,
+                        whiteSpace: 'nowrap',
                     }}
                 >
                     <div style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 9,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 7,
                         background: `${stat.color}18`,
                         border: `1px solid ${stat.color}30`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: stat.color,
-                        fontSize: 15,
+                        fontSize: 13,
                         flexShrink: 0,
                     }}>
                         {stat.icon}
                     </div>
                     <div>
-                        <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 2 }}>{stat.title}</div>
+                        <div style={{ fontSize: 10, color: token.colorTextTertiary, lineHeight: 1.2 }}>{stat.title}</div>
                         {stat.isText ? (
-                            <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{stat.value}</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: token.colorText, lineHeight: 1.4 }}>{stat.value}</div>
                         ) : (
                             <Statistic
                                 value={stat.value as number}
-                                valueStyle={{ fontSize: 20, fontWeight: 700, color: token.colorText, fontFamily: "'JetBrains Mono', monospace" }}
+                                valueStyle={{ fontSize: 16, fontWeight: 700, color: token.colorText, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.3 }}
                                 style={{ lineHeight: 1 }}
                             />
                         )}
@@ -119,11 +119,11 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     );
 };
 
-const getFileIcon = (fileName: string) => {
+const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
     if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
-    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#6366f1' }} />;
+    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: primaryColor }} />;
     if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
     if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
     if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
@@ -147,6 +147,7 @@ const formatFileSize = (size: number) => {
 export default function KnowledgeBaseDetail() {
   const { id } = useParams<{ id: string }>();
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const [kbInfo, setKbInfo] = useState<KnowledgeBaseItem | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -413,7 +414,7 @@ export default function KnowledgeBaseDetail() {
       ellipsis: true,
       render: (text, entity) => (
         <Space>
-            {getFileIcon(text || entity.filename || entity.fileName)}
+            {getFileIcon(text || entity.filename || entity.fileName, token.colorPrimary)}
             {text || entity.filename || entity.fileName}
         </Space>
       ),
@@ -431,7 +432,7 @@ export default function KnowledgeBaseDetail() {
       render: (status) => {
           const statusMap: any = {
               UPLOADED: { text: '已上传', color: '#a8a29e', dot: '#a8a29e' },
-              READING: { text: '读取中', color: '#6366f1', dot: '#6366f1' },
+              READING: { text: '读取中', color: token.colorPrimary, dot: token.colorPrimary },
               PARSING: { text: '解析中', color: '#3b82f6', dot: '#3b82f6' },
               CHUNKING: { text: '切分中', color: '#06b6d4', dot: '#06b6d4' },
               TREE_BUILDING: { text: '构建语义树', color: '#84cc16', dot: '#84cc16' },
@@ -498,23 +499,23 @@ export default function KnowledgeBaseDetail() {
 
   return (
     <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* 面包屑 + KB 信息区 — 固定在顶部 */}
+      {/* 面包屑 + KB 信息区 — 一行显示：左侧名称，右侧卡片 */}
       <SlideInUp style={{ flexShrink: 0 }}>
-      <div style={{ marginBottom: 20 }}>
-        <Breadcrumb
-          style={{ marginBottom: 16 }}
-          items={[
-            {
-              href: '/kb',
-              title: <><HomeOutlined style={{ marginRight: 4 }} />知识库列表</>,
-            },
-            {
-              title: kbInfo?.name || '知识库详情',
-            },
-          ]}
-        />
-        <div style={{ marginBottom: 16 }}>
-          <Typography.Title level={4} style={{ margin: 0, marginBottom: 4 }}>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+        <div style={{ flexShrink: 0 }}>
+          <Breadcrumb
+            style={{ marginBottom: 4 }}
+            items={[
+              {
+                href: '/kb',
+                title: <><HomeOutlined style={{ marginRight: 4 }} />知识库列表</>,
+              },
+              {
+                title: kbInfo?.name || '知识库详情',
+              },
+            ]}
+          />
+          <Typography.Title level={4} style={{ margin: 0 }}>
             {kbInfo?.name || '知识库详情'}
           </Typography.Title>
           {kbInfo?.description && (
@@ -523,13 +524,15 @@ export default function KnowledgeBaseDetail() {
             </Typography.Text>
           )}
         </div>
-        <KbInfoCards kbInfo={kbInfo} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KbInfoCards kbInfo={kbInfo} />
+        </div>
       </div>
       </SlideInUp>
 
       {/* 工具栏 — 固定在顶部 */}
       <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.05 }} style={{ flexShrink: 0 }}>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
           <Space>
             <Input
                 placeholder="搜索文档"
@@ -608,6 +611,7 @@ export default function KnowledgeBaseDetail() {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
+            align: 'end',
             onChange: (page, size) => {
                 setCurrentPage(page);
                 setPageSize(size);
@@ -662,7 +666,7 @@ export default function KnowledgeBaseDetail() {
                 </Upload.Dragger>
               </Form.Item>
               {fileList.length > 0 && (
-                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                  <div style={{ background: `${token.colorPrimary}0A`, border: `1px solid ${token.colorPrimary}26`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                           <Typography.Text strong>已选择 {fileList.length} 个文件</Typography.Text>
                           <Typography.Text type="secondary">共 {formatFileSize(totalSelectedSize)}</Typography.Text>
@@ -670,7 +674,7 @@ export default function KnowledgeBaseDetail() {
                       <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                           {fileList.map(file => (
                               <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
-                                  <FileTextOutlined style={{ color: '#6366f1', marginRight: 8 }} />
+                                  <FileTextOutlined style={{ color: token.colorPrimary, marginRight: 8 }} />
                                   <div style={{ flex: 1 }}>
                                       <div style={{ fontSize: 14 }}>{file.name}</div>
                                       <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>

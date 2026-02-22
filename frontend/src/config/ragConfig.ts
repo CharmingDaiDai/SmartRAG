@@ -42,7 +42,13 @@ export const getMethodConfig = (method: string) => {
       max: 8192,
       step: 1,
       defaultValue: 512,
-      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
+      marks: {
+        512: "512",
+        1024: "1024",
+        2048: "2048",
+        4096: "4096",
+        8192: "8192",
+      },
     },
     {
       key: "chunk_overlap",
@@ -88,7 +94,13 @@ export const getMethodConfig = (method: string) => {
       max: 8192,
       step: 1,
       defaultValue: 512,
-      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
+      marks: {
+        512: "512",
+        1024: "1024",
+        2048: "2048",
+        4096: "4096",
+        8192: "8192",
+      },
     },
     // 开关类型
     {
@@ -118,7 +130,13 @@ export const getMethodConfig = (method: string) => {
       max: 8192,
       step: 1,
       defaultValue: 512,
-      marks: { 512: "512", 1024: "1024", 2048: "2048", 4096: "4096", 8192: "8192" },
+      marks: {
+        512: "512",
+        1024: "1024",
+        2048: "2048",
+        4096: "4096",
+        8192: "8192",
+      },
     },
     // 开关类型
     {
@@ -261,7 +279,37 @@ export const getMethodConfig = (method: string) => {
           step: 1,
           defaultValue: 10,
         },
-        ...commonSearchConfig,
+        ...[
+          // 开关类型
+          {
+            key: "enable_rerank",
+            label: "开启重排序",
+            type: "switch",
+            defaultValue: false,
+          },
+          {
+            key: "enableIntentRecognition",
+            label: "意图识别",
+            type: "switch",
+            defaultValue: false,
+          },
+          // 选择类型
+          {
+            key: "rerankModelId",
+            label: "Rerank 模型",
+            type: "model_select",
+            modelType: "rerank",
+            defaultValue: "",
+            dependency: { field: "enable_rerank", value: true },
+          },
+          {
+            key: "llmModelId",
+            label: "LLM 模型",
+            type: "model_select",
+            modelType: "llm",
+            defaultValue: "",
+          },
+        ],
       ],
     },
   };

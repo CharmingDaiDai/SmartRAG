@@ -380,12 +380,12 @@ const ChatPage: React.FC = () => {
                 footer: extendedMsg.references && extendedMsg.references.length > 0 ? (
                     <ReferenceViewer references={extendedMsg.references} />
                 ) : undefined,
-                // 用户气泡：靛紫色调浅底
+                // 用户气泡：主题色调浅底
                 ...(extendedMsg.role === 'user' ? {
                     styles: {
                         content: {
-                            background: 'rgba(99, 102, 241, 0.08)',
-                            border: '1px solid rgba(99, 102, 241, 0.18)',
+                            background: `${token.colorPrimary}14`,
+                            border: `1px solid ${token.colorPrimary}2E`,
                             borderRadius: 12,
                         }
                     }
@@ -512,7 +512,7 @@ const ChatPage: React.FC = () => {
                                     borderRadius: 8,
                                     cursor: 'pointer',
                                     background: activeHistoryId === item.id
-                                        ? 'rgba(99, 102, 241, 0.08)'
+                                        ? `${token.colorPrimary}14`
                                         : 'transparent',
                                     borderLeft: activeHistoryId === item.id
                                         ? `2px solid ${token.colorPrimary}`
@@ -585,8 +585,8 @@ const ChatPage: React.FC = () => {
                                 width: 56,
                                 height: 56,
                                 borderRadius: 16,
-                                background: 'rgba(99, 102, 241, 0.10)',
-                                border: '1px solid rgba(99, 102, 241, 0.20)',
+                                background: `${token.colorPrimary}1A`,
+                                border: `1px solid ${token.colorPrimary}33`,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -628,7 +628,7 @@ const ChatPage: React.FC = () => {
                                                 width: 28,
                                                 height: 28,
                                                 borderRadius: 7,
-                                                background: 'rgba(99, 102, 241, 0.08)',
+                                                background: `${token.colorPrimary}14`,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',

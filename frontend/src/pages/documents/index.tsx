@@ -1,4 +1,4 @@
-import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App, theme } from 'antd';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { documentService } from '../../services/documentService';
@@ -24,11 +24,11 @@ const formatDateTime = (val: string | undefined | null): string => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
 };
 
-const getFileIcon = (fileName: string) => {
+const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
     if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
-    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: '#6366f1' }} />;
+    if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: primaryColor }} />;
     if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
     if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
     if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
@@ -51,6 +51,7 @@ const formatFileSize = (size: number) => {
 
 export default function DocumentsPage() {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DocumentItem[]>([]);
@@ -231,7 +232,7 @@ export default function DocumentsPage() {
       ellipsis: true,
       render: (text, entity) => (
         <Space>
-            {getFileIcon(text || entity.filename || entity.fileName)}
+            {getFileIcon(text || entity.filename || entity.fileName, token.colorPrimary)}
             {text || entity.filename || entity.fileName}
         </Space>
       ),
@@ -275,7 +276,7 @@ export default function DocumentsPage() {
       render: (status) => {
           const statusMap: any = {
               UPLOADED: { text: '已上传', color: '#a8a29e' },
-              READING: { text: '读取中', color: '#6366f1' },
+              READING: { text: '读取中', color: token.colorPrimary },
               PARSING: { text: '解析中', color: '#3b82f6' },
               CHUNKING: { text: '切分中', color: '#06b6d4' },
               TREE_BUILDING: { text: '构建语义树', color: '#84cc16' },
@@ -458,7 +459,7 @@ export default function DocumentsPage() {
                     </Upload.Dragger>
                 </Form.Item>
                 {fileList.length > 0 && (
-                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                  <div style={{ background: `${token.colorPrimary}0A`, border: `1px solid ${token.colorPrimary}26`, borderRadius: 12, padding: 12, marginBottom: 16 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                             <Typography.Text strong>已选择 {fileList.length} 个文件</Typography.Text>
                             <Typography.Text type="secondary">共 {formatFileSize(totalSelectedSize)}</Typography.Text>
@@ -466,7 +467,7 @@ export default function DocumentsPage() {
                         <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                             {fileList.map(file => (
                                 <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
-                                    <FileTextOutlined style={{ color: '#6366f1', marginRight: 8 }} />
+                                    <FileTextOutlined style={{ color: token.colorPrimary, marginRight: 8 }} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: 14 }}>{file.name}</div>
                                         <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
