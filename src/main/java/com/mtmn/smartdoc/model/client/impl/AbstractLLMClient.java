@@ -36,6 +36,11 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public abstract class AbstractLLMClient implements LLMClient {
 
+    /** 速率限制最大重试次数 */
+    private static final int RATE_LIMIT_MAX_RETRIES = 3;
+    /** 速率限制初始退避时间（毫秒）*/
+    private static final long RATE_LIMIT_INITIAL_BACKOFF_MS = 2000;
+
     protected final String providerName;
     protected final ModelProperties.ProviderConfig providerConfig;
     protected final ModelProperties.ModelConfig modelConfig;
@@ -73,44 +78,57 @@ public abstract class AbstractLLMClient implements LLMClient {
     public String chat(String prompt) {
         log.debug("同步聊天请求: prompt长度={}", prompt.length());
 
-        try {
-            String response = chatModel.chat(prompt);
-            log.debug("同步聊天响应: response长度={}", response.length());
-            return response;
-        } catch (Exception e) {
-            log.error("同步聊天失败: {}", e.getMessage(), e);
-            throw new RuntimeException("LLM调用失败: " + e.getMessage(), e);
+        for (int attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+            try {
+                String response = chatModel.chat(prompt);
+                log.debug("同步聊天响应: response长度={}", response.length());
+                return response;
+            } catch (Exception e) {
+                if (isRateLimitError(e) && attempt < RATE_LIMIT_MAX_RETRIES) {
+                    rateLimitBackoff(attempt + 1);
+                    continue;
+                }
+                log.error("同步聊天失败: {}", e.getMessage(), e);
+                throw new RuntimeException("LLM调用失败: " + e.getMessage(), e);
+            }
         }
+        throw new RuntimeException("LLM调用失败: 超过最大重试次数");
     }
 
     @Override
     public ChatResponse chat(ChatRequest request) {
         log.debug("结构化聊天请求: messages数量={}", request.getMessages().size());
 
-        try {
-            // 转换消息格式
-            List<ChatMessage> messages = convertMessages(request.getMessages());
+        List<ChatMessage> messages = convertMessages(request.getMessages());
 
-            // 调用模型,返回 LangChain4j 的 ChatResponse
-            dev.langchain4j.model.chat.response.ChatResponse langchainResponse = chatModel.chat(messages);
+        for (int attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+            try {
+                // 调用模型,返回 LangChain4j 的 ChatResponse
+                dev.langchain4j.model.chat.response.ChatResponse langchainResponse = chatModel.chat(messages);
 
-            // 构建我们的 ChatResponse DTO
-            return ChatResponse.builder()
-                    .content(langchainResponse.aiMessage().text())
-                    .model(modelConfig.getName())
-                    .finishReason(langchainResponse.finishReason() != null ?
-                            langchainResponse.finishReason().toString() : null)
-                    .tokenUsage(langchainResponse.tokenUsage() != null ?
-                            ChatResponse.TokenUsage.builder()
-                                    .promptTokens(langchainResponse.tokenUsage().inputTokenCount())
-                                    .completionTokens(langchainResponse.tokenUsage().outputTokenCount())
-                                    .totalTokens(langchainResponse.tokenUsage().totalTokenCount())
-                                    .build() : null)
-                    .build();
-        } catch (Exception e) {
-            log.error("结构化聊天失败: {}", e.getMessage(), e);
-            throw new RuntimeException("LLM调用失败: " + e.getMessage(), e);
+                // 构建我们的 ChatResponse DTO
+                return ChatResponse.builder()
+                        .content(langchainResponse.aiMessage().text())
+                        .model(modelConfig.getName())
+                        .finishReason(langchainResponse.finishReason() != null ?
+                                langchainResponse.finishReason().toString() : null)
+                        .tokenUsage(langchainResponse.tokenUsage() != null ?
+                                ChatResponse.TokenUsage.builder()
+                                        .promptTokens(langchainResponse.tokenUsage().inputTokenCount())
+                                        .completionTokens(langchainResponse.tokenUsage().outputTokenCount())
+                                        .totalTokens(langchainResponse.tokenUsage().totalTokenCount())
+                                        .build() : null)
+                        .build();
+            } catch (Exception e) {
+                if (isRateLimitError(e) && attempt < RATE_LIMIT_MAX_RETRIES) {
+                    rateLimitBackoff(attempt + 1);
+                    continue;
+                }
+                log.error("结构化聊天失败: {}", e.getMessage(), e);
+                throw new RuntimeException("LLM调用失败: " + e.getMessage(), e);
+            }
         }
+        throw new RuntimeException("LLM调用失败: 超过最大重试次数");
     }
 
     @Override
@@ -295,51 +313,99 @@ public abstract class AbstractLLMClient implements LLMClient {
     public void streamChatWithEmitter(String prompt, SseEmitter emitter, StreamEventHandler eventHandler) {
         log.debug("流式聊天请求(Emitter): prompt长度={}, handler={}", prompt.length(), eventHandler.getClass().getSimpleName());
 
-        // 异步执行，避免阻塞 Tomcat 线程
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 步骤1: 调用事件处理器的 onBeforeChat
+        CompletableFuture.runAsync(() -> doStreamWithRetry(prompt, emitter, eventHandler, 0));
+    }
+
+    /**
+     * 带重试的流式聊天内部实现
+     * 当遇到 429 速率限制时，等待后自动重试
+     */
+    private void doStreamWithRetry(String prompt, SseEmitter emitter,
+                                    StreamEventHandler eventHandler, int attempt) {
+        try {
+            // 仅首次调用时执行 onBeforeChat（重试时跳过，避免重复发送前置事件）
+            if (attempt == 0) {
                 eventHandler.onBeforeChat(emitter, prompt);
-
-                // 步骤2: 开始真正的流式聊天
-                streamingModel.chat(prompt, new StreamingChatResponseHandler() {
-                    @Override
-                    public void onPartialResponse(String partialResponse) {
-                        if (partialResponse != null && !partialResponse.isEmpty()) {
-                            log.trace("Emitter LLM分片响应: {}", partialResponse);
-                            // 发送消息事件，带 Padding
-                            SseEventBuilder.sendMessageEvent(emitter, partialResponse);
-                        }
-                    }
-
-                    @Override
-                    public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
-                        log.info("流式聊天完成");
-                        // 步骤3: 调用事件处理器的 onAfterChat
-                        eventHandler.onAfterChat(emitter);
-                        // 发送完成事件
-                        SseEventBuilder.sendDoneEvent(emitter);
-                        emitter.complete();
-                    }
-
-                    @Override
-                    public void onError(Throwable error) {
-                        log.error("流式聊天失败: {}", error.getMessage(), error);
-                        try {
-                            emitter.send(SseEmitter.event()
-                                    .name("error")
-                                    .data("{\"error\":\"" + error.getMessage() + "\"}")
-                            );
-                        } catch (Exception e) {
-                            // ignore
-                        }
-                        emitter.completeWithError(error);
-                    }
-                });
-            } catch (Exception e) {
-                log.error("流式聊天启动失败: {}", e.getMessage(), e);
-                emitter.completeWithError(e);
             }
-        });
+
+            streamingModel.chat(prompt, new StreamingChatResponseHandler() {
+                @Override
+                public void onPartialResponse(String partialResponse) {
+                    if (partialResponse != null && !partialResponse.isEmpty()) {
+                        log.trace("Emitter LLM分片响应: {}", partialResponse);
+                        SseEventBuilder.sendMessageEvent(emitter, partialResponse);
+                    }
+                }
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
+                    log.info("流式聊天完成");
+                    eventHandler.onAfterChat(emitter);
+                    SseEventBuilder.sendDoneEvent(emitter);
+                    emitter.complete();
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    if (isRateLimitError(error) && attempt < RATE_LIMIT_MAX_RETRIES) {
+                        log.warn("流式聊天遇到速率限制(attempt={}/{}), 将重试...",
+                                attempt + 1, RATE_LIMIT_MAX_RETRIES);
+                        rateLimitBackoff(attempt + 1);
+                        doStreamWithRetry(prompt, emitter, eventHandler, attempt + 1);
+                        return;
+                    }
+                    log.error("流式聊天失败: {}", error.getMessage(), error);
+                    try {
+                        String userMsg = isRateLimitError(error)
+                                ? "AI 服务请求频率超限，请稍后再试"
+                                : error.getMessage();
+                        emitter.send(SseEmitter.event()
+                                .name("error")
+                                .data("{\"error\":\"" + userMsg + "\"}"));
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                    emitter.completeWithError(error);
+                }
+            });
+        } catch (Exception e) {
+            if (isRateLimitError(e) && attempt < RATE_LIMIT_MAX_RETRIES) {
+                rateLimitBackoff(attempt + 1);
+                doStreamWithRetry(prompt, emitter, eventHandler, attempt + 1);
+                return;
+            }
+            log.error("流式聊天启动失败: {}", e.getMessage(), e);
+            emitter.completeWithError(e);
+        }
+    }
+
+    // ===================== 速率限制辅助方法 =====================
+
+    /**
+     * 判断异常是否为速率限制（429）
+     */
+    private boolean isRateLimitError(Throwable e) {
+        if (e == null) return false;
+        String msg = e.getMessage();
+        if (msg == null) return false;
+        return msg.contains("429")
+                || msg.toLowerCase().contains("rate limit")
+                || msg.contains("速率限制")
+                || msg.contains("请求频率");
+    }
+
+    /**
+     * 速率限制指数退避等待
+     *
+     * @param attempt 当前重试次数（从 1 开始）
+     */
+    private void rateLimitBackoff(int attempt) {
+        long waitMs = RATE_LIMIT_INITIAL_BACKOFF_MS * (1L << (attempt - 1)); // 2s, 4s, 8s
+        log.warn("速率限制退避: 第 {} 次重试，等待 {}ms...", attempt, waitMs);
+        try {
+            Thread.sleep(waitMs);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
