@@ -6,7 +6,6 @@ import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
 import { StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
-import ScrollReveal from '../../components/ScrollReveal';
 import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
@@ -253,7 +252,6 @@ export default function KnowledgeBasePage() {
                     style={{ marginTop: 80 }}
                 />
             ) : (
-                <ScrollReveal>
                 <Row gutter={[16, 16]} style={{ margin: 0 }}>
                     {data.map((item) => {
                         const strategyType = item.indexStrategyType || 'NAIVE_RAG';
@@ -412,7 +410,6 @@ export default function KnowledgeBasePage() {
                         );
                     })}
                 </Row>
-                </ScrollReveal>
             )}
         </Spin>
       </StaggerContainer>

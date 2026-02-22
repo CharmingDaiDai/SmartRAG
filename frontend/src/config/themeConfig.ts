@@ -3,7 +3,7 @@
 export type ColorTheme = 'indigo' | 'teal' | 'amber' | 'rose' | 'pink';
 export type FontFamily = 'system' | 'noto' | 'lxgw' | 'yozai' | 'xiaolai' | 'qxs';
 export type FontSize = 'small' | 'medium' | 'large';
-export type UIStyle = 'minimal' | 'tech' | 'fancy';
+export type UIStyle = 'minimal' | 'tech' | 'playful';
 
 export interface PersonalizationSettings {
   colorTheme: ColorTheme;
@@ -224,12 +224,6 @@ export interface UIStyleDef {
   menuIndicator: boolean;
   // 动画速度
   motionSpeed: 'normal' | 'fast';
-  // 输入框风格
-  inputStyle: 'default' | 'frosted' | 'thick';
-  // 点击反馈
-  clickFeedback: 'default' | 'glow-ripple' | 'elastic-ripple';
-  // 骨架屏风格
-  skeletonStyle: 'default' | 'gradient-flow' | 'rainbow';
 }
 
 export const UI_STYLES: Record<UIStyle, UIStyleDef> = {
@@ -255,38 +249,32 @@ export const UI_STYLES: Record<UIStyle, UIStyleDef> = {
     buttonTextTransform: 'none',
     menuIndicator: true,
     motionSpeed: 'normal',
-    inputStyle: 'default',
-    clickFeedback: 'default',
-    skeletonStyle: 'default',
   },
   tech: {
     key: 'tech',
     label: '科技',
     description: '硬朗棱角',
-    borderRadius: 2,
-    borderRadiusXS: 0,
-    borderRadiusSM: 1,
-    borderRadiusLG: 4,
-    borderRadiusOuter: 4,
-    cardRadius: 4,
-    buttonRadius: 2,
-    modalRadius: 6,
-    shadowScale: 0.4,
+    borderRadius: 4,
+    borderRadiusXS: 2,
+    borderRadiusSM: 4,
+    borderRadiusLG: 6,
+    borderRadiusOuter: 8,
+    cardRadius: 6,
+    buttonRadius: 4,
+    modalRadius: 8,
+    shadowScale: 0.8,
     sidebarBorderStyle: 'glow',
     headerBorderStyle: 'glow',
     cardBorderWidth: 1,
-    cardHoverLift: false,
-    buttonStyle: 'default',
-    buttonLetterSpacing: '0.08em',
+    cardHoverLift: true,
+    buttonStyle: 'glow',
+    buttonLetterSpacing: '0.05em',
     buttonTextTransform: 'uppercase',
     menuIndicator: true,
     motionSpeed: 'fast',
-    inputStyle: 'frosted',
-    clickFeedback: 'glow-ripple',
-    skeletonStyle: 'gradient-flow',
   },
-  fancy: {
-    key: 'fancy',
+  playful: {
+    key: 'playful',
     label: '花哨',
     description: '圆润趣味',
     borderRadius: 16,
@@ -295,21 +283,18 @@ export const UI_STYLES: Record<UIStyle, UIStyleDef> = {
     borderRadiusLG: 20,
     borderRadiusOuter: 24,
     cardRadius: 20,
-    buttonRadius: 999,
+    buttonRadius: 16,
     modalRadius: 24,
-    shadowScale: 1.8,
+    shadowScale: 1.2,
     sidebarBorderStyle: 'none',
     headerBorderStyle: 'none',
     cardBorderWidth: 2,
     cardHoverLift: true,
-    buttonStyle: 'glow',
-    buttonLetterSpacing: '0.02em',
+    buttonStyle: 'default',
+    buttonLetterSpacing: '0',
     buttonTextTransform: 'none',
     menuIndicator: false,
     motionSpeed: 'normal',
-    inputStyle: 'thick',
-    clickFeedback: 'elastic-ripple',
-    skeletonStyle: 'rainbow',
   },
 };
 

@@ -4,7 +4,6 @@ import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design
 import { Tiny, WordCloud } from '@ant-design/plots';
 import { dashboardService } from '../../services/dashboardService';
 import { StaggerContainer, StaggerItem, SlideInUp, HoverCard } from '../../components/common/Motion';
-import ScrollReveal from '../../components/ScrollReveal';
 
 const { Title } = Typography;
 
@@ -146,7 +145,6 @@ const Dashboard: React.FC = () => {
 
             <StaggerContainer>
                 {/* 顶部统计行 */}
-                <ScrollReveal>
                 <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
                     {STAT_CARDS.map((card) => (
                         <Col span={8} key={card.key}>
@@ -197,10 +195,8 @@ const Dashboard: React.FC = () => {
                         </Col>
                     ))}
                 </Row>
-                </ScrollReveal>
 
                 {/* 图表行 */}
-                <ScrollReveal delay={0.1}>
                 <Row gutter={[20, 20]}>
                     <Col span={12}>
                         <StaggerItem>
@@ -247,7 +243,6 @@ const Dashboard: React.FC = () => {
                         </StaggerItem>
                     </Col>
                 </Row>
-                </ScrollReveal>
             </StaggerContainer>
         </div>
     );

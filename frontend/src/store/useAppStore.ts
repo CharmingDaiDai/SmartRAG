@@ -163,7 +163,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setUIStyle: (uiStyle) => {
-      savePersonalization({ uiStyle });
-      set({ uiStyle });
+      const updates: Partial<PersonalizationSettings> = { uiStyle };
+      if (uiStyle === 'tech') {
+          updates.fontFamily = 'system';
+          updates.colorTheme = 'indigo';
+      } else if (uiStyle === 'playful') {
+          updates.fontFamily = 'lxgw';
+          updates.colorTheme = 'pink';
+      }
+      savePersonalization(updates);
+      set(updates);
   },
 }));
