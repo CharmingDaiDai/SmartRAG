@@ -1,11 +1,25 @@
 package com.mtmn.smartdoc.rag.impl;
 
+import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.common.MyNode;
 import com.mtmn.smartdoc.constants.AppConstants;
-import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.enums.IndexStrategyType;
+import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.enums.TreeNodeType;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
@@ -24,17 +38,11 @@ import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.MinioService;
 import com.mtmn.smartdoc.utils.LlmJsonUtils;
 import com.mtmn.smartdoc.utils.MarkdownProcessor;
+
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
-import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 /**
  * HisemRAG 完整版索引策略实现
@@ -273,7 +281,7 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
             final int currentLevel = level;
             List<TreeNode> levelNodes = allNodes.stream()
                     .filter(n -> n.getLevel() == currentLevel)
-                    .collect(Collectors.toList());
+                    .toList();
 
             List<CompletableFuture<Void>> futures = levelNodes.stream()
                     .map(node -> CompletableFuture.runAsync(() -> {
@@ -292,7 +300,7 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
                             log.warn("LLM enrichment failed for node {}: {}", node.getNodeId(), e.getMessage());
                         }
                     }))
-                    .collect(Collectors.toList());
+                    .toList();
 
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
             log.debug("Level {} enrichment complete ({} nodes)", level, levelNodes.size());
@@ -336,7 +344,7 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
      * 非叶子节点：聚合子节点的 summary 和 keyKnowledge
      */
     private void aggregateParentKnowledge(TreeNode node, Map<String, TreeNode> nodeById,
-                                           LLMClient llmClient) {
+                                          LLMClient llmClient) {
         List<String> childIds = parseJsonArray(node.getChildrenIds());
         if (childIds.isEmpty()) {
             return;
@@ -493,14 +501,17 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
      */
     private void deleteVectorsByDocumentIds(Long kbId, List<Long> documentIds) {
         List<TreeNode> nodes = treeNodeRepository.findByDocumentIdIn(documentIds);
-        if (nodes.isEmpty()) return;
+        if (nodes.isEmpty()) {
+            return;
+        }
 
         List<IndexUpdateItem> items = new ArrayList<>();
         for (TreeNode node : nodes) {
             String vectorIdsJson = node.getVectorIds();
             if (vectorIdsJson != null && !vectorIdsJson.isEmpty()) {
                 try {
-                    List<String> vectorIds = objectMapper.readValue(vectorIdsJson, new TypeReference<List<String>>() {});
+                    List<String> vectorIds = objectMapper.readValue(vectorIdsJson, new TypeReference<List<String>>() {
+                    });
                     for (String vectorId : vectorIds) {
                         IndexUpdateItem item = new IndexUpdateItem();
                         item.setId(vectorId);
@@ -521,7 +532,9 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
     // ==================== 工具方法 ====================
 
     private String toJsonArray(List<String> list) {
-        if (list == null || list.isEmpty()) return "[]";
+        if (list == null || list.isEmpty()) {
+            return "[]";
+        }
         try {
             return objectMapper.writeValueAsString(list);
         } catch (Exception e) {
@@ -530,9 +543,12 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
     }
 
     private List<String> parseJsonArray(String json) {
-        if (json == null || json.isEmpty() || "[]".equals(json)) return Collections.emptyList();
+        if (json == null || json.isEmpty() || "[]".equals(json)) {
+            return Collections.emptyList();
+        }
         try {
-            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {
+            });
         } catch (Exception e) {
             return Collections.emptyList();
         }

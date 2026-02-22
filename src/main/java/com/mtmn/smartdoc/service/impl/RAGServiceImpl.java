@@ -501,6 +501,21 @@ public class RAGServiceImpl implements RAGService {
             try {
                 Long kbId = request.getKbId();
                 String question = request.getQuestion();
+
+                // 0. 文件类型校验：HiSem-SADP 仅支持 Markdown 文件
+                List<DocumentPo> docs = documentRepository.findByKbId(kbId);
+                boolean hasNonMarkdown = docs.stream()
+                        .anyMatch(d -> d.getFileType() == null
+                                || !AppConstants.FileTypes.MD.equals(d.getFileType()));
+                if (hasNonMarkdown) {
+                    log.warn("HiSem-SADP 文件类型校验失败: kbId={} 包含非 Markdown 文件", kbId);
+                    SseEventBuilder.sendThoughtEvent(emitter, "error",
+                            "HiSem-SADP 方法仅支持 Markdown (.md) 格式的文档，当前知识库包含不支持的文件类型，请改用普通 RAG 方法。",
+                            "error");
+                    emitter.complete();
+                    return;
+                }
+
                 LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
                 EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
 

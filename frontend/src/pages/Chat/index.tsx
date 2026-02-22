@@ -47,11 +47,12 @@ import {
   ThunderboltOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, GetProp, Tooltip, Popconfirm, Collapse } from 'antd';
+import { Layout, Select, Button, Space, Typography, theme, Form, Slider, Switch, Avatar, message, Modal, GetProp, Tooltip, Popconfirm, Collapse } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
+import { documentService } from '../../services/documentService';
 import { modelService } from '../../services/modelService';
-import { KnowledgeBaseItem, ThoughtItem, ReferenceItem } from '../../types';
+import { KnowledgeBaseItem, DocumentItem, ThoughtItem, ReferenceItem } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { SmartRAGChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
@@ -126,6 +127,7 @@ const ChatPage: React.FC = () => {
   // ========== 状态管理 ==========
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
   const [kbsLoaded, setKbsLoaded] = useState(false);
+  const [currentKbDocs, setCurrentKbDocs] = useState<DocumentItem[]>([]);
 
   const { currentKbId, setCurrentKbId, token: authToken, userInfo, themeMode, localSettings } = useAppStore();
 
@@ -277,10 +279,42 @@ const ChatPage: React.FC = () => {
       fetchKbs();
   }, []);
 
+  // 当知识库切换且策略为 HiSem-SADP 时，预加载文档列表用于文件类型校验
+  useEffect(() => {
+      if (!currentKbId || strategy !== RAG_STRATEGIES.HISEM_RAG) {
+          setCurrentKbDocs([]);
+          return;
+      }
+      documentService.listByKb(String(currentKbId), { page: 1, size: 100 })
+          .then((res: any) => {
+              if (res.code === 200) {
+                  const data = Array.isArray(res.data) ? res.data
+                      : (res.data?.records ?? res.data?.list ?? []);
+                  setCurrentKbDocs(data);
+              }
+          })
+          .catch(() => setCurrentKbDocs([]));
+  }, [currentKbId, strategy]);
+
   const handleRequest = (text: string) => {
       if (!currentKbId || !currentKb) {
           message.warning('请先选择知识库');
           return;
+      }
+
+      // HiSem-SADP 仅支持 Markdown 文件，如有非 Markdown 文档则阻止请求
+      if (strategy === RAG_STRATEGIES.HISEM_RAG && currentKbDocs.length > 0) {
+          const hasNonMarkdown = currentKbDocs.some(
+              d => !d.fileType || d.fileType !== 'text/markdown'
+          );
+          if (hasNonMarkdown) {
+              Modal.warning({
+                  title: 'HiSem-SADP 不支持当前文件类型',
+                  content: 'HiSem-SADP 方法仅支持 Markdown (.md) 格式的文档。当前知识库包含不受支持的文件类型，请改用"普通 RAG"方法，或上传 Markdown 格式文档并重建索引。',
+                  okText: '知道了',
+              });
+              return;
+          }
       }
 
       const ragParams = form.getFieldsValue();
