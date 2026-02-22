@@ -9,51 +9,43 @@ package com.mtmn.smartdoc.constants;
  */
 public final class AppConstants {
 
-    private AppConstants() {
-        // 私有构造函数，防止实例化
-        throw new AssertionError("Cannot instantiate constants class");
-    }
-
-    // ==================== 系统常量 ====================
-
     /**
      * 默认页码
      */
     public static final int DEFAULT_PAGE = 1;
 
+    // ==================== 系统常量 ====================
     /**
      * 默认每页大小
      */
     public static final int DEFAULT_PAGE_SIZE = 10;
-
     /**
      * 最大每页大小
      */
     public static final int MAX_PAGE_SIZE = 100;
-
-
-    // ==================== 业务常量 ====================
-
     /**
      * 默认向量维度
      */
     public static final int DEFAULT_EMBEDDING_DIMENSION = 1024;
 
+    // ==================== 业务常量 ====================
     /**
      * 默认检索数量
      */
     public static final int DEFAULT_TOP_K = 5;
-
     /**
      * 默认相似度阈值
      */
     public static final double DEFAULT_SIMILARITY_THRESHOLD = 0.7;
-
     /**
      * 批量操作最大大小
      */
     public static final int MAX_BATCH_SIZE = 1000;
 
+    private AppConstants() {
+        // 私有构造函数，防止实例化
+        throw new AssertionError("Cannot instantiate constants class");
+    }
 
     // ==================== 文件相关常量 ====================
 
@@ -87,7 +79,6 @@ public final class AppConstants {
         public static final long MAX_BATCH_SIZE = 500 * 1024 * 1024;
     }
 
-
     // ==================== Milvus 集合名称 ====================
 
     /**
@@ -111,7 +102,6 @@ public final class AppConstants {
          */
         public static final String METADATA_FIELD_DOC_ID = "document_id";
     }
-
 
     // ==================== 提示词模板 ====================
 
@@ -241,38 +231,37 @@ public final class AppConstants {
                 # Result
                 """;
 
-
         /**
          * 意图识别提示词（RAGQueryProcessor 使用，%s 占位符格式）
          * 参数顺序：%1$s = 对话历史，%2$s = 当前用户问题
          */
         public static final String INTENT_CLASSIFIER = """
                 你是RAG系统的意图识别模块。请分析用户问题是否需要进行知识库检索，并以JSON格式返回结果。
-
+                
                 **需要检索的情况：**
                 - 询问具体的技术问题、产品信息、政策规定
                 - 需要查找特定文档、数据、资料
                 - 询问专业领域知识
                 - 请求具体的操作步骤或解决方案
-
+                
                 **不需要检索的情况：**
                 - 简单问候：你好、再见、谢谢
                 - 日常闲聊：天气、心情、随便聊聊
                 - 对前一个回答的追问、澄清、举例要求
                 - 通用常识问题（如基础数学、常见概念）
                 - 系统功能询问：怎么使用、帮助说明
-
+                
                 **对话历史：**
                 %s
-
+                
                 **当前用户问题：**
                 %s
-
+                
                 **分析要求：**
                 1. 仔细考虑是否是对前一轮回答的追问
                 2. 评估问题的复杂度和专业性
                 3. 如果不确定，倾向于需要检索
-
+                
                 **严格按照以下JSON格式返回，不要包含任何其他内容：**
                 {
                   "needRetrieval": true/false,
@@ -287,21 +276,21 @@ public final class AppConstants {
          */
         public static final String QUERY_DECOMPOSE_ADVANCED = """
                 你是一个专业的查询规划助手，你的任务是将用户的复杂问题分解为一个包含多个步骤的执行计划。这个计划旨在先通过检索获取必要信息，然后综合这些信息来回答原始问题。
-
+                
                 计划中的每个步骤都应被归类为以下两种类型之一：
                 - "检索": 用于直接从知识库中查找事实、定义或数据的子问题。
                 - "回答": 用于综合所有"检索"步骤获得的信息，进行比较、总结或推断，最终形成对原始问题的回答。这通常是计划的最后一步。
-
+                
                 请严格按照以下 JSON 格式返回一个数组，其中每个对象代表一个步骤：
                 [
                   {"type": "检索" 或 "回答", "query": "子问题内容"}
                 ]
-
+                
                 示例:
-
+                
                 用户问题:
                 微软和谷歌去年哪个公司的利润更高？
-
+                
                 执行计划 (JSON输出):
                 [
                   {
@@ -317,12 +306,12 @@ public final class AppConstants {
                     "query": "微软和谷歌去年哪个公司的利润更高？"
                   }
                 ]
-
+                
                 现在，请为以下问题制定执行计划：
-
+                
                 用户问题:
                 %s
-
+                
                 执行计划 (JSON输出):
                 """;
 
@@ -339,7 +328,7 @@ public final class AppConstants {
                 </content>
                 
                 # Rules
-                1. **知识点**：提取 3-8 个最重要的知识点，每个知识点是一个简洁的短语或句子。
+                1. **知识点**：提取 5-10 个最重要的知识点，每个知识点是一个简洁的短语或句子。
                 2. **摘要**：用一句话概括本段内容的核心主题（不超过 50 字）。
                 3. **格式**：必须仅输出 JSON，不要包含任何其他解释。
                 
@@ -362,7 +351,7 @@ public final class AppConstants {
                 </children_summaries>
                 
                 # Rules
-                1. **知识点**：综合提炼 3-8 个最重要的核心知识点，涵盖各子章节的主要内容。
+                1. **知识点**：综合提炼 10-15 个最重要的核心知识点，涵盖各子章节的主要内容。
                 2. **摘要**：用一句话概括本章节的整体主题（不超过 60 字）。
                 3. **格式**：必须仅输出 JSON，不要包含任何其他解释。
                 
@@ -390,19 +379,19 @@ public final class AppConstants {
                 3. **格式**：必须仅输出 JSON，不要包含任何其他解释。
                 
                 # Examples
-                Query: "Redis 的持久化有哪些方式？" -> {"complex": false, "reason": "单一概念查询"}
-                Query: "比较 MySQL 和 PostgreSQL 的锁机制，以及各自在高并发场景下的优缺点" -> {"complex": true, "reason": "需要分别检索两个系统并进行对比推理"}
+                Query: "主变压器安装的工艺标准是什么？" -> {"complex": false, "reason": "单一概念查询"}
+                Query: "比较 主变压器 和 站用变压器 安装工艺标准的差异" -> {"complex": true, "reason": "需要分别检索两个工艺标准并进行对比推理"}
                 Query: "导致系统故障的原因是什么，以及如何从故障中恢复？" -> {"complex": true, "reason": "需要分别检索故障原因和恢复方案"}
                 
                 # Result
                 """;
 
         /**
-         * SADP DAG 任务分解提示词
+         * SADP DAG 知识点拆解提示词
          */
         public static final String SADP_DAG_DECOMPOSITION = """
                 # Role
-                你是一个任务规划专家。请将以下复杂问题拆解为若干个独立的子检索任务，每个子任务是一个具体的检索查询，并描述任务间的依赖关系。
+                你是一个任务规划专家。请将以下复杂问题拆解为若干个独立的子知识点检索任务，每个子任务是一个具体的知识点查询，并描述任务间的依赖关系。
                 
                 # Input
                 <query>
@@ -410,7 +399,7 @@ public final class AppConstants {
                 </query>
                 
                 # Rules
-                1. **子任务**：每个子任务描述一个独立的检索目标，应当简洁具体。
+                1. **子任务**：每个子任务描述一个独立的知识点检索目标，应当简洁具体。
                 2. **依赖关系**：如果某个任务需要前置任务的结果才能执行，则在 dependsOn 中列出前置任务 ID；若无依赖则为空数组。
                 3. **数量**：子任务数量应在 2-5 个之间，不要过度拆分。
                 4. **格式**：必须仅输出 JSON 数组，不要包含任何其他解释。
@@ -514,7 +503,6 @@ public final class AppConstants {
                 """;
     }
 
-
     // ==================== 缓存相关常量 ====================
 
     /**
@@ -531,11 +519,10 @@ public final class AppConstants {
         /**
          * 缓存过期时间（秒）
          */
-        public static final long EMBEDDING_EXPIRE_SECONDS = 3600;  // 1小时
-        public static final long MODEL_CONFIG_EXPIRE_SECONDS = 1800;  // 30分钟
-        public static final long KB_EXPIRE_SECONDS = 600;  // 10分钟
+        public static final long EMBEDDING_EXPIRE_SECONDS = 3600; // 1小时
+        public static final long MODEL_CONFIG_EXPIRE_SECONDS = 1800; // 30分钟
+        public static final long KB_EXPIRE_SECONDS = 600; // 10分钟
     }
-
 
     // ==================== 重试配置 ====================
 
@@ -558,7 +545,6 @@ public final class AppConstants {
          */
         public static final int MILVUS_MAX_ATTEMPTS = 3;
     }
-
 
     // ==================== 错误消息 ====================
 

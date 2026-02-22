@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.List;
 
 /**
@@ -116,13 +117,13 @@ public class DashboardServiceImpl implements DashboardService {
      * 构造对话次数的 Mock 数据，直到真实统计功能上线
      */
     private DashboardStatisticsDto.ConversationStats buildMockConversationStats(Long userId) {
-        long seed = userId != null ? Math.abs(userId) : 1L;
+        ThreadLocalRandom random = ThreadLocalRandom.current();
         LocalDate today = LocalDate.now();
         List<DashboardStatisticsDto.DailyConversationCount> daily = new ArrayList<>();
 
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            long count = ((seed * 31) + date.getDayOfYear()) % 20 + 5; // 5~24 次之间
+            long count = random.nextLong(5, 25); // 5~24 次之间
             daily.add(DashboardStatisticsDto.DailyConversationCount.builder()
                     .date(date.toString())
                     .count(count)
