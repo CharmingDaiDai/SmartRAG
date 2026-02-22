@@ -3,8 +3,10 @@ package com.mtmn.smartdoc.repository;
 import com.mtmn.smartdoc.enums.TreeNodeType;
 import com.mtmn.smartdoc.po.TreeNode;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -68,11 +70,17 @@ public interface TreeNodeRepository extends JpaRepository<TreeNode, Long> {
     /**
      * 删除文档的所有树节点
      */
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM TreeNode t WHERE t.documentId = ?1")
     void deleteByDocumentId(Long documentId);
 
     /**
      * 删除知识库的所有树节点
      */
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM TreeNode t WHERE t.kbId = ?1")
     void deleteByKbId(Long kbId);
 
     List<TreeNode> findByDocumentIdIn(List<Long> documentIds);

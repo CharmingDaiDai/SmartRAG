@@ -2,7 +2,10 @@ package com.mtmn.smartdoc.repository;
 
 import com.mtmn.smartdoc.po.Chunk;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -54,10 +57,16 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
     /**
      * 删除文档的所有切分块
      */
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM Chunk c WHERE c.documentId = ?1")
     void deleteByDocumentId(Long documentId);
 
     /**
      * 删除知识库的所有切分块
      */
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM Chunk c WHERE c.kbId = ?1")
     void deleteByKbId(Long kbId);
 }
