@@ -18,7 +18,6 @@ import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.RAGService;
 import com.mtmn.smartdoc.service.component.RAGQueryProcessor;
-import com.mtmn.smartdoc.utils.LlmJsonUtils;
 import com.mtmn.smartdoc.vo.RetrievalResult;
 import dev.langchain4j.data.embedding.Embedding;
 import lombok.RequiredArgsConstructor;
@@ -230,6 +229,13 @@ public class RAGServiceImpl implements RAGService {
                 emitter.completeWithError(e);
             } catch (Exception e) {
                 log.error("流式聊天启动失败: {}", e.getMessage(), e);
+                try {
+                    String userMsg = isRateLimitError(e)
+                            ? "AI 服务请求频率超限，请稍后再试。"
+                            : "服务异常，请稍后重试。";
+                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
+                } catch (Exception ignored) {
+                }
                 emitter.completeWithError(e);
             }
         });
@@ -465,6 +471,13 @@ public class RAGServiceImpl implements RAGService {
                 emitter.completeWithError(e);
             } catch (Exception e) {
                 log.error("HisemRAG Fast 对话失败: {}", e.getMessage(), e);
+                try {
+                    String userMsg = isRateLimitError(e)
+                            ? "AI 服务请求频率超限，请稍后再试。"
+                            : "服务异常，请稍后重试。";
+                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
+                } catch (Exception ignored) {
+                }
                 emitter.completeWithError(e);
             }
         });
@@ -504,53 +517,19 @@ public class RAGServiceImpl implements RAGService {
                 }
 
                 // 收集检索查询语句
-                Set<String> searchQueries = new HashSet<>();
+                Set<String> searchQueries = Collections.singleton(question);
 
-                // 2. 查询重写
-                String finalQuery = question;
-                if (Boolean.TRUE.equals(request.getEnableQueryRewrite())) {
-                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在重写查询语句...", "edit");
-                    String rewritten = ragQueryProcessor.rewriteQuery(question);
-                    if (rewritten != null && !rewritten.equals(question)) {
-                        finalQuery = rewritten;
-                        log.info("查询重写结果: {}", finalQuery);
-                    }
-                }
-                searchQueries.add(finalQuery);
-
-                // 3. 问题分解
-                if (Boolean.TRUE.equals(request.getEnableQueryDecomposition())) {
-                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在问题分解...", "edit");
-                    List<String> subQueries = ragQueryProcessor.decomposeQuery(question);
-                    if (subQueries != null && !subQueries.isEmpty()) {
-                        searchQueries.addAll(subQueries);
-                        log.info("问题分解结果: {}", subQueries);
-                    }
-                }
-
-                // 4. HyDE
-                if (Boolean.TRUE.equals(request.getEnableHyde())) {
-                    SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在生成假想答案(HyDE)...", "think");
-                    List<CompletableFuture<String>> hydeFutures = searchQueries.stream()
-                            .map(q -> CompletableFuture.supplyAsync(() -> {
-                                String doc = ragQueryProcessor.generateHydeDoc(q);
-                                return (doc != null && !doc.isEmpty()) ? doc : q;
-                            }))
-                            .toList();
-                    CompletableFuture.allOf(hydeFutures.toArray(new CompletableFuture[0])).join();
-                    searchQueries = hydeFutures.stream()
-                            .map(CompletableFuture::join)
-                            .collect(Collectors.toSet());
-                    log.info("HyDE处理完成，生成 {} 个假设文档用于检索", searchQueries.size());
-                }
-
-                // 5. SADP 复杂度判断
+                // 2. SADP 复杂度判断
                 SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在判断问题复杂度...", "edit");
                 boolean isComplex = sadpPlanner.isComplexQuery(question, llmClient);
                 log.info("SADP 复杂度判断: isComplex={}", isComplex);
 
+                // maxTopK：限制最终传递给大模型的上下文片段数量
+                int maxTopK = request.getMaxTopK() != null ? request.getMaxTopK() : 10;
+
                 if (isComplex) {
                     // ======== SADP 多跳分支 ========
+                    log.debug("HiSem SADP branch: complex query detected for kbId={}", kbId);
                     SseEventBuilder.sendThoughtEvent(emitter, "processing",
                             "检测到复杂多跳问题，正在规划任务...", "edit");
 
@@ -573,8 +552,16 @@ public class RAGServiceImpl implements RAGService {
 
                 } else {
                     // ======== 标准自适应检索分支 ========
+                    log.debug("HiSem standard retrieval: {} queries for kbId={}", searchQueries.size(), kbId);
                     List<RetrievalResult> results = adaptiveRetriever.retrieve(
                             searchQueries, kbId, embeddingClient, emitter);
+                    log.debug("HiSem retrieval complete: {} results", results.size());
+
+                    // 按 maxTopK 截断结果（限制传递给大模型的上下文片段数量）
+                    if (results.size() > maxTopK) {
+                        log.info("截断检索结果: {} → {}", results.size(), maxTopK);
+                        results = results.subList(0, maxTopK);
+                    }
 
                     String hitMsg = String.format("检索完成，共命中 %d 个相关片段", results.size());
                     SseEventBuilder.sendThoughtEvent(emitter, "success", hitMsg, "check");
@@ -645,6 +632,13 @@ public class RAGServiceImpl implements RAGService {
                 emitter.completeWithError(e);
             } catch (Exception e) {
                 log.error("HisemRAG 对话失败: {}", e.getMessage(), e);
+                try {
+                    String userMsg = isRateLimitError(e)
+                            ? "AI 服务请求频率超限，请稍后再试。"
+                            : "服务异常，请稍后重试。";
+                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
+                } catch (Exception ignored) {
+                }
                 emitter.completeWithError(e);
             }
         });
@@ -655,5 +649,18 @@ public class RAGServiceImpl implements RAGService {
     @NotNull
     private static String getCollectionName(Long kbId) {
         return MILVUS_CHUNKS_COLLECTION_TEMPLATE.formatted(kbId);
+    }
+
+    /**
+     * 判断异常是否为速率限制（429）
+     */
+    private static boolean isRateLimitError(Throwable e) {
+        if (e == null) return false;
+        String msg = e.getMessage();
+        if (msg == null) return false;
+        return msg.contains("429")
+                || msg.toLowerCase().contains("rate limit")
+                || msg.contains("速率限制")
+                || msg.contains("请求频率");
     }
 }

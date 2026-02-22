@@ -48,7 +48,11 @@ public class RAGQueryProcessor {
 
             return !Objects.equals(action, "CHAT");
         } catch (Exception e) {
-            log.error("意图识别失败: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("429")) {
+                log.warn("意图识别触发速率限制，跳过此步骤: {}", e.getMessage());
+            } else {
+                log.error("意图识别失败: {}", e.getMessage());
+            }
             return true; // 默认需要检索
         }
     }
@@ -75,7 +79,11 @@ public class RAGQueryProcessor {
                 return LlmJsonUtils.parseString(resp);
             }
         } catch (Exception e) {
-            log.error("查询重写失败: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("429")) {
+                log.warn("查询重写触发速率限制，跳过此步骤: {}", e.getMessage());
+            } else {
+                log.error("查询重写失败: {}", e.getMessage());
+            }
             return question;
         }
     }
@@ -94,7 +102,11 @@ public class RAGQueryProcessor {
             String resp = modelFactory.createDefaultLLMClient().chat(message);
             return LlmJsonUtils.parseList(resp, String.class);
         } catch (Exception e) {
-            log.error("问题分解失败: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("429")) {
+                log.warn("问题分解触发速率限制，跳过此步骤: {}", e.getMessage());
+            } else {
+                log.error("问题分解失败: {}", e.getMessage());
+            }
             return Collections.emptyList();
         }
     }
@@ -114,7 +126,11 @@ public class RAGQueryProcessor {
             String resp = modelFactory.createDefaultLLMClient().chat(message);
             return LlmJsonUtils.parseString(resp);
         } catch (Exception e) {
-            log.error("HyDE 生成失败: {}", e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("429")) {
+                log.warn("HyDE 生成触发速率限制，跳过此步骤: {}", e.getMessage());
+            } else {
+                log.error("HyDE 生成失败: {}", e.getMessage());
+            }
             return null;
         }
     }
