@@ -3,6 +3,7 @@ package com.mtmn.smartdoc.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
+import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
@@ -10,7 +11,6 @@ import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.IndexingService;
 import com.mtmn.smartdoc.service.IndexingProgressCallback;
-import com.mtmn.smartdoc.enums.IndexingStep;
 import com.mtmn.smartdoc.rag.IndexStrategy;
 import com.mtmn.smartdoc.rag.factory.RAGStrategyFactory;
 import jakarta.annotation.Resource;
@@ -79,63 +79,45 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     /**
-     * 执行索引构建（带事务）
+     * 执行索引构建
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
         executeIndexing(documentId, kb, indexConfig, IndexingProgressCallback.NOOP);
     }
 
     /**
-     * 执行索引构建（带事务和进度回调）
+     * 执行索引构建（带进度回调）
+     *
+     * 注意：此方法故意不加 @Transactional。
+     * 文档状态通过 self.updateDocumentStatus()（独立事务）更新，每步立即提交、对其他连接可见。
+     * strategy.buildIndex() 是 IO 密集型操作（MinIO/LLM/Milvus），不应持有数据库连接。
+     * 细粒度步骤由各策略内部通过 callback.onStepChanged() 上报，同时同步更新文档状态。
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
-        log.info("Executing indexing with transaction: documentId={}, kbId={}", documentId, kb.getId());
+        log.info("Executing indexing: documentId={}, kbId={}", documentId, kb.getId());
 
         DocumentPo documentPo = null;
         try {
-            // 加载文档
             documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
 
-            // 回调：解析中
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.PARSING);
+            // 包装回调：每次步骤变更同步更新文档状态
+            IndexingProgressCallback wrappedCallback = wrapCallbackWithDocStatus(callback);
 
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
-            documentRepository.save(documentPo);
-
-            // 回调：切分中
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.CHUNKING);
-
-            // 使用工厂获取对应的索引策略
+            // 委托给策略 — 策略内部上报细粒度步骤
             IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
+            strategy.buildIndex(kb, documentPo, indexConfig, wrappedCallback);
 
-            // 回调：向量化中
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.EMBEDDING);
-
-            // 构建索引（策略内部完成：读取、处理、向量化、存储）
-            strategy.buildIndex(kb, documentPo, indexConfig);
-
-            // 回调：存储中
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.STORING);
-
-            documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
-            documentRepository.save(documentPo);
-
-            log.info("✅ Indexing completed successfully: documentId={}", documentId);
+            self.updateDocumentStatus(documentId, DocumentIndexStatus.INDEXED);
             callback.onDocumentCompleted(documentId, documentPo.getFilename());
 
+            log.info("Indexing completed: documentId={}", documentId);
+
         } catch (Exception e) {
-            log.error("❌ Indexing failed: documentId={}", documentId, e);
-            // 直接调用（已在同一事务中）
-            DocumentPo doc = documentRepository.findById(documentId).orElse(null);
-            if (doc != null) {
-                doc.setIndexStatus(DocumentIndexStatus.ERROR);
-                documentRepository.save(doc);
-            }
+            log.error("Indexing failed: documentId={}", documentId, e);
+            self.updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
             String docName = documentPo != null ? documentPo.getFilename() : "unknown";
             callback.onDocumentFailed(documentId, docName, e.getMessage());
             throw new RuntimeException("Indexing failed: " + e.getMessage(), e);
@@ -168,49 +150,69 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig) {
         executeRebuildIndexFromChunks(documentId, kb, indexConfig, IndexingProgressCallback.NOOP);
     }
 
+    /**
+     * 执行从 Chunk 重建索引（带进度回调）
+     *
+     * 注意：同 executeIndexing，故意不加 @Transactional，状态更新各自独立事务立即提交。
+     * 细粒度步骤由各策略内部通过 callback.onStepChanged() 上报，同时同步更新文档状态。
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
-        log.info("Executing rebuild index from chunks with transaction: documentId={}, kbId={}", documentId, kb.getId());
+        log.info("Executing rebuild index from chunks: documentId={}, kbId={}", documentId, kb.getId());
 
         DocumentPo documentPo = null;
         try {
             documentPo = documentRepository.findById(documentId)
                     .orElseThrow(() -> new ResourceNotFoundException("Document", documentId));
 
-            // 回调：向量化中（重建索引跳过解析和切分）
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.EMBEDDING);
+            // 包装回调：每次步骤变更同步更新文档状态
+            IndexingProgressCallback wrappedCallback = wrapCallbackWithDocStatus(callback);
 
-            documentPo.setIndexStatus(DocumentIndexStatus.CHUNKING);
-            documentRepository.save(documentPo);
-
+            // 委托给策略 — 策略内部上报细粒度步骤
             IndexStrategy strategy = ragStrategyFactory.getIndexStrategy(indexConfig.getStrategyType());
-            strategy.rebuildIndexFromChunks(kb, documentPo, indexConfig);
+            strategy.rebuildIndexFromChunks(kb, documentPo, indexConfig, wrappedCallback);
 
-            // 回调：存储中
-            callback.onStepChanged(documentId, documentPo.getFilename(), IndexingStep.STORING);
-
-            documentPo.setIndexStatus(DocumentIndexStatus.INDEXED);
-            documentRepository.save(documentPo);
-
-            log.info("✅ Rebuild index from chunks completed successfully: documentId={}", documentId);
+            self.updateDocumentStatus(documentId, DocumentIndexStatus.INDEXED);
             callback.onDocumentCompleted(documentId, documentPo.getFilename());
+
+            log.info("Rebuild index from chunks completed: documentId={}", documentId);
+
         } catch (Exception e) {
-            log.error("❌ Rebuild index from chunks failed: documentId={}", documentId, e);
-            DocumentPo doc = documentRepository.findById(documentId).orElse(null);
-            if (doc != null) {
-                doc.setIndexStatus(DocumentIndexStatus.ERROR);
-                documentRepository.save(doc);
-            }
+            log.error("Rebuild index from chunks failed: documentId={}", documentId, e);
+            self.updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
             String docName = documentPo != null ? documentPo.getFilename() : "unknown";
             callback.onDocumentFailed(documentId, docName, e.getMessage());
             throw new RuntimeException("Rebuild index failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 包装回调：在原回调基础上，每次步骤变更同步更新文档的 indexStatus
+     */
+    private IndexingProgressCallback wrapCallbackWithDocStatus(IndexingProgressCallback delegate) {
+        return new IndexingProgressCallback() {
+            @Override
+            public void onStepChanged(Long documentId, String documentName, IndexingStep step) {
+                // 同步更新文档状态
+                self.updateDocumentStatus(documentId, DocumentIndexStatus.fromIndexingStep(step));
+                // 转发给原回调（更新 indexing_tasks 表）
+                delegate.onStepChanged(documentId, documentName, step);
+            }
+
+            @Override
+            public void onDocumentCompleted(Long documentId, String documentName) {
+                delegate.onDocumentCompleted(documentId, documentName);
+            }
+
+            @Override
+            public void onDocumentFailed(Long documentId, String documentName, String error) {
+                delegate.onDocumentFailed(documentId, documentName, error);
+            }
+        };
     }
 
     /**

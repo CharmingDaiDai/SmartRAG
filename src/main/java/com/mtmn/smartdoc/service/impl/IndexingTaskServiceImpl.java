@@ -13,15 +13,16 @@ import com.mtmn.smartdoc.rag.config.IndexStrategyConfig;
 import com.mtmn.smartdoc.repository.IndexingTaskRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.IndexingProgressCallback;
-import com.mtmn.smartdoc.service.IndexingProgressEmitterManager;
 import com.mtmn.smartdoc.service.IndexingService;
 import com.mtmn.smartdoc.service.IndexingTaskService;
+import com.mtmn.smartdoc.vo.IndexingTaskProgressVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -31,7 +32,7 @@ import java.util.List;
  * 索引任务服务实现
  *
  * @author charmingdaidai
- * @version 2.0
+ * @version 3.0
  */
 @Slf4j
 @Service
@@ -41,16 +42,31 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
     private final IndexingTaskRepository indexingTaskRepository;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final IndexingService indexingService;
-    private final IndexingProgressEmitterManager emitterManager;
     private final ObjectMapper objectMapper;
 
-    /**
-     * 进行中的任务状态列表
-     */
     private static final List<IndexingTaskStatus> RUNNING_STATUSES = Arrays.asList(
             IndexingTaskStatus.PENDING,
             IndexingTaskStatus.RUNNING
     );
+
+    /**
+     * 应用启动时清理孤儿任务（服务重启前残留的 PENDING/RUNNING 任务）
+     * 孤儿任务会阻止新任务提交，必须在启动时重置为 FAILED
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void cleanupOrphanTasks() {
+        List<IndexingTask> orphans = indexingTaskRepository.findByStatusIn(RUNNING_STATUSES);
+        if (!orphans.isEmpty()) {
+            for (IndexingTask task : orphans) {
+                task.setStatus(IndexingTaskStatus.FAILED);
+                task.setErrorMessage("服务重启导致任务中断，请重新构建索引");
+                task.setCompletedAt(LocalDateTime.now());
+            }
+            indexingTaskRepository.saveAll(orphans);
+            log.warn("Cleaned up {} orphan indexing tasks on startup", orphans.size());
+        }
+    }
 
     @Override
     @Transactional
@@ -65,7 +81,6 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
             return existingTask;
         }
 
-        // 创建新任务
         String documentIdsJson;
         try {
             documentIdsJson = objectMapper.writeValueAsString(documentIds);
@@ -123,7 +138,6 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
         task.setStartedAt(LocalDateTime.now());
         indexingTaskRepository.save(task);
 
-        Long userId = task.getUserId();
         Long kbId = task.getKbId();
 
         // 解析文档 ID 列表
@@ -165,13 +179,12 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
         int completed = 0;
         int failed = 0;
 
-        // 创建进度回调
-        IndexingProgressCallback callback = createProgressCallback(userId, kbId, task);
+        // 创建进度回调（将当前步骤持久化到 indexing_tasks 表，供轮询接口读取）
+        IndexingProgressCallback callback = createProgressCallback(task);
 
         // 逐个处理文档
         for (Long documentId : documentIds) {
             try {
-                // 根据任务类型执行不同操作
                 if (task.getTaskType() == IndexingTaskType.INDEX) {
                     indexingService.executeIndexing(documentId, kb, indexConfig, callback);
                 } else {
@@ -183,14 +196,14 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
                 failed++;
             }
 
-            // 更新任务进度
-            task.setCompletedDocs(completed);
-            task.setFailedDocs(failed);
-            indexingTaskRepository.save(task);
-
-            // 发送进度事件
-            emitterManager.sendProgress(userId, kbId, taskId,
-                    task.getTotalDocs(), completed, failed);
+            // 每处理完一个文档，更新整体进度到数据库（轮询端读取）
+            try {
+                task.setCompletedDocs(completed);
+                task.setFailedDocs(failed);
+                indexingTaskRepository.save(task);
+            } catch (Exception e) {
+                log.error("Failed to save task progress: taskId={}", taskId, e);
+            }
         }
 
         // 任务完成
@@ -199,45 +212,58 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
         task.setCurrentDocId(null);
         task.setCurrentDocName(null);
         task.setCurrentStep(null);
-        indexingTaskRepository.save(task);
-
-        // 发送完成事件
-        emitterManager.sendDone(userId, kbId, taskId, task.getTotalDocs(), completed, failed);
+        try {
+            indexingTaskRepository.save(task);
+        } catch (Exception e) {
+            log.error("Failed to save task completion: taskId={}", taskId, e);
+        }
 
         log.info("Indexing task completed: taskId={}, completed={}, failed={}", taskId, completed, failed);
     }
 
+    /**
+     * 查询最近一次任务进度（供前端轮询）
+     * 优先返回进行中的任务，无进行中任务则返回最近一次任务（让前端看到最终状态）
+     */
     @Override
-    public SseEmitter subscribe(Long userId, Long kbId) {
-        return emitterManager.createEmitter(userId, kbId);
+    public IndexingTaskProgressVO getLatestTaskProgress(Long userId, Long kbId) {
+        // 先查进行中的任务
+        IndexingTask task = indexingTaskRepository
+                .findByUserIdAndKbIdAndStatusIn(userId, kbId, RUNNING_STATUSES)
+                .orElse(null);
+
+        // 无进行中任务则取最近一条（任意状态，让前端展示最终状态）
+        if (task == null) {
+            task = indexingTaskRepository
+                    .findFirstByKbIdOrderByCreatedAtDesc(kbId)
+                    .orElse(null);
+        }
+
+        return task != null ? IndexingTaskProgressVO.from(task) : null;
     }
 
     /**
-     * 创建进度回调
+     * 创建进度回调：将当前步骤和文档信息持久化到 indexing_tasks 表
+     * 前端通过轮询接口读取这些信息，无需 SSE
      */
-    private IndexingProgressCallback createProgressCallback(Long userId, Long kbId, IndexingTask task) {
+    private IndexingProgressCallback createProgressCallback(IndexingTask task) {
         return new IndexingProgressCallback() {
             @Override
             public void onStepChanged(Long documentId, String documentName, IndexingStep step) {
-                // 更新任务当前状态
                 task.setCurrentDocId(documentId);
                 task.setCurrentDocName(documentName);
                 task.setCurrentStep(step);
                 indexingTaskRepository.save(task);
-
-                // 发送步骤事件
-                emitterManager.sendStep(userId, kbId, documentId, documentName, step);
             }
 
             @Override
             public void onDocumentCompleted(Long documentId, String documentName) {
-                log.debug("Document completed: documentId={}, name={}", documentId, documentName);
+                log.debug("Document indexing completed: documentId={}, name={}", documentId, documentName);
             }
 
             @Override
             public void onDocumentFailed(Long documentId, String documentName, String error) {
-                // 发送错误事件
-                emitterManager.sendError(userId, kbId, documentId, documentName, error);
+                log.warn("Document indexing failed: documentId={}, name={}, error={}", documentId, documentName, error);
             }
         };
     }
