@@ -6,7 +6,6 @@ import DocumentsPage from './pages/documents';
 import KnowledgeBasePage from './pages/KnowledgeBase';
 import KnowledgeBaseDetail from './pages/KnowledgeBase/KnowledgeBaseDetail';
 import ChatPage from './pages/Chat';
-import TestChatPage from './pages/TestChat';
 import UserProfile from './pages/User';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/auth/Login';
@@ -286,7 +285,6 @@ function App() {
           <Route path="kb" element={<KnowledgeBasePage />} />
           <Route path="kb/:id" element={<KnowledgeBaseDetail />} />
           <Route path="chat" element={<ChatPage />} />
-          <Route path="test-chat" element={<TestChatPage />} />
           <Route path="profile" element={<UserProfile />} />
         </Route>
       </Routes>

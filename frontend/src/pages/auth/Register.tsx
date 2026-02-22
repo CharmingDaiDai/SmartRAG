@@ -41,7 +41,7 @@ const FEATURES = [
   {
     icon: <ThunderboltOutlined />,
     title: '实时流式输出',
-    desc: '流式响应，思考过程透明可见',
+    desc: '流式响应，执行流程透明可见',
   },
 ];
 
@@ -91,8 +91,7 @@ const Register: React.FC = () => {
   };
 
   return (
-    <FadeIn>
-      <div className="auth-page">
+    <FadeIn className="auth-page">
         <SlideInUp>
           <Card className="auth-card">
             <Row align="stretch">
@@ -220,7 +219,6 @@ const Register: React.FC = () => {
             </Row>
           </Card>
         </SlideInUp>
-      </div>
     </FadeIn>
   );
 };

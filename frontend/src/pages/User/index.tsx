@@ -106,7 +106,7 @@ const UserProfile: React.FC = () => {
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '0 8px 24px' }}>
+    <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', padding: '0 8px 24px' }}>
       <Row gutter={[24, 24]} justify="center">
         <Col xs={24} lg={10}>
             <Card

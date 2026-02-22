@@ -189,7 +189,6 @@ code {
 
 /* ==================== 主题切换过渡 ==================== */
 .ant-layout,
-.ant-layout-sider,
 .ant-menu,
 .ant-card,
 .ant-input,
@@ -197,6 +196,15 @@ code {
 .ant-table,
 .ant-modal-content {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease !important;
+}
+
+/* Sider 需要同时过渡宽度（折叠）和颜色（主题切换） */
+.ant-layout-sider {
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.25s ease,
+              border-color 0.25s ease !important;
 }
 
 /* ==================== 流式输出光标 ==================== */

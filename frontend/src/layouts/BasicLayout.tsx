@@ -8,7 +8,6 @@ import {
   RobotOutlined,
   UserOutlined,
   LogoutOutlined,
-  ExperimentOutlined,
   SunOutlined,
   MoonOutlined,
   MenuFoldOutlined,
@@ -26,7 +25,6 @@ const PAGE_NAMES: Record<string, string> = {
   '/documents': '文档管理',
   '/kb': '知识库管理',
   '/chat': '知识库问答',
-  '/test-chat': '测试问答',
   '/profile': '个人资料',
 };
 
@@ -136,7 +134,7 @@ export default function BasicLayout() {
     }
   }, [isMobile]);
 
-  const isFullPage = location.pathname === '/chat' || location.pathname === '/test-chat';
+  const isFullPage = location.pathname === '/chat';
 
   const currentPageName = Object.entries(PAGE_NAMES).find(([key]) =>
     location.pathname === key || location.pathname.startsWith(key + '/')
@@ -145,7 +143,7 @@ export default function BasicLayout() {
   const makeMenuItems = (isDrawer = false) => [
     {
       type: 'group' as const,
-      label: (!collapsed || isDrawer) ? 'WORKSPACE' : '',
+      label: (!collapsed || isDrawer) ? '工作台' : '',
       children: [
         {
           key: '/dashboard',
@@ -163,7 +161,7 @@ export default function BasicLayout() {
     },
     {
       type: 'group' as const,
-      label: (!collapsed || isDrawer) ? 'KNOWLEDGE' : '',
+      label: (!collapsed || isDrawer) ? '知识库' : '',
       children: [
         {
           key: '/kb',
@@ -175,19 +173,13 @@ export default function BasicLayout() {
     },
     {
       type: 'group' as const,
-      label: (!collapsed || isDrawer) ? 'AI TOOLS' : '',
+      label: (!collapsed || isDrawer) ? 'AI 工具' : '',
       children: [
         {
           key: '/chat',
           icon: <RobotOutlined />,
           label: '知识库问答',
           onClick: () => navigate('/chat'),
-        },
-        {
-          key: '/test-chat',
-          icon: <ExperimentOutlined />,
-          label: '测试问答',
-          onClick: () => navigate('/test-chat'),
         },
       ],
     },
@@ -232,7 +224,6 @@ export default function BasicLayout() {
           theme={themeMode === 'dark' ? 'dark' : 'light'}
           style={{
             borderRight: `1px solid ${token.colorBorderSecondary}`,
-            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             overflow: 'hidden',
           }}
         >

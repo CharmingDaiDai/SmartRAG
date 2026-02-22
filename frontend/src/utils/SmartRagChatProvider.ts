@@ -154,10 +154,12 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
         }
 
         // Create new thought
+        // Backend sends: { status, content, icon }
+        // "content" is the human-readable step description shown as the title.
         const newThought: ThoughtItem & { startTime: number } = {
-            title: data.title || (thoughtStatus === 'error' ? '发生错误' : '思考中...'),
+            title: data.content || data.title || (thoughtStatus === 'error' ? '发生错误' : '思考中...'),
             status: thoughtStatus,
-            content: data.content || '',
+            content: '',
             icon: getIcon(data.icon || (thoughtStatus === 'error' ? 'error' : undefined)),
             duration: 0,
             startTime: Date.now()
@@ -202,7 +204,15 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
       case 'done':
         return {
             ...currentMessage,
-            status: 'success'
+            status: 'success',
+            // Finalize any remaining processing thoughts
+            thoughts: currentMessage.thoughts?.map(t => {
+                if (t.status === 'processing') {
+                    const startTime = (t as any).startTime || Date.now();
+                    return { ...t, status: 'success' as const, duration: Date.now() - startTime };
+                }
+                return t;
+            })
         };
         
       default:

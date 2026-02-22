@@ -73,7 +73,7 @@ const ThoughtContent = memo(({ items }: { items: ThoughtItem[] }) => {
 
 const AnimatedThoughtChain: React.FC<AnimatedThoughtChainProps> = memo(({
     items,
-    title = '思考过程',
+    title = '执行流程',
     expanded,
     onExpand,
 }) => {

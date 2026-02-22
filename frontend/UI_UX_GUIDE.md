@@ -433,7 +433,7 @@ export const YourAnimation: React.FC<HTMLMotionProps<"div">> = ({ children, ...p
 <Layout> (height: 100vh, overflow: hidden)
 ├── <Sider width=220, collapsedWidth=64>
 │   ├── Logo 区域 (height: 68px)
-│   └── <Menu> (分三组：WORKSPACE / KNOWLEDGE / AI TOOLS)
+│   └── <Menu> (分三组：工作台 / 知识库 / AI 工具)
 └── <Layout>
     ├── <Header height=56px>
     │   ├── 左：折叠按钮 + 页面标题
@@ -558,12 +558,12 @@ const PAGE_NAMES: Record<string, string> = {
 
 **文件**：[src/components/rag/AnimatedThoughtChain.tsx](src/components/rag/AnimatedThoughtChain.tsx)
 
-可展开/收起的思考过程可视化，用于 AI 消息的 header 位置。
+可展开/收起的执行流程可视化，用于 AI 消息的 header 位置。
 
 ```tsx
 <AnimatedThoughtChain
   items={thoughtItems}   // ThoughtItem[]
-  title="思考过程"       // 可选，默认"思考过程"
+  title="执行流程"       // 可选，默认"执行流程"
 />
 ```
 

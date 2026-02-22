@@ -5,8 +5,8 @@
  *
  * 【核心功能】
  * 1. 与知识库进行智能对话（RAG 检索增强生成）
- * 2. 支持多种 RAG 策略（Naive RAG、HiSem RAG、Graph RAG）
- * 3. 实时流式输出、思考过程可视化、参考文档展示
+ * 2. 支持多种 RAG 策略（Naive RAG、HiSem RAG Fast、HiSem-SADP）
+ * 3. 实时流式输出、执行流程可视化、参考文档展示
  * 4. 历史对话管理、参数配置、主题切换
  *
  * 【架构设计】
@@ -26,12 +26,12 @@ import {
   Bubble,
   Sender,
   XProvider,
+  CodeHighlighter,
+  Mermaid,
 } from '@ant-design/x';
 import { useXChat } from '@ant-design/x-sdk';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
-import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
 import Latex from '@ant-design/x-markdown/plugins/Latex';
-import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import '@ant-design/x-markdown/themes/light.css';
 import '@ant-design/x-markdown/themes/dark.css';
 import {
@@ -64,12 +64,12 @@ const { Title, Text } = Typography;
 
 /**
  * 扩展的消息内容接口
- * 除了基础的角色和内容，还包含 RAG 特有的思考过程和参考文档
+ * 除了基础的角色和内容，还包含 RAG 特有的执行流程和参考文档
  */
 interface ExtendedMessageContent {
     role: string;              // 'user' | 'assistant'
     content: string;           // 消息文本内容
-    thoughts?: ThoughtItem[];  // AI 的思考过程（检索、重排序等步骤）
+    thoughts?: ThoughtItem[];  // AI 的执行流程（检索、重排序等步骤）
     references?: ReferenceItem[]; // 参考的文档片段
 }
 
@@ -85,7 +85,7 @@ const Code: React.FC<ComponentProps> = (props) => {
   if (lang === 'mermaid') {
     return <Mermaid>{children}</Mermaid>;
   }
-  return <HighlightCode lang={lang}>{children}</HighlightCode>;
+  return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>;
 };
 
 /**
@@ -125,6 +125,7 @@ const ChatPage: React.FC = () => {
 
   // ========== 状态管理 ==========
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
+  const [kbsLoaded, setKbsLoaded] = useState(false);
 
   const { currentKbId, setCurrentKbId, token: authToken, userInfo, themeMode, localSettings } = useAppStore();
 
@@ -244,6 +245,15 @@ const ChatPage: React.FC = () => {
     });
   }, []);
 
+  // Cancel pending RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafScrollRef.current !== null) {
+        cancelAnimationFrame(rafScrollRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
@@ -260,6 +270,8 @@ const ChatPage: React.FC = () => {
             }
           } catch (e) {
               console.error(e);
+          } finally {
+              setKbsLoaded(true);
           }
       };
       fetchKbs();
@@ -392,17 +404,6 @@ const ChatPage: React.FC = () => {
     return { extendedMsg, status: lastMsg.status, id: lastMsg.id };
   }, [messages, isRequesting]);
 
-  // Legacy: thought-only pending message (no content yet, has thoughts)
-  const pendingAssistantMessage = useMemo(() => {
-    if (!streamingMessage) return null;
-    const { extendedMsg } = streamingMessage;
-    if ((!extendedMsg.content || extendedMsg.content.trim() === '') &&
-        extendedMsg.thoughts && extendedMsg.thoughts.length > 0) {
-      return extendedMsg;
-    }
-    return null;
-  }, [streamingMessage]);
-
   // 按分组整理历史对话
   const groupedHistory = useMemo(() => {
     const groups: Record<string, typeof MOCK_HISTORY> = {};
@@ -422,7 +423,6 @@ const ChatPage: React.FC = () => {
       contentRender: (content: string) => (
         <XMarkdown
           className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
-          // @ts-ignore
           config={MD_CONFIG}
           components={MD_COMPONENTS}
         >
@@ -436,9 +436,9 @@ const ChatPage: React.FC = () => {
         return (
           <XMarkdown
             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
-            // @ts-ignore
             config={MD_CONFIG}
             components={MD_COMPONENTS}
+            debug={import.meta.env.DEV}
             streaming={{
               hasNextChunk: status === 'updating' || status === 'loading',
               enableAnimation: true,
@@ -660,46 +660,45 @@ const ChatPage: React.FC = () => {
                             <div style={{ display: 'flex', gap: 12, marginTop: 8, paddingBottom: 8 }}>
                                 <Avatar icon={<RobotOutlined />} style={{ background: token.colorPrimary, flexShrink: 0 }} />
                                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {/* 思考过程（thoughts-only phase） */}
-                                    {pendingAssistantMessage && (
-                                        <>
-                                            <AnimatedThoughtChain items={pendingAssistantMessage.thoughts!} />
-                                            {pendingAssistantMessage.thoughts!.length > 0 &&
-                                             pendingAssistantMessage.thoughts![pendingAssistantMessage.thoughts!.length - 1].status === 'success' && (
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 8,
-                                                    color: token.colorTextSecondary,
-                                                    fontSize: 13,
-                                                    marginTop: 4
-                                                }}>
-                                                    <LoadingOutlined spin style={{ color: token.colorPrimary }} />
-                                                    <span>思考中...</span>
-                                                </div>
-                                            )}
-                                        </>
+                                    {/* 执行流程 — 统一渲染，避免重复 */}
+                                    {streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0 && (
+                                        <AnimatedThoughtChain items={streamingMessage.extendedMsg.thoughts} />
+                                    )}
+                                    {/* "生成回答中..." 指示器：所有 thoughts 结束且 content 还没到达 */}
+                                    {!streamingMessage.extendedMsg.content &&
+                                     streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0 &&
+                                     streamingMessage.extendedMsg.thoughts.every(t => t.status === 'success') && (
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 8,
+                                            color: token.colorTextSecondary,
+                                            fontSize: 13,
+                                            marginTop: 4
+                                        }}>
+                                            <LoadingOutlined spin style={{ color: token.colorPrimary }} />
+                                            <span>生成回答中...</span>
+                                        </div>
                                     )}
                                     {/* 流式文本内容 */}
                                     {streamingMessage.extendedMsg.content && (
-                                        <>
-                                            {streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0 && (
-                                                <AnimatedThoughtChain items={streamingMessage.extendedMsg.thoughts} />
-                                            )}
-                                            <XMarkdown
-                                                className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
-                                                // @ts-ignore
-                                                config={MD_CONFIG}
-                                                components={MD_COMPONENTS}
-                                                streaming={{
-                                                    hasNextChunk: streamingMessage.status === 'updating' || streamingMessage.status === 'loading',
-                                                    enableAnimation: true,
-                                                    animationConfig: { fadeDuration: 80 },
-                                                }}
-                                            >
-                                                {streamingMessage.extendedMsg.content}
-                                            </XMarkdown>
-                                        </>
+                                        <XMarkdown
+                                            className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
+                                            config={MD_CONFIG}
+                                            components={MD_COMPONENTS}
+                                            debug={import.meta.env.DEV}
+                                            streaming={{
+                                                hasNextChunk: streamingMessage.status === 'updating' || streamingMessage.status === 'loading',
+                                                enableAnimation: true,
+                                                animationConfig: { fadeDuration: 80 },
+                                            }}
+                                        >
+                                            {streamingMessage.extendedMsg.content}
+                                        </XMarkdown>
+                                    )}
+                                    {/* 参考文档 — 流式阶段也要展示 */}
+                                    {streamingMessage.extendedMsg.references && streamingMessage.extendedMsg.references.length > 0 && (
+                                        <ReferenceViewer references={streamingMessage.extendedMsg.references} />
                                     )}
                                 </div>
                             </div>
@@ -750,10 +749,11 @@ const ChatPage: React.FC = () => {
                         </div>
                         <Select
                             style={{ width: '100%' }}
-                            value={currentKbId}
+                            value={kbsLoaded && kbs.some(kb => kb.id === currentKbId) ? currentKbId : undefined}
                             onChange={setCurrentKbId}
                             options={kbs.map(kb => ({ label: kb.name, value: kb.id }))}
-                            placeholder="选择知识库"
+                            placeholder={kbsLoaded ? '选择知识库' : '加载中...'}
+                            loading={!kbsLoaded}
                         />
                     </div>
 
@@ -983,7 +983,7 @@ const ChatPage: React.FC = () => {
  *
  * 【流式渲染优化】
  * - SmartRAGChatProvider 处理 SSE 事件流
- * - 支持的事件类型：thought（思考过程）、ref（参考文档）、message（流式文本）、done（完成）
+ * - 支持的事件类型：thought（执行流程）、ref（参考文档）、message（流式文本）、done（完成）
  * - 可扩展新的事件类型，如 image、file 等
  *
  * 【参数配置持久化】

@@ -1,10 +1,9 @@
 import React, { useState, memo } from 'react';
 import { Modal, Space, Button, Typography, theme } from 'antd';
 import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined, CaretDownOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { CodeHighlighter, Mermaid } from '@ant-design/x';
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
-import HighlightCode from '@ant-design/x-markdown/plugins/HighlightCode';
 import Latex from '@ant-design/x-markdown/plugins/Latex';
-import Mermaid from '@ant-design/x-markdown/plugins/Mermaid';
 import { useAppStore } from '../store/useAppStore';
 
 interface Reference {
@@ -22,10 +21,13 @@ const Code: React.FC<ComponentProps> = (props) => {
     const { className, children } = props;
     const lang = className?.match(/language-(\w+)/)?.[1] || '';
     if (typeof children !== 'string') return null;
-    return <HighlightCode lang={lang}>{children}</HighlightCode>;
+    if (lang === 'mermaid') {
+        return <Mermaid>{children}</Mermaid>;
+    }
+    return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>;
 };
 
-const MD_PLUGINS = [Latex(), Mermaid];
+const MD_CONFIG = { extensions: Latex({ katexOptions: { output: 'html' as const, throwOnError: false } }) };
 const MD_COMPONENTS = { code: Code };
 
 const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) => {
@@ -147,8 +149,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) =>
                     {currentRef?.content ? (
                         <XMarkdown
                             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
-                            // @ts-ignore
-                            plugins={MD_PLUGINS}
+                            config={MD_CONFIG}
                             components={MD_COMPONENTS}
                         >
                             {currentRef.content}

@@ -16,10 +16,25 @@ const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
     [RAG_METHODS.HISEM]: 'HISEM_RAG',
 };
 
+const formatDateTime = (val: string | undefined | null): string => {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return val;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (isToday) return `今天 ${time}`;
+    if (isYesterday) return `昨天 ${time}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
+};
+
 const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
     NAIVE_RAG: 'Naive RAG',
     HISEM_RAG_FAST: 'HiSem RAG Fast',
-    HISEM_RAG: 'HiSem RAG',
+    HISEM_RAG: 'HiSem-SADP',
 };
 
 // RAG 策略的颜色点
@@ -58,7 +73,7 @@ const RAG_METHOD_CARDS = [
     },
     {
         value: RAG_METHODS.HISEM,
-        label: 'HiSem RAG',
+        label: 'HiSem-SADP',
         desc: '全语义增强，可选摘要压缩，检索精度最高',
         scene: '适合：高质量问答、允许较长建库时间',
         color: '#8b5cf6',
@@ -75,6 +90,8 @@ export default function KnowledgeBasePage() {
   const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
   const [llmModels, setLlmModels] = useState<string[]>([]);
   const [indexingKbId, setIndexingKbId] = useState<string | null>(null);
+  const [deletingKbId, setDeletingKbId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const ragMethod = Form.useWatch('ragMethod', form);
   const splitterType = Form.useWatch('splitter_type', form);
   const chunkSize = Form.useWatch('chunk_size', form);
@@ -127,6 +144,7 @@ export default function KnowledgeBasePage() {
   }, []);
 
   const handleDelete = async (id: string) => {
+    setDeletingKbId(id);
     try {
       const res: any = await kbService.delete(id);
       if (res.code === 200) {
@@ -137,10 +155,13 @@ export default function KnowledgeBasePage() {
       }
     } catch (error) {
       // ignore
+    } finally {
+      setDeletingKbId(null);
     }
   };
 
   const handleCreate = async (values: any) => {
+      setCreating(true);
       try {
           const { name, description, ragMethod: method, embedding_model, ...rest } = values;
           const strategyType = INDEX_STRATEGY_TYPE_MAP[method] || method;
@@ -172,6 +193,8 @@ export default function KnowledgeBasePage() {
           }
       } catch (error) {
           // ignore
+      } finally {
+          setCreating(false);
       }
   };
 
@@ -280,10 +303,32 @@ export default function KnowledgeBasePage() {
                                         <Card
                                             hoverable
                                             className="kb-card"
-                                            onClick={() => handleNavigateDetail(item.id)}
-                                            style={{ height: '100%', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                                            onClick={() => deletingKbId !== item.id && handleNavigateDetail(item.id)}
+                                            style={{
+                                                height: '100%',
+                                                cursor: deletingKbId === item.id ? 'not-allowed' : 'pointer',
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                                opacity: deletingKbId === item.id ? 0.5 : 1,
+                                                transition: 'opacity 0.2s ease',
+                                                pointerEvents: deletingKbId === item.id ? 'none' : undefined,
+                                            }}
                                             styles={{ body: { padding: 20, minHeight: 180, display: 'flex', flexDirection: 'column', gap: 12 } }}
                                         >
+                                            {/* 删除中遮罩 */}
+                                            {deletingKbId === item.id && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    zIndex: 10,
+                                                    pointerEvents: 'all',
+                                                }}>
+                                                    <Spin tip="删除中..." />
+                                                </div>
+                                            )}
                                             {/* 顶部彩色强调条 */}
                                             <div style={{
                                                 position: 'absolute',
@@ -349,7 +394,7 @@ export default function KnowledgeBasePage() {
                                             {/* 底部信息 */}
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                                    更新于 {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('zh-CN') : '—'}
+                                                    更新于 {formatDateTime(item.updatedAt)}
                                                 </Typography.Text>
                                                 {/* 悬停 CTA */}
                                                 <div className="kb-card-cta">
@@ -373,8 +418,9 @@ export default function KnowledgeBasePage() {
       <Modal
         title="新建知识库"
         open={createModalOpen}
-        onCancel={() => { setCreateModalOpen(false); form.resetFields(); }}
+        onCancel={() => { if (!creating) { setCreateModalOpen(false); form.resetFields(); } }}
         onOk={() => form.submit()}
+        confirmLoading={creating}
         width={620}
         modalRender={(modal) => <ScaleIn>{modal}</ScaleIn>}
       >

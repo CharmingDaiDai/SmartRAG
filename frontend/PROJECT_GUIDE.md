@@ -55,7 +55,7 @@ src/
   - `Mermaid`: 流程图、时序图渲染。
 - **流式响应**: 支持打字机效果 (Typewriter)，提升用户感知的响应速度。
 - **自定义组件**:
-  - `AnimatedThoughtChain`: 展示 AI 的 "思考过程" (CoT)，支持展开/折叠。
+  - `AnimatedThoughtChain`: 展示 AI 的 "执行流程" (CoT)，支持展开/折叠。
   - `ReferenceViewer`: 在回答下方展示引用的知识库文档片段及相关度分数。
 
 ### 3.2 主题系统 (深色/浅色模式)

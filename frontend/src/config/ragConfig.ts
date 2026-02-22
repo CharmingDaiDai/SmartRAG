@@ -7,7 +7,7 @@ export const RAG_METHODS = {
 export const RAG_METHOD_OPTIONS = [
   { value: RAG_METHODS.NAIVE, label: "Naive RAG" },
   { value: RAG_METHODS.HISEM_FAST, label: "HiSem RAG Fast" },
-  { value: RAG_METHODS.HISEM, label: "HiSem RAG" },
+  { value: RAG_METHODS.HISEM, label: "HiSem-SADP" },
 ];
 
 export const RAG_STRATEGIES = {
@@ -107,7 +107,7 @@ export const getMethodConfig = (method: string) => {
     },
   ];
 
-  // HiSem RAG 索引配置：块大小、标题语义增强、语义压缩、Embedding 模型、LLM 模型
+  // HiSem-SADP 索引配置：块大小、标题语义增强、语义压缩、Embedding 模型、LLM 模型
   const hisemIndexConfig = [
     // 拖动类型
     {
@@ -143,7 +143,7 @@ export const getMethodConfig = (method: string) => {
       defaultValue: "",
     },
     {
-      key: "llm_model",
+      key: "llm_model_id",
       label: "LLM 模型",
       type: "model_select",
       modelType: "llm",
@@ -248,7 +248,7 @@ export const getMethodConfig = (method: string) => {
       ],
     },
     [RAG_METHODS.HISEM]: {
-      name: "HiSem RAG",
+      name: "HiSem-SADP",
       description: "层级语义检索",
       indexConfig: hisemIndexConfig,
       searchConfig: [
