@@ -1,10 +1,9 @@
 package com.mtmn.smartdoc.utils;
 
 import com.mtmn.smartdoc.common.IntentResult;
+import com.mtmn.smartdoc.constants.AppConstants;
 import com.mtmn.smartdoc.service.LLMService;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,9 +15,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class IntentClassifier {
 
-    @Value("${prompt.intentClassifier}")
-    public String INTENT_PROMPT;
-
     @Resource
     private LLMService llmService;
 
@@ -26,7 +22,7 @@ public class IntentClassifier {
     private IntentResponseParser intentResponseParser;
 
     public IntentResult analyzeIntent(String modelId, String currentQuestion, String conversationHistory) {
-        String prompt = String.format(INTENT_PROMPT,
+        String prompt = String.format(AppConstants.PromptTemplates.INTENT_CLASSIFIER,
                 conversationHistory != null ? conversationHistory : "",
                 currentQuestion);
 

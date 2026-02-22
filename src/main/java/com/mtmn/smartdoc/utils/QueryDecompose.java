@@ -1,10 +1,10 @@
 package com.mtmn.smartdoc.utils;
 
 import com.mtmn.smartdoc.common.QueryDecomposeResult;
+import com.mtmn.smartdoc.constants.AppConstants;
 import com.mtmn.smartdoc.service.LLMService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,18 +25,14 @@ public class QueryDecompose {
     @Resource
     private QueryDecomposeParser queryDecomposeParser;
 
-    @Value("${prompt.queryDecompose2}")
-    private String QUERY_DECOMPOSE_PROMPT;
-
     /**
      * 分解查询并返回结构化结果
      */
     public QueryDecomposeResult decomposeQuery(String modelId, String userQuery) {
         try {
-            String prompt = String.format(QUERY_DECOMPOSE_PROMPT, userQuery);
+            String prompt = String.format(AppConstants.PromptTemplates.QUERY_DECOMPOSE_ADVANCED, userQuery);
 
             String response = llmService.createLLMClient(modelId).chat(prompt);
-//            log.debug("问题分解 - 原始: {} | 分解: {}", userQuery, response);
 
             QueryDecomposeResult result = queryDecomposeParser.parseResponse(response);
 
