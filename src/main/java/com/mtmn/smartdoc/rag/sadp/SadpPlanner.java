@@ -44,9 +44,11 @@ public class SadpPlanner {
      */
     public boolean isComplexQuery(String query, LLMClient llmClient) {
         try {
+            log.debug("SADP complexity check for query: '{}'", query);
             String prompt = AppConstants.PromptTemplates.SADP_COMPLEXITY_CHECK
                     .replace("{query}", query);
             String llmOutput = llmClient.chat(prompt);
+            log.debug("SADP complexity LLM response: {}", llmOutput);
 
             Map<String, Object> result = LlmJsonUtils.parseMap(llmOutput);
             if (result.isEmpty()) {
@@ -55,14 +57,17 @@ public class SadpPlanner {
             }
 
             Object complexObj = result.get("complex");
+            boolean isComplex;
             if (complexObj instanceof Boolean b) {
-                return b;
-            }
-            if (complexObj instanceof String s) {
-                return Boolean.parseBoolean(s);
+                isComplex = b;
+            } else if (complexObj instanceof String s) {
+                isComplex = Boolean.parseBoolean(s);
+            } else {
+                isComplex = false;
             }
 
-            return false;
+            log.debug("SADP complexity result: isComplex={}, reason={}", isComplex, result.get("reason"));
+            return isComplex;
         } catch (Exception e) {
             log.warn("SADP complexity check failed: {}, defaulting to simple query", e.getMessage());
             return false;
@@ -78,9 +83,11 @@ public class SadpPlanner {
      */
     public List<TaskNode> decomposeToDag(String query, LLMClient llmClient) {
         try {
+            log.debug("SADP decomposing query: '{}'", query);
             String prompt = AppConstants.PromptTemplates.SADP_DAG_DECOMPOSITION
                     .replace("{query}", query);
             String llmOutput = llmClient.chat(prompt);
+            log.debug("SADP decomposition LLM response: {}", llmOutput);
 
             // Parse list of task maps
             @SuppressWarnings("unchecked")
@@ -110,6 +117,11 @@ public class SadpPlanner {
             }
 
             log.info("SADP decomposed query into {} tasks", tasks.size());
+            if (log.isDebugEnabled()) {
+                for (TaskNode task : tasks) {
+                    log.debug("  Task[{}]: '{}', dependsOn={}", task.getId(), task.getDescription(), task.getDependsOn());
+                }
+            }
             return tasks;
 
         } catch (Exception e) {
@@ -235,8 +247,10 @@ public class SadpPlanner {
         try {
             // 自适应检索
             Set<String> querySet = Collections.singleton(task.getDescription());
+            log.debug("SADP subtask {} starting adaptive retrieval for: '{}'", task.getId(), task.getDescription());
             List<RetrievalResult> results = adaptiveRetriever.retrieve(
                     querySet, kbId, embeddingClient, emitter);
+            log.debug("SADP subtask {} retrieval complete: {} results", task.getId(), results.size());
 
             // 构建上下文
             String context = buildContext(results);
