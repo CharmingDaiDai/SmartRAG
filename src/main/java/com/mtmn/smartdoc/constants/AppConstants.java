@@ -362,85 +362,93 @@ public final class AppConstants {
                 """;
 
         /**
-         * SADP 问题复杂度判断提示词
+         * SADP 意图识别与路由提示词（4 类意图分类）
          */
-        public static final String SADP_COMPLEXITY_CHECK = """
+        public static final String SADP_INTENT_ROUTING = """
                 # Role
-                你是一个查询分析专家。请判断以下问题是否需要多步推理或多跳检索才能回答。
-                
-                # Input
-                <query>
-                {query}
-                </query>
-                
-                # Rules
-                1. **复杂问题（true）**：需要分别检索多个独立主题，再综合推理；或需要前一个检索结果才能进行下一步检索；或问题明确包含"比较"、"关系"、"原因和影响"等多跳逻辑。
-                2. **简单问题（false）**：问题只涉及单一主题，一次检索即可回答；或问题是单纯的概念解释、定义查询。
-                3. **格式**：必须仅输出 JSON，不要包含任何其他解释。
-                
-                # Examples
-                Query: "主变压器安装的工艺标准是什么？" -> {"complex": false, "reason": "单一概念查询"}
-                Query: "比较 主变压器 和 站用变压器 安装工艺标准的差异" -> {"complex": true, "reason": "需要分别检索两个工艺标准并进行对比推理"}
-                Query: "导致系统故障的原因是什么，以及如何从故障中恢复？" -> {"complex": true, "reason": "需要分别检索故障原因和恢复方案"}
-                
-                # Result
-                """;
+                你是一个查询分析专家。请对用户的提问进行意图分类。
 
-        /**
-         * SADP DAG 知识点拆解提示词
-         */
-        public static final String SADP_DAG_DECOMPOSITION = """
-                # Role
-                你是一个任务规划专家。请将以下复杂问题拆解为若干个独立的子知识点检索任务，每个子任务是一个具体的知识点查询，并描述任务间的依赖关系。
-                
                 # Input
                 <query>
                 {query}
                 </query>
-                
+
                 # Rules
-                1. **子任务**：每个子任务描述一个独立的知识点检索目标，应当简洁具体。
-                2. **依赖关系**：如果某个任务需要前置任务的结果才能执行，则在 dependsOn 中列出前置任务 ID；若无依赖则为空数组。
-                3. **数量**：子任务数量应在 2-5 个之间，不要过度拆分。
-                4. **格式**：必须仅输出 JSON 数组，不要包含任何其他解释。
-                
+                请将问题分类为以下四种意图之一，并仅输出 JSON 格式：
+                1. "简单事实"：单一概念查询、具体参数查询，一次检索即可回答。
+                2. "多跳推理"：需要先查A，再根据A的结果去查B，存在链式逻辑。
+                3. "对比分析"：明确包含"比较"、"差异"、"不同"等，需要分别查询多个实体。
+                4. "宏观总结"：需要跨越多个章节，对某一大类问题进行概括。
+
                 # Output Format
-                [
-                  {"id": "t1", "description": "检索任务描述1", "dependsOn": []},
-                  {"id": "t2", "description": "检索任务描述2", "dependsOn": []},
-                  {"id": "t3", "description": "综合t1和t2的结果进行推理", "dependsOn": ["t1", "t2"]}
-                ]
-                
-                # Result
+                {"intent": "对比分析", "reason": "问题需要对比主变和高备变的跳闸逻辑"}
                 """;
 
         /**
-         * SADP 子任务综合答案提示词
+         * SADP DAG 任务规划提示词（含文档骨架约束 + 3 种算子）
          */
-        public static final String SADP_SUBTASK_ANSWER = """
+        public static final String SADP_DAG_PLANNING = """
                 # Role
-                你是一个专业的知识助手。请根据检索到的参考文档，回答以下子任务问题。
-                
+                你是一个高级任务规划专家。请将用户的复杂问题拆解为一个有向无环图(DAG)任务流。
+
+                # Operators (可用算子)
+                你只能使用以下三种算子：
+                1. Scoped_Retrieve: 在指定的文档节点范围内进行向量检索。
+                   - query: 必须是精简的检索关键词（如"冷却器故障 跳闸逻辑"），不要包含啰嗦的完整句子。
+                   - node_id: 必须从下方的<skeleton>中选择最相关的节点ID，用于限制检索范围。
+                2. Get_Summary: 直接获取指定文档节点的宏观摘要（适用于宏观总结类问题）。
+                   - query: 留空。
+                   - node_id: 必须从下方的<skeleton>中选择目标节点ID。
+                3. Generate: 综合前置任务的结果生成回答或中间结论。
+                   - query: 具体的生成指令（如"对比两者的跳闸逻辑差异"）。
+                   - node_id: 留空。
+
                 # Input
-                子任务：{subtask}
-                
-                前置任务结果：
-                <prior_results>
-                {prior_results}
-                </prior_results>
-                
-                参考文档：
-                <documents>
-                {context}
-                </documents>
-                
+                用户问题:
+                <query>
+                {query}
+                </query>
+
+                文档骨架 (包含可用 node_id):
+                <skeleton>
+                {skeleton}
+                </skeleton>
+
                 # Rules
-                1. 基于参考文档和前置任务结果回答子任务问题。
-                2. 如果文档中没有相关信息，明确说明"文档中未找到相关信息"。
-                3. 回答应简洁，聚焦于子任务目标。
-                4. 直接输出答案，不要有开场白。
-                
-                # Answer
+                1. 任务拆解必须合理，支持并行执行的任务（如对比分析中的两个实体检索）不应有相互依赖。
+                2. Scoped_Retrieve 的 query 必须是核心知识点关键词。
+                3. 必须仅输出 JSON 数组，不要包含任何其他解释。
+
+                # Output Format Example
+                [
+                  {"id": "T1", "type": "Scoped_Retrieve", "query": "主变压器 冷却器故障 跳闸逻辑", "node_id": "node_1", "dependsOn": []},
+                  {"id": "T2", "type": "Scoped_Retrieve", "query": "高备变压器 冷却器故障 跳闸逻辑", "node_id": "node_2", "dependsOn": []},
+                  {"id": "T3", "type": "Generate", "query": "对比主变和高备变在冷却器故障时的跳闸逻辑差异", "node_id": "", "dependsOn": ["T1", "T2"]}
+                ]
+                """;
+
+        /**
+         * SADP Generate 算子执行提示词
+         */
+        public static final String SADP_GENERATE_OPERATOR = """
+                # Role
+                你是一个专业的知识综合助手。请根据前置任务的检索结果，完成当前的生成任务。
+
+                # Input
+                当前任务目标：
+                <target>
+                {query}
+                </target>
+
+                前置任务结果：
+                <dependencies_results>
+                {dependencies_results}
+                </dependencies_results>
+
+                # Rules
+                1. 严格基于 <dependencies_results> 中提供的信息回答 <target>。
+                2. 如果前置结果中没有相关信息，明确说明"未找到相关信息"，不要编造。
+                3. 逻辑清晰，直接输出答案正文，不要有任何前缀或开场白。
                 """;
 
         /**

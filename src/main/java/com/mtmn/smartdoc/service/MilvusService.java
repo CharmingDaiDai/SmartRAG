@@ -4,6 +4,7 @@ import com.mtmn.smartdoc.model.dto.IndexUpdateItem;
 import com.mtmn.smartdoc.model.dto.VectorItem;
 import com.mtmn.smartdoc.vo.RetrievalResult;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore;
 
 import java.util.List;
@@ -42,6 +43,18 @@ public interface MilvusService {
      * @return 检索结果
      */
     List<RetrievalResult> search(Long kbId, Embedding queryVector, int topK, double threshold);
+
+    /**
+     * 带 Metadata Filter 的向量检索（用于 SADP Scoped_Retrieve 算子）
+     *
+     * @param kbId        知识库ID
+     * @param queryVector 查询向量
+     * @param topK        返回数量
+     * @param threshold   相似度阈值
+     * @param filter      Milvus 原生 metadata 过滤条件
+     * @return 检索结果
+     */
+    List<RetrievalResult> search(Long kbId, Embedding queryVector, int topK, double threshold, Filter filter);
 
     /**
      * 批量存储向量

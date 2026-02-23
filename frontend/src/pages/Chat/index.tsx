@@ -303,9 +303,11 @@ const ChatPage: React.FC = () => {
       }
 
       // HiSem-SADP 仅支持 Markdown 文件，如有非 Markdown 文档则阻止请求
+      // 注意：浏览器上传 .md 文件时 fileType 可能为 application/octet-stream，
+      // 因此使用文件名后缀（而非 MIME 类型）来判断。
       if (strategy === RAG_STRATEGIES.HISEM_RAG && currentKbDocs.length > 0) {
           const hasNonMarkdown = currentKbDocs.some(
-              d => !d.fileType || d.fileType !== 'text/markdown'
+              d => !d.filename?.toLowerCase().endsWith('.md')
           );
           if (hasNonMarkdown) {
               Modal.warning({
@@ -376,9 +378,18 @@ const ChatPage: React.FC = () => {
   };
 
   const items: GetProp<typeof Bubble.List, 'items'> = useMemo(() => {
-    // Exclude the last message if it's actively streaming — it's rendered separately
-    // to avoid rebuilding the entire Bubble.List items array on every SSE chunk.
-    const msgsToRender = (isRequesting && messages.length > 0)
+    // Only exclude the last message from Bubble.List when it is the actively
+    // streaming *assistant* message (rendered separately below to avoid
+    // rebuilding the entire list on every SSE chunk).
+    // If the last message is still the user's own message (waiting for the
+    // first assistant chunk), keep it in the list so it appears immediately.
+    const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+    const lastIsAssistantStreaming =
+      isRequesting &&
+      lastMsg !== null &&
+      (lastMsg.message as unknown as ExtendedMessageContent).role !== 'user';
+
+    const msgsToRender = lastIsAssistantStreaming
         ? messages.slice(0, -1)
         : messages;
 

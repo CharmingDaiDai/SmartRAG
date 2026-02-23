@@ -3,11 +3,11 @@ package com.mtmn.smartdoc.rag.retriever;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
 import com.mtmn.smartdoc.model.config.RagProperties;
-import com.mtmn.smartdoc.po.TreeNode;
-import com.mtmn.smartdoc.repository.TreeNodeRepository;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.vo.RetrievalResult;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.MetadataFilterBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,9 +21,9 @@ import java.util.stream.Collectors;
  *
  * <p>基于树形结构的层级检索策略：
  * <ol>
- *   <li>从最高层（level=1）开始向量搜索</li>
+ *   <li>从最高层（level=1）开始向量搜索，使用 Milvus 原生 filter 精确限定层级</li>
  *   <li>使用分布感知动态阈值公式筛选候选节点</li>
- *   <li>对通过阈值的非叶子节点递归检索其子节点</li>
+ *   <li>对通过阈值的非叶子节点递归检索其子节点（filter: parent_node_id == X）</li>
  *   <li>最终返回所有命中的叶子节点内容</li>
  * </ol>
  *
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * 其中 CV = σ/μ 为变异系数，用于感知分数分布的离散程度。
  *
  * @author charmingdaidai
- * @version 1.0
+ * @version 2.0
  */
 @Slf4j
 @Component
@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 public class AdaptiveRetriever {
 
     private final MilvusService milvusService;
-    private final TreeNodeRepository treeNodeRepository;
     private final RagProperties ragProperties;
 
     /**
@@ -78,8 +77,10 @@ public class AdaptiveRetriever {
                 Embedding queryVector = embeddingClient.embed(query);
                 log.debug("Query embedded, dimension={}", queryVector.dimension());
 
-                List<RetrievalResult> queryResults = retrieveHierarchical(
-                        queryVector, kbId, emitter, beta, gamma, thetaMin, kMin, kMax, 1);
+                // 根层过滤：Milvus 原生 filter level == 1（不再全量搜索后 Java 过滤）
+                Filter rootFilter = MetadataFilterBuilder.metadataKey("level").isEqualTo(1);
+                List<RetrievalResult> queryResults = retrieveLevel(
+                        queryVector, kbId, rootFilter, emitter, beta, gamma, thetaMin, kMin, kMax);
 
                 log.debug("Query retrieval complete: {} results", queryResults.size());
 
@@ -115,118 +116,127 @@ public class AdaptiveRetriever {
     }
 
     /**
-     * 递归层级检索核心逻辑
+     * SADP Scoped_Retrieve 入口：从指定节点的子层开始自适应分层检索
      *
-     * @param queryVector 查询向量
-     * @param kbId        知识库 ID
-     * @param emitter     SSE 推送器
-     * @param beta        阈值参数 β
-     * @param gamma       阈值参数 γ
-     * @param thetaMin    最小阈值
-     * @param kMin        最少保留数量
-     * @param kMax        最多保留数量
-     * @param level       当前检索层级（从 1 开始）
-     * @return 命中的结果列表
+     * <p>LLM 已从骨架选定起始节点，此处跳过顶层全量扫描，直接从该节点的子节点层
+     * 开始执行与标准路径完全一致的自适应阈值递归检索。
+     *
+     * @param scopeNodeId     LLM 从骨架选出的起始节点 ID
+     * @param query           检索关键词
+     * @param kbId            知识库 ID
+     * @param embeddingClient 向量化客户端
+     * @param emitter         SSE 推送器
+     * @return 命中的检索结果列表
      */
-    private List<RetrievalResult> retrieveHierarchical(Embedding queryVector, Long kbId,
-                                                        SseEmitter emitter,
-                                                        double beta, double gamma,
-                                                        double thetaMin, int kMin, int kMax,
-                                                        int level) {
-        log.debug("--- Hierarchical search at level {} ---", level);
+    public List<RetrievalResult> retrieveFromScope(String scopeNodeId, String query, Long kbId,
+                                                    EmbeddingClient embeddingClient, SseEmitter emitter) {
+        RagProperties.ThresholdConfig tc = ragProperties.getHisemSadp().getThreshold();
+        Embedding queryVector = embeddingClient.embed(query);
 
-        // 向量检索当前层级的所有节点（用 kMax 作为 topK 保证召回率，再用动态阈值筛选）
-        List<RetrievalResult> candidates = milvusService.search(kbId, queryVector, kMax, 0.0);
-        log.debug("Milvus returned {} total candidates for kbId={}", candidates.size(), kbId);
+        log.debug("retrieveFromScope: scopeNodeId='{}', query='{}'", scopeNodeId, query);
+
+        // 从 scopeNodeId 的子节点层开始（Milvus 原生 filter: parent_node_id == scopeNodeId）
+        Filter childFilter = MetadataFilterBuilder.metadataKey("parent_node_id").isEqualTo(scopeNodeId);
+        List<RetrievalResult> results = retrieveLevel(queryVector, kbId, childFilter, emitter,
+                tc.getBeta(), tc.getGamma(), tc.getThetaMin(), tc.getKMin(), tc.getKMax());
+
+        if (results.isEmpty()) {
+            // 退化：scopeNodeId 可能是叶子节点，直接搜索它自身
+            log.debug("retrieveFromScope: no child results for scopeNodeId='{}', searching node itself", scopeNodeId);
+            Filter nodeFilter = MetadataFilterBuilder.metadataKey("node_id").isEqualTo(scopeNodeId);
+            results = milvusService.search(kbId, queryVector, tc.getKMax(), 0.0, nodeFilter);
+        }
+
+        log.debug("retrieveFromScope: {} results for scopeNodeId='{}'", results.size(), scopeNodeId);
+        return results;
+    }
+
+    /**
+     * 单层检索 + 自适应阈值 + 递归下钻（Milvus 原生 filter，无 Java 后过滤）
+     *
+     * <p>使用 Milvus 原生 filter 精确限定本次搜索范围：
+     * <ul>
+     *   <li>根层调用：filter = level == 1</li>
+     *   <li>子层调用：filter = parent_node_id == parentNodeId</li>
+     * </ul>
+     *
+     * @param scopeFilter Milvus 原生过滤条件
+     */
+    private List<RetrievalResult> retrieveLevel(Embedding queryVector, Long kbId,
+                                                 Filter scopeFilter, SseEmitter emitter,
+                                                 double beta, double gamma,
+                                                 double thetaMin, int kMin, int kMax) {
+        // 1. Milvus 原生 scoped 搜索（不再全量搜索后 Java 过滤）
+        List<RetrievalResult> candidates = milvusService.search(kbId, queryVector, kMax, 0.0, scopeFilter);
+        log.debug("Milvus scoped search returned {} candidates", candidates.size());
 
         if (candidates.isEmpty()) {
-            log.debug("No candidates from Milvus, returning empty");
             return Collections.emptyList();
         }
 
-        // 过滤：只保留当前层级的节点
-        List<RetrievalResult> levelCandidates = candidates.stream()
-                .filter(r -> {
-                    Object lvl = r.getMetadata().get("level");
-                    if (lvl == null) return false;
-                    int nodeLevel = lvl instanceof Number ? ((Number) lvl).intValue() : -1;
-                    return nodeLevel == level;
-                })
-                .toList();
-
-        if (levelCandidates.isEmpty()) {
-            log.debug("No candidates at level {} (total candidates across all levels: {})", level, candidates.size());
-            return Collections.emptyList();
-        }
-
-        // 收集本层候选节点的 title_path 信息用于 SSE 展示
-        List<String> candidateTitlePaths = levelCandidates.stream()
+        // 2. 收集 title_path 用于 SSE 展示
+        List<String> candidateTitlePaths = candidates.stream()
                 .map(r -> {
-                    Object tp = r.getMetadata().get("title_path");
+                    Object tp = r.getMetadata() != null ? r.getMetadata().get("title_path") : null;
                     return tp != null ? String.valueOf(tp) : "";
                 })
                 .filter(tp -> !tp.isBlank())
                 .distinct()
                 .toList();
 
-        // 推送检索进度 SSE 事件 — 展示 title_path 而非层级号
         String thoughtMsg;
         if (!candidateTitlePaths.isEmpty()) {
             String pathsDisplay = candidateTitlePaths.size() <= 3
                     ? String.join("、", candidateTitlePaths)
                     : String.join("、", candidateTitlePaths.subList(0, 3)) + " 等";
-            thoughtMsg = String.format("正在检索「%s」（%d 个候选节点）...", pathsDisplay, levelCandidates.size());
+            thoughtMsg = String.format("正在检索「%s」（%d 个候选节点）...", pathsDisplay, candidates.size());
         } else {
-            thoughtMsg = String.format("正在层级检索（第 %d 层：%d 个候选节点）...", level, levelCandidates.size());
+            thoughtMsg = String.format("正在层级检索（%d 个候选节点）...", candidates.size());
         }
         SseEventBuilder.sendThoughtEvent(emitter, "processing", thoughtMsg, "search");
 
-        // Debug：打印候选节点详情
+        // 3. Debug：打印候选节点详情
         if (log.isDebugEnabled()) {
-            log.debug("Level {} candidates ({}):", level, levelCandidates.size());
-            for (RetrievalResult r : levelCandidates) {
-                String tp = r.getMetadata() != null
-                        ? String.valueOf(r.getMetadata().getOrDefault("title_path", ""))
-                        : "";
-                String nodeType = r.getMetadata() != null
-                        ? String.valueOf(r.getMetadata().getOrDefault("node_type", ""))
-                        : "";
-                log.debug("  nodeId={}, score={}, titlePath='{}', nodeType={}",
-                        r.getMetadata().getOrDefault("node_id", "?"),
-                        String.format("%.4f", r.getScore()), tp, nodeType);
-            }
+            candidates.forEach(r -> {
+                Map<String, Object> meta = r.getMetadata();
+                log.debug("  candidate: nodeId={}, score={}, titlePath='{}', nodeType={}",
+                        meta != null ? meta.getOrDefault("node_id", "?") : "?",
+                        String.format("%.4f", r.getScore()),
+                        meta != null ? meta.getOrDefault("title_path", "") : "",
+                        meta != null ? meta.getOrDefault("node_type", "") : "");
+            });
         }
 
-        // 计算动态阈值
-        List<Double> scores = levelCandidates.stream()
+        // 4. 计算动态阈值
+        List<Double> scores = candidates.stream()
                 .map(RetrievalResult::getScore)
                 .collect(Collectors.toList());
         double threshold = calculateDynamicThreshold(scores, beta, gamma, thetaMin, kMin, kMax);
 
         DoubleSummaryStatistics stats = scores.stream().mapToDouble(d -> d).summaryStatistics();
-        log.debug("Level {} scores: min={}, max={}, avg={}, count={} → dynamicThreshold={}",
-                level, String.format("%.4f", stats.getMin()), String.format("%.4f", stats.getMax()),
+        log.debug("Scores: min={}, max={}, avg={}, count={} → dynamicThreshold={}",
+                String.format("%.4f", stats.getMin()), String.format("%.4f", stats.getMax()),
                 String.format("%.4f", stats.getAverage()), stats.getCount(),
                 String.format("%.4f", threshold));
 
-        // 按阈值筛选
-        List<RetrievalResult> passed = levelCandidates.stream()
+        // 5. 按阈值筛选
+        List<RetrievalResult> passed = candidates.stream()
                 .filter(r -> r.getScore() >= threshold)
                 .toList();
 
-        log.debug("Level {} threshold filter: {} / {} candidates passed", level, passed.size(), levelCandidates.size());
+        log.debug("Threshold filter: {} / {} candidates passed", passed.size(), candidates.size());
 
+        // 6. 处理每个通过阈值的节点
         List<RetrievalResult> finalResults = new ArrayList<>();
 
         for (RetrievalResult result : passed) {
-            Object nodeIdObj = result.getMetadata().get("node_id");
-            String nodeId = nodeIdObj != null ? String.valueOf(nodeIdObj) : null;
-            String titlePath = result.getMetadata() != null
-                    ? String.valueOf(result.getMetadata().getOrDefault("title_path", ""))
-                    : "";
+            Map<String, Object> meta = result.getMetadata();
+            String nodeId = meta != null ? (String) meta.get("node_id") : null;
+            String titlePath = meta != null ? String.valueOf(meta.getOrDefault("title_path", "")) : "";
 
-            // 判断是否为叶子节点
-            boolean isLeaf = isLeafNode(nodeId, kbId);
+            // 用 Milvus 结果中已有的 node_type 判断叶子节点，零额外 DB 查询
+            boolean isLeaf = meta != null && "LEAF".equals(meta.get("node_type"));
+
             log.debug("  Processing node: nodeId={}, titlePath='{}', score={}, isLeaf={}",
                     nodeId, titlePath, String.format("%.4f", result.getScore()), isLeaf);
 
@@ -235,10 +245,11 @@ public class AdaptiveRetriever {
                 log.debug("  → Leaf node added to results");
                 finalResults.add(result);
             } else {
-                // 非叶子节点：递归检索子节点
-                log.debug("  → Internal node, recursing into children...");
-                List<RetrievalResult> childResults = retrieveChildren(
-                        nodeId, kbId, queryVector, emitter, beta, gamma, thetaMin, kMin, kMax, level + 1);
+                // 非叶子节点：递归检索子节点（Milvus 原生 filter: parent_node_id == nodeId）
+                log.debug("  → Internal node, recursing into children via parent_node_id filter...");
+                Filter childFilter = MetadataFilterBuilder.metadataKey("parent_node_id").isEqualTo(nodeId);
+                List<RetrievalResult> childResults = retrieveLevel(
+                        queryVector, kbId, childFilter, emitter, beta, gamma, thetaMin, kMin, kMax);
 
                 if (childResults.isEmpty()) {
                     // 子节点没有命中时，退化为当前节点
@@ -251,136 +262,8 @@ public class AdaptiveRetriever {
             }
         }
 
-        log.debug("--- Level {} complete: {} final results ---", level, finalResults.size());
+        log.debug("Level complete: {} final results", finalResults.size());
         return finalResults;
-    }
-
-    /**
-     * 检索指定父节点的子节点
-     */
-    private List<RetrievalResult> retrieveChildren(String parentNodeId, Long kbId,
-                                                    Embedding queryVector, SseEmitter emitter,
-                                                    double beta, double gamma,
-                                                    double thetaMin, int kMin, int kMax,
-                                                    int nextLevel) {
-        log.debug("Retrieving children of parentNode='{}' at level {}", parentNodeId, nextLevel);
-
-        // 从 DB 获取子节点 ID 列表
-        List<TreeNode> children = treeNodeRepository.findByKbIdAndParentNodeId(kbId, parentNodeId);
-        if (children.isEmpty()) {
-            log.debug("No children found in DB for parentNode='{}'", parentNodeId);
-            return Collections.emptyList();
-        }
-
-        log.debug("Found {} children in DB for parentNode='{}': {}",
-                children.size(), parentNodeId,
-                children.stream().map(c -> c.getNodeId() + "(" + c.getTitlePath() + ")").collect(Collectors.joining(", ")));
-
-        // 全量检索，然后过滤出属于这批子节点的结果
-        List<RetrievalResult> candidates = milvusService.search(kbId, queryVector, kMax, 0.0);
-
-        Set<String> childNodeIds = children.stream()
-                .map(TreeNode::getNodeId)
-                .collect(Collectors.toSet());
-
-        List<RetrievalResult> childCandidates = candidates.stream()
-                .filter(r -> {
-                    Object nodeIdObj = r.getMetadata().get("node_id");
-                    return nodeIdObj != null && childNodeIds.contains(String.valueOf(nodeIdObj));
-                })
-                .toList();
-
-        if (childCandidates.isEmpty()) {
-            log.debug("No matching child candidates from Milvus for parentNode='{}'", parentNodeId);
-            return Collections.emptyList();
-        }
-
-        // 收集子节点的 title_path 信息用于 SSE 展示
-        List<String> childTitlePaths = childCandidates.stream()
-                .map(r -> {
-                    Object tp = r.getMetadata().get("title_path");
-                    return tp != null ? String.valueOf(tp) : "";
-                })
-                .filter(tp -> !tp.isBlank())
-                .distinct()
-                .toList();
-
-        // 推送进度 — 展示 title_path
-        String thoughtMsg;
-        if (!childTitlePaths.isEmpty()) {
-            String pathsDisplay = childTitlePaths.size() <= 3
-                    ? String.join("、", childTitlePaths)
-                    : String.join("、", childTitlePaths.subList(0, 3)) + " 等";
-            thoughtMsg = String.format("正在深入检索「%s」（%d 个候选节点）...", pathsDisplay, childCandidates.size());
-        } else {
-            thoughtMsg = String.format("正在层级检索（第 %d 层：%d 个候选节点）...", nextLevel, childCandidates.size());
-        }
-        SseEventBuilder.sendThoughtEvent(emitter, "processing", thoughtMsg, "search");
-
-        // Debug：打印子候选节点详情
-        if (log.isDebugEnabled()) {
-            log.debug("Child candidates for parentNode='{}' ({}):", parentNodeId, childCandidates.size());
-            for (RetrievalResult r : childCandidates) {
-                log.debug("  nodeId={}, score={}, titlePath='{}'",
-                        r.getMetadata().getOrDefault("node_id", "?"),
-                        String.format("%.4f", r.getScore()),
-                        r.getMetadata().getOrDefault("title_path", ""));
-            }
-        }
-
-        // 计算阈值并筛选
-        List<Double> scores = childCandidates.stream()
-                .map(RetrievalResult::getScore)
-                .collect(Collectors.toList());
-        double threshold = calculateDynamicThreshold(scores, beta, gamma, thetaMin, kMin, kMax);
-
-        log.debug("Children threshold for parentNode='{}': {}, candidates: {}",
-                parentNodeId, String.format("%.4f", threshold), childCandidates.size());
-
-        List<RetrievalResult> passed = childCandidates.stream()
-                .filter(r -> r.getScore() >= threshold)
-                .toList();
-
-        log.debug("Children threshold filter: {} / {} candidates passed", passed.size(), childCandidates.size());
-
-        List<RetrievalResult> finalResults = new ArrayList<>();
-
-        for (RetrievalResult result : passed) {
-            Object nodeIdObj = result.getMetadata().get("node_id");
-            String nodeId = nodeIdObj != null ? String.valueOf(nodeIdObj) : null;
-            String titlePath = result.getMetadata() != null
-                    ? String.valueOf(result.getMetadata().getOrDefault("title_path", ""))
-                    : "";
-            boolean isLeaf = isLeafNode(nodeId, kbId);
-
-            log.debug("  Processing child node: nodeId={}, titlePath='{}', score={}, isLeaf={}",
-                    nodeId, titlePath, String.format("%.4f", result.getScore()), isLeaf);
-
-            if (isLeaf || nodeId == null) {
-                finalResults.add(result);
-            } else {
-                List<RetrievalResult> grandChildResults = retrieveChildren(
-                        nodeId, kbId, queryVector, emitter, beta, gamma, thetaMin, kMin, kMax, nextLevel + 1);
-                if (grandChildResults.isEmpty()) {
-                    log.debug("  → No grandchild results, falling back to current child node");
-                    finalResults.add(result);
-                } else {
-                    log.debug("  → Got {} grandchild results", grandChildResults.size());
-                    finalResults.addAll(grandChildResults);
-                }
-            }
-        }
-
-        return finalResults;
-    }
-
-    /**
-     * 判断节点是否为叶子节点（无子节点）
-     */
-    private boolean isLeafNode(String nodeId, Long kbId) {
-        if (nodeId == null) return true;
-        List<TreeNode> children = treeNodeRepository.findByKbIdAndParentNodeId(kbId, nodeId);
-        return children.isEmpty();
     }
 
     /**

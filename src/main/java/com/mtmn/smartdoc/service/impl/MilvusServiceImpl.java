@@ -146,6 +146,29 @@ public class MilvusServiceImpl implements MilvusService {
     }
 
     @Override
+    public List<RetrievalResult> search(Long kbId, Embedding queryVector, int topK,
+                                         double threshold, Filter filter) {
+        String collectionName = MILVUS_CHUNKS_COLLECTION_TEMPLATE.formatted(kbId);
+        MilvusEmbeddingStore store = getEmbeddingStore(collectionName, queryVector.dimension());
+
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryVector)
+                .maxResults(topK)
+                .minScore(threshold)
+                .filter(filter)
+                .build();
+
+        EmbeddingSearchResult<TextSegment> result = executeWithRetry(
+                () -> store.search(request),
+                "search vectors with filter"
+        );
+
+        return result.matches().stream()
+                .map(this::convertToRetrievalResult)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void store(Long kbId, List<VectorItem> items) {
         if (items == null || items.isEmpty()) {
             return;

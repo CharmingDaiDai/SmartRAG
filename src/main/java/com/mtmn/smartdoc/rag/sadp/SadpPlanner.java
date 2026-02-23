@@ -4,7 +4,9 @@ import com.mtmn.smartdoc.constants.AppConstants;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
+import com.mtmn.smartdoc.po.TreeNode;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
+import com.mtmn.smartdoc.repository.TreeNodeRepository;
 import com.mtmn.smartdoc.utils.LlmJsonUtils;
 import com.mtmn.smartdoc.vo.RetrievalResult;
 import lombok.RequiredArgsConstructor;
@@ -15,18 +17,21 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
- * SADP（Self-Adaptive DAG Planner）规划与执行引擎
+ * SADP（Structure-Aware Dynamic Planning）规划与执行引擎
  *
- * <p>负责判断问题复杂度、将复杂多跳问题拆解为 DAG 任务图，
- * 并通过拓扑排序 + CompletableFuture 并行执行各子任务。
- *
- * <p>执行过程中通过 SseEmitter 实时推送进度 thought 事件。
+ * <p>实现严格的 5 步 SADP 流程：
+ * <ol>
+ *   <li>意图路由（4 类：简单事实 / 多跳推理 / 对比分析 / 宏观总结）</li>
+ *   <li>文档骨架获取（从 tree_nodes 表读取前两级标题，按字数降级）</li>
+ *   <li>DAG 任务规划（结合骨架约束，生成含算子类型的任务图）</li>
+ *   <li>并行执行（Scoped_Retrieve / Get_Summary / Generate 三种算子）</li>
+ *   <li>最终输出（最后一个 Generate 任务的结果）</li>
+ * </ol>
  *
  * @author charmingdaidai
- * @version 1.0
+ * @version 2.1
  */
 @Slf4j
 @Component
@@ -34,151 +39,188 @@ import java.util.stream.IntStream;
 public class SadpPlanner {
 
     private final AdaptiveRetriever adaptiveRetriever;
+    private final TreeNodeRepository treeNodeRepository;
+
+    /** 2 层骨架字数上限，超出则降级为 1 层 */
+    private static final int SKELETON_2LEVEL_MAX_CHARS = 3000;
+    /** 1 层骨架字数上限，超出则完全不提供骨架 */
+    private static final int SKELETON_1LEVEL_MAX_CHARS = 1500;
+
+    // =====================================================================
+    // 公开方法
+    // =====================================================================
 
     /**
-     * 判断问题是否需要多跳推理
+     * 意图路由：将用户查询分类为 4 种意图之一
      *
      * @param query     用户原始问题
      * @param llmClient LLM 客户端
-     * @return true 表示复杂多跳问题，false 表示简单问题
+     * @return "简单事实" | "多跳推理" | "对比分析" | "宏观总结"
      */
-    public boolean isComplexQuery(String query, LLMClient llmClient) {
+    public String routeIntent(String query, LLMClient llmClient) {
         try {
-            log.debug("SADP complexity check for query: '{}'", query);
-            String prompt = AppConstants.PromptTemplates.SADP_COMPLEXITY_CHECK
+            log.debug("SADP intent routing for query: '{}'", query);
+            String prompt = AppConstants.PromptTemplates.SADP_INTENT_ROUTING
                     .replace("{query}", query);
             String llmOutput = llmClient.chat(prompt);
-            log.debug("SADP complexity LLM response: {}", llmOutput);
+            log.debug("SADP intent routing LLM response: {}", llmOutput);
 
             Map<String, Object> result = LlmJsonUtils.parseMap(llmOutput);
-            if (result.isEmpty()) {
-                log.warn("SADP complexity check returned empty result, defaulting to simple");
-                return false;
-            }
-
-            Object complexObj = result.get("complex");
-            boolean isComplex;
-            if (complexObj instanceof Boolean b) {
-                isComplex = b;
-            } else if (complexObj instanceof String s) {
-                isComplex = Boolean.parseBoolean(s);
-            } else {
-                isComplex = false;
-            }
-
-            log.debug("SADP complexity result: isComplex={}, reason={}", isComplex, result.get("reason"));
-            return isComplex;
+            String intent = String.valueOf(result.getOrDefault("intent", "简单事实"));
+            log.info("SADP 意图路由: intent={}, reason={}", intent, result.get("reason"));
+            return intent;
         } catch (Exception e) {
-            log.warn("SADP complexity check failed: {}, defaulting to simple query", e.getMessage());
-            return false;
+            log.warn("SADP intent routing failed: {}, defaulting to 简单事实", e.getMessage());
+            return "简单事实";
         }
     }
 
     /**
-     * 将复杂问题拆解为 DAG 任务列表
+     * 构建文档骨架：从 tree_nodes 表读取前两级标题，拼装为树状文本
+     *
+     * <p>按字数自动降级：
+     * <ul>
+     *   <li>2 层骨架 ≤ 3000 字 → 返回 2 层</li>
+     *   <li>1 层骨架 ≤ 1500 字 → 返回 1 层</li>
+     *   <li>超出 → 返回空串（骨架过大，退化为无约束规划）</li>
+     * </ul>
+     *
+     * @param kbId 知识库 ID
+     * @return 骨架文本（供 DAG 规划提示词使用）
+     */
+    public String buildSkeleton(Long kbId) {
+        List<TreeNode> level1 = treeNodeRepository.findByKbIdAndLevel(kbId, 1);
+        List<TreeNode> level2 = treeNodeRepository.findByKbIdAndLevel(kbId, 2);
+
+        // 建立 parentNodeId → children 映射
+        Map<String, List<TreeNode>> childrenMap = level2.stream()
+                .filter(n -> n.getParentNodeId() != null)
+                .collect(Collectors.groupingBy(TreeNode::getParentNodeId));
+
+        // 尝试 2 层骨架
+        StringBuilder sb2 = new StringBuilder();
+        for (TreeNode l1 : level1) {
+            sb2.append("- [").append(l1.getNodeId()).append("] ")
+               .append(l1.getTitlePath()).append("\n");
+            List<TreeNode> children = childrenMap.getOrDefault(l1.getNodeId(), List.of());
+            for (TreeNode l2 : children) {
+                sb2.append("  - [").append(l2.getNodeId()).append("] ")
+                   .append(l2.getTitlePath()).append("\n");
+            }
+        }
+        if (sb2.length() <= SKELETON_2LEVEL_MAX_CHARS) {
+            log.debug("SADP skeleton 2-level ({} L1, {} L2, {} chars)",
+                    level1.size(), level2.size(), sb2.length());
+            return sb2.toString();
+        }
+
+        // 退化到 1 层骨架
+        StringBuilder sb1 = new StringBuilder();
+        for (TreeNode l1 : level1) {
+            sb1.append("- [").append(l1.getNodeId()).append("] ")
+               .append(l1.getTitlePath()).append("\n");
+        }
+        if (sb1.length() <= SKELETON_1LEVEL_MAX_CHARS) {
+            log.info("SADP skeleton: 2-level too long ({}), using 1-level ({} chars)",
+                    sb2.length(), sb1.length());
+            return sb1.toString();
+        }
+
+        // 完全退化（骨架过大，不提供约束）
+        log.warn("SADP skeleton: 1-level also too long ({}), degrading to empty", sb1.length());
+        return "";
+    }
+
+    /**
+     * DAG 任务规划：结合文档骨架，让大模型生成含算子类型和 node_id 约束的任务图
      *
      * @param query     用户原始问题
+     * @param skeleton  文档骨架文本
      * @param llmClient LLM 客户端
-     * @return 任务节点列表（已按拓扑顺序排列）
+     * @return 任务节点列表（拓扑顺序）
      */
-    public List<TaskNode> decomposeToDag(String query, LLMClient llmClient) {
+    public List<TaskNode> planDag(String query, String skeleton, LLMClient llmClient) {
         try {
-            log.debug("SADP decomposing query: '{}'", query);
-            String prompt = AppConstants.PromptTemplates.SADP_DAG_DECOMPOSITION
-                    .replace("{query}", query);
+            log.debug("SADP DAG planning for query: '{}'", query);
+            String prompt = AppConstants.PromptTemplates.SADP_DAG_PLANNING
+                    .replace("{query}", query)
+                    .replace("{skeleton}", skeleton);
             String llmOutput = llmClient.chat(prompt);
-            log.debug("SADP decomposition LLM response: {}", llmOutput);
+            log.debug("SADP DAG planning LLM response: {}", llmOutput);
 
-            // Parse list of task maps
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> rawTasks = (List<Map<String, Object>>) (List<?>)
                     LlmJsonUtils.parseList(llmOutput, LinkedHashMap.class);
             if (rawTasks == null || rawTasks.isEmpty()) {
-                log.warn("SADP decomposition returned empty task list");
+                log.warn("SADP DAG planning returned empty task list, using fallback");
                 return buildFallbackTasks(query);
             }
 
             List<TaskNode> tasks = new ArrayList<>();
-            for (Map<String, Object> rawTask : rawTasks) {
+            for (Map<String, Object> raw : rawTasks) {
                 TaskNode node = new TaskNode();
-                node.setId(String.valueOf(rawTask.getOrDefault("id", "t" + (tasks.size() + 1))));
-                node.setDescription(String.valueOf(rawTask.getOrDefault("description", query)));
-
-                Object depsObj = rawTask.get("dependsOn");
-                if (depsObj instanceof List) {
-                    @SuppressWarnings("unchecked")
-                    List<String> deps = ((List<?>) depsObj).stream()
-                            .map(Object::toString)
-                            .collect(Collectors.toList());
-                    node.setDependsOn(deps);
-                }
-
+                node.setId(String.valueOf(raw.getOrDefault("id", "T" + (tasks.size() + 1))));
+                node.setType(parseTaskType(String.valueOf(raw.getOrDefault("type", "Scoped_Retrieve"))));
+                node.setQuery(String.valueOf(raw.getOrDefault("query", "")));
+                node.setNodeId(String.valueOf(raw.getOrDefault("node_id", "")));
+                node.setDependsOn(parseDeps(raw.get("dependsOn")));
                 tasks.add(node);
             }
 
-            log.info("SADP decomposed query into {} tasks", tasks.size());
+            log.info("SADP DAG planning: {} tasks generated", tasks.size());
             if (log.isDebugEnabled()) {
-                for (TaskNode task : tasks) {
-                    log.debug("  Task[{}]: '{}', dependsOn={}", task.getId(), task.getDescription(), task.getDependsOn());
-                }
+                tasks.forEach(t -> log.debug("  Task[{}] type={} query='{}' nodeId='{}' deps={}",
+                        t.getId(), t.getType(), t.getQuery(), t.getNodeId(), t.getDependsOn()));
             }
             return tasks;
 
         } catch (Exception e) {
-            log.error("SADP decomposition failed: {}", e.getMessage());
+            log.error("SADP DAG planning failed: {}, using fallback", e.getMessage());
             return buildFallbackTasks(query);
         }
     }
 
     /**
-     * 执行 DAG 任务图并返回最终综合答案
-     *
-     * <p>使用拓扑排序 + CompletableFuture 并发执行无依赖子任务，
-     * 每个子任务完成时推送 SSE thought 事件。
+     * 执行 DAG 任务图，返回最后一个 Generate 算子的输出作为最终答案
      *
      * @param tasks           DAG 任务列表
-     * @param originalQuery   用户原始问题
+     * @param originalQuery   用户原始问题（仅用于日志）
      * @param kbId            知识库 ID
      * @param emitter         SSE 推送器
      * @param llmClient       LLM 客户端
      * @param embeddingClient 向量化客户端
-     * @return 最终综合答案文本
+     * @return 最终答案文本
      */
     public String executeDag(List<TaskNode> tasks, String originalQuery, Long kbId,
                               SseEmitter emitter, LLMClient llmClient, EmbeddingClient embeddingClient) {
         int totalTasks = tasks.size();
 
-        // 按插入顺序记录任务索引（1-based），保证 SSE 进度消息顺序正确
         Map<String, Integer> taskIndexMap = new LinkedHashMap<>();
         for (int i = 0; i < tasks.size(); i++) {
             taskIndexMap.put(tasks.get(i).getId(), i + 1);
         }
 
         Map<String, CompletableFuture<String>> futures = new LinkedHashMap<>();
-        Map<String, TaskNode> taskMap = tasks.stream()
-                .collect(Collectors.toMap(TaskNode::getId, t -> t));
 
         // 按拓扑顺序调度任务
         for (TaskNode task : tasks) {
             List<CompletableFuture<String>> depFutures = task.getDependsOn().stream()
-                    .map(depId -> futures.getOrDefault(depId,
-                            CompletableFuture.completedFuture("")))
+                    .map(depId -> futures.getOrDefault(depId, CompletableFuture.completedFuture("")))
                     .collect(Collectors.toList());
 
             CompletableFuture<String> taskFuture;
 
             if (depFutures.isEmpty()) {
-                // 无依赖：直接异步执行
+                // 无依赖：直接并行执行
                 taskFuture = CompletableFuture.supplyAsync(() ->
                         executeSubTask(task, Collections.emptyMap(), kbId,
-                                emitter, llmClient, embeddingClient, taskMap, taskIndexMap, totalTasks));
+                                emitter, llmClient, embeddingClient, taskIndexMap, totalTasks));
             } else {
-                // 有依赖：等待依赖完成后执行
+                // 有依赖：等待所有前置任务完成后执行
                 CompletableFuture<Void> allDeps = CompletableFuture.allOf(
                         depFutures.toArray(CompletableFuture[]::new));
 
                 taskFuture = allDeps.thenApplyAsync(ignored -> {
-                    // 收集依赖结果
                     Map<String, String> priorResults = new LinkedHashMap<>();
                     for (String depId : task.getDependsOn()) {
                         CompletableFuture<String> depFuture = futures.get(depId);
@@ -191,124 +233,181 @@ public class SadpPlanner {
                         }
                     }
                     return executeSubTask(task, priorResults, kbId,
-                            emitter, llmClient, embeddingClient, taskMap, taskIndexMap, totalTasks);
+                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks);
                 });
             }
 
             futures.put(task.getId(), taskFuture);
         }
 
-        // 等待所有任务完成
+        // 等待所有任务完成，收集结果
         CompletableFuture.allOf(futures.values().toArray(CompletableFuture[]::new)).join();
 
-        // 收集所有子任务结果
-        StringBuilder subtaskResults = new StringBuilder();
         for (TaskNode task : tasks) {
             CompletableFuture<String> future = futures.get(task.getId());
-            String result = "";
             if (future != null) {
                 try {
-                    result = future.join();
-                    task.setResult(result);
+                    task.setResult(future.join());
                     task.setStatus(TaskNode.TaskStatus.DONE);
                 } catch (Exception e) {
-                    result = "（子任务执行失败：" + e.getMessage() + "）";
+                    task.setResult("（子任务执行失败：" + e.getMessage() + "）");
                     task.setStatus(TaskNode.TaskStatus.FAILED);
                 }
             }
-            subtaskResults.append("子任务[").append(task.getId()).append("]: ")
-                    .append(task.getDescription()).append("\n")
-                    .append("结果: ").append(result).append("\n\n");
         }
 
-        // 调用 LLM 综合生成最终答案
-        String finalPrompt = AppConstants.PromptTemplates.SADP_FINAL_SYNTHESIS
-                .replace("{query}", originalQuery)
-                .replace("{subtask_results}", subtaskResults.toString());
-
-        return llmClient.chat(finalPrompt);
+        // 返回最后一个 Generate 任务的结果作为最终答案
+        return tasks.stream()
+                .filter(t -> t.getType() == TaskNode.TaskType.Generate)
+                .reduce((a, b) -> b)
+                .map(TaskNode::getResult)
+                .orElseGet(() -> {
+                    // 无 Generate 任务时，拼接所有结果
+                    log.warn("SADP DAG has no Generate task, concatenating all results");
+                    return tasks.stream()
+                            .filter(t -> t.getResult() != null)
+                            .map(t -> "[" + t.getId() + "] " + t.getResult())
+                            .collect(Collectors.joining("\n\n"));
+                });
     }
 
-    /**
-     * 执行单个子任务
-     */
+    // =====================================================================
+    // 私有方法：算子执行
+    // =====================================================================
+
     private String executeSubTask(TaskNode task, Map<String, String> priorResults,
                                    Long kbId, SseEmitter emitter,
                                    LLMClient llmClient, EmbeddingClient embeddingClient,
-                                   Map<String, TaskNode> taskMap,
                                    Map<String, Integer> taskIndexMap, int totalTasks) {
         task.setStatus(TaskNode.TaskStatus.RUNNING);
 
         int taskIndex = taskIndexMap.getOrDefault(task.getId(), 0);
-        String thoughtMsg = String.format("执行子任务[%d/%d]: %s...", taskIndex, totalTasks, task.getDescription());
+        String opLabel = task.getType() != null ? task.getType().name() : "Unknown";
+        String thoughtMsg = String.format("执行子任务[%d/%d](%s): %s",
+                taskIndex, totalTasks, opLabel,
+                task.getQuery() != null && !task.getQuery().isBlank() ? task.getQuery() : task.getNodeId());
         SseEventBuilder.sendThoughtEvent(emitter, "processing", thoughtMsg, "search");
-        log.info("Executing SADP subtask {}: {}", task.getId(), task.getDescription());
+        log.info("Executing SADP subtask {} (type={}): query='{}' nodeId='{}'",
+                task.getId(), task.getType(), task.getQuery(), task.getNodeId());
 
         try {
-            // 自适应检索
-            Set<String> querySet = Collections.singleton(task.getDescription());
-            log.debug("SADP subtask {} starting adaptive retrieval for: '{}'", task.getId(), task.getDescription());
-            List<RetrievalResult> results = adaptiveRetriever.retrieve(
-                    querySet, kbId, embeddingClient, emitter);
-            log.debug("SADP subtask {} retrieval complete: {} results", task.getId(), results.size());
-
-            // 构建上下文
-            String context = buildContext(results);
-
-            // 构建前置任务结果描述
-            String priorResultsText = priorResults.isEmpty()
-                    ? "无"
-                    : priorResults.entrySet().stream()
-                    .map(e -> taskMap.containsKey(e.getKey())
-                            ? taskMap.get(e.getKey()).getDescription() + ": " + e.getValue()
-                            : e.getKey() + ": " + e.getValue())
-                    .collect(Collectors.joining("\n"));
-
-            // 调用 LLM 回答子任务
-            String subPrompt = AppConstants.PromptTemplates.SADP_SUBTASK_ANSWER
-                    .replace("{subtask}", task.getDescription())
-                    .replace("{prior_results}", priorResultsText)
-                    .replace("{context}", context);
-
-            String answer = llmClient.chat(subPrompt);
+            TaskNode.TaskType type = task.getType() != null ? task.getType() : TaskNode.TaskType.Scoped_Retrieve;
+            String result = switch (type) {
+                case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient);
+                case Get_Summary     -> executeGetSummary(task, kbId);
+                case Generate        -> executeGenerate(task, priorResults, llmClient);
+            };
             task.setStatus(TaskNode.TaskStatus.DONE);
-
-            log.info("SADP subtask {} completed, answer length={}", task.getId(), answer.length());
-            return answer;
-
+            log.info("SADP subtask {} completed (length={})", task.getId(), result.length());
+            return result;
         } catch (Exception e) {
-            log.error("SADP subtask {} failed: {}", task.getId(), e.getMessage());
+            log.error("SADP subtask {} failed: {}", task.getId(), e.getMessage(), e);
             task.setStatus(TaskNode.TaskStatus.FAILED);
-            return "（检索失败：" + e.getMessage() + "）";
+            return "（子任务执行失败：" + e.getMessage() + "）";
         }
     }
 
     /**
-     * 将检索结果构建为上下文字符串
+     * Scoped_Retrieve 算子：
+     * - 有 nodeId：从 LLM 选定节点的子层开始自适应分层检索（Milvus 原生 filter 逐层过滤）
+     * - 无 nodeId：全知识库自适应分层检索（退化为标准路径）
      */
-    private String buildContext(List<RetrievalResult> results) {
-        if (results.isEmpty()) {
-            return "（未检索到相关文档）";
+    private String executeScopedRetrieve(TaskNode task, Long kbId, EmbeddingClient embeddingClient) {
+        String nodeId = task.getNodeId();
+        List<RetrievalResult> results;
+
+        if (nodeId == null || nodeId.isBlank()) {
+            // 无 scope：走完整自适应层级检索（全知识库）
+            log.debug("Scoped_Retrieve: no nodeId, falling back to full-kb adaptive retrieval");
+            results = adaptiveRetriever.retrieve(Set.of(task.getQuery()), kbId, embeddingClient, null);
+        } else {
+            // 有 scope：从 LLM 选定节点的子层开始层级检索
+            log.debug("Scoped_Retrieve: nodeId='{}', using retrieveFromScope", nodeId);
+            results = adaptiveRetriever.retrieveFromScope(nodeId, task.getQuery(), kbId, embeddingClient, null);
         }
 
-        return IntStream.range(0, results.size())
-                .mapToObj(i -> {
-                    RetrievalResult r = results.get(i);
-                    String safeContent = r.getContent() != null
-                            ? r.getContent().replace("<", "&lt;").replace(">", "&gt;")
-                            : "";
-                    return String.format("<doc id=\"%d\">%s</doc>", i + 1, safeContent);
-                })
-                .collect(Collectors.joining("\n"));
+        if (results.isEmpty()) {
+            return "（未在指定范围内检索到相关内容）";
+        }
+
+        return results.stream()
+                .map(RetrievalResult::getContent)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining("\n\n"));
     }
 
     /**
-     * 降级方案：单个子任务（当 LLM 分解失败时）
+     * Get_Summary 算子：直接从 tree_nodes 表读取 summary 字段，不走向量检索
+     */
+    private String executeGetSummary(TaskNode task, Long kbId) {
+        String nodeId = task.getNodeId();
+        return treeNodeRepository.findByKbIdAndNodeId(kbId, nodeId)
+                .map(node -> {
+                    if (node.getSummary() != null && !node.getSummary().isBlank()) {
+                        return node.getSummary();
+                    }
+                    if (node.getContent() != null && !node.getContent().isBlank()) {
+                        log.debug("Get_Summary: no summary for node '{}', falling back to content", nodeId);
+                        return node.getContent();
+                    }
+                    return "（未找到摘要信息）";
+                })
+                .orElse("（节点 " + nodeId + " 不存在）");
+    }
+
+    /**
+     * Generate 算子：综合前置任务结果，调用 LLM 生成回答或中间结论
+     */
+    private String executeGenerate(TaskNode task, Map<String, String> priorResults, LLMClient llmClient) {
+        String depsText = priorResults.isEmpty()
+                ? "（无前置任务结果）"
+                : priorResults.entrySet().stream()
+                        .map(e -> "任务[" + e.getKey() + "]:\n" + e.getValue())
+                        .collect(Collectors.joining("\n\n"));
+
+        String prompt = AppConstants.PromptTemplates.SADP_GENERATE_OPERATOR
+                .replace("{query}", task.getQuery())
+                .replace("{dependencies_results}", depsText);
+
+        return llmClient.chat(prompt);
+    }
+
+    // =====================================================================
+    // 私有工具方法
+    // =====================================================================
+
+    /**
+     * 解析算子类型字符串，解析失败时降级为 Scoped_Retrieve
+     */
+    private TaskNode.TaskType parseTaskType(String typeStr) {
+        try {
+            return TaskNode.TaskType.valueOf(typeStr);
+        } catch (Exception e) {
+            log.warn("Unknown task type '{}', defaulting to Scoped_Retrieve", typeStr);
+            return TaskNode.TaskType.Scoped_Retrieve;
+        }
+    }
+
+    /**
+     * 解析依赖列表
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> parseDeps(Object depsObj) {
+        if (depsObj instanceof List<?> list) {
+            return list.stream().map(Object::toString).collect(Collectors.toList());
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * 降级方案：当 LLM 规划失败时，生成单个 Scoped_Retrieve 任务（全库检索）
      */
     private List<TaskNode> buildFallbackTasks(String query) {
         TaskNode fallback = new TaskNode();
-        fallback.setId("t1");
-        fallback.setDescription(query);
+        fallback.setId("T1");
+        fallback.setType(TaskNode.TaskType.Scoped_Retrieve);
+        fallback.setQuery(query);
+        fallback.setNodeId("");
         fallback.setDependsOn(Collections.emptyList());
         return Collections.singletonList(fallback);
     }

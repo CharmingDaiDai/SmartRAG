@@ -12,7 +12,6 @@ import com.mtmn.smartdoc.model.factory.ModelFactory;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
 import com.mtmn.smartdoc.rag.sadp.SadpPlanner;
-import com.mtmn.smartdoc.rag.sadp.TaskNode;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.MilvusService;
@@ -503,10 +502,14 @@ public class RAGServiceImpl implements RAGService {
                 String question = request.getQuestion();
 
                 // 0. 文件类型校验：HiSem-SADP 仅支持 Markdown 文件
+                // 注意：浏览器上传 .md 文件时 MIME 类型可能为 application/octet-stream，
+                // 因此使用文件名后缀（而非 MIME 类型）来判断是否为 Markdown 文件。
                 List<DocumentPo> docs = documentRepository.findByKbId(kbId);
                 boolean hasNonMarkdown = docs.stream()
-                        .anyMatch(d -> d.getFileType() == null
-                                || !AppConstants.FileTypes.MD.equals(d.getFileType()));
+                        .anyMatch(d -> {
+                            String name = d.getFilename();
+                            return name == null || !name.toLowerCase().endsWith(".md");
+                        });
                 if (hasNonMarkdown) {
                     log.warn("HiSem-SADP 文件类型校验失败: kbId={} 包含非 Markdown 文件", kbId);
                     SseEventBuilder.sendThoughtEvent(emitter, "error",
@@ -519,7 +522,7 @@ public class RAGServiceImpl implements RAGService {
                 LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
                 EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
 
-                // 1. 意图识别
+                // 1. 意图识别（是否需要检索）
                 if (Boolean.TRUE.equals(request.getEnableIntentRecognition())) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
@@ -531,43 +534,18 @@ public class RAGServiceImpl implements RAGService {
                     log.info("意图识别结果: 需要检索");
                 }
 
-                // 收集检索查询语句
-                Set<String> searchQueries = Collections.singleton(question);
+                // 2. SADP 意图路由（4 类）
+                SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析问题类型...", "edit");
+                String intent = sadpPlanner.routeIntent(question, llmClient);
+                log.info("SADP 意图路由结果: {}", intent);
 
-                // 2. SADP 复杂度判断
-                SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在判断问题复杂度...", "edit");
-                boolean isComplex = sadpPlanner.isComplexQuery(question, llmClient);
-                log.info("SADP 复杂度判断: isComplex={}", isComplex);
-
-                // maxTopK：限制最终传递给大模型的上下文片段数量
+                // maxTopK：限制最终传递给大模型的上下文片段数量（仅标准检索分支使用）
                 int maxTopK = request.getMaxTopK() != null ? request.getMaxTopK() : 10;
 
-                if (isComplex) {
-                    // ======== SADP 多跳分支 ========
-                    log.debug("HiSem SADP branch: complex query detected for kbId={}", kbId);
-                    SseEventBuilder.sendThoughtEvent(emitter, "processing",
-                            "检测到复杂多跳问题，正在规划任务...", "edit");
-
-                    List<TaskNode> tasks = sadpPlanner.decomposeToDag(question, llmClient);
-                    String taskCountMsg = String.format("任务拆解完成，共 %d 个子任务", tasks.size());
-                    SseEventBuilder.sendThoughtEvent(emitter, "processing", taskCountMsg, "check");
-
-                    // 执行 DAG（内部每个子任务完成时推送 thought 事件）
-                    String finalAnswer = sadpPlanner.executeDag(
-                            tasks, question, kbId, emitter, llmClient, embeddingClient);
-
-                    SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
-
-                    // 流式发送最终答案（分片逐字推送）
-                    llmClient.streamChatWithEmitter(
-                            AppConstants.PromptTemplates.SADP_FINAL_SYNTHESIS
-                                    .replace("{query}", question)
-                                    .replace("{subtask_results}", finalAnswer),
-                            emitter);
-
-                } else {
+                if ("简单事实".equals(intent)) {
                     // ======== 标准自适应检索分支 ========
-                    log.debug("HiSem standard retrieval: {} queries for kbId={}", searchQueries.size(), kbId);
+                    Set<String> searchQueries = Collections.singleton(question);
+                    log.debug("HiSem standard retrieval: kbId={}", kbId);
                     List<RetrievalResult> results = adaptiveRetriever.retrieve(
                             searchQueries, kbId, embeddingClient, emitter);
                     log.debug("HiSem retrieval complete: {} results", results.size());
@@ -635,6 +613,29 @@ public class RAGServiceImpl implements RAGService {
                             .replace("{context}", context);
 
                     llmClient.streamChatWithEmitter(prompt, emitter);
+
+                } else {
+                    // ======== SADP 多跳分支（多跳推理 / 对比分析 / 宏观总结） ========
+                    log.debug("HiSem SADP branch: intent='{}' for kbId={}", intent, kbId);
+                    String intentMsg = String.format("检测到「%s」类型问题，正在构建任务规划...", intent);
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing", intentMsg, "edit");
+
+                    // 获取文档骨架（tree_nodes 前两级标题 + node_id）
+                    String skeleton = sadpPlanner.buildSkeleton(kbId);
+
+                    // DAG 任务规划（含算子类型和 node_id 范围约束）
+                    var tasks = sadpPlanner.planDag(question, skeleton, llmClient);
+                    SseEventBuilder.sendThoughtEvent(emitter, "processing",
+                            String.format("任务规划完成，共 %d 个子任务", tasks.size()), "check");
+
+                    // DAG 并行执行，返回最后一个 Generate 算子的输出
+                    String finalAnswer = sadpPlanner.executeDag(
+                            tasks, question, kbId, emitter, llmClient, embeddingClient);
+
+                    SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
+
+                    // 流式输出最终答案
+                    llmClient.streamChatWithEmitter(finalAnswer, emitter);
                 }
 
             } catch (MilvusConnectionException e) {
