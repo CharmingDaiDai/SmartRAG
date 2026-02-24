@@ -377,8 +377,8 @@ public final class AppConstants {
                 请将问题分类为以下四种意图之一，并仅输出 JSON 格式：
                 1. "简单事实"：单一概念查询、具体参数查询，一次检索即可回答。
                 2. "多跳推理"：需要先查A，再根据A的结果去查B，存在链式逻辑。
-                3. "对比分析"：明确包含"比较"、"差异"、"不同"等，需要分别查询多个实体。
-                4. "宏观总结"：需要跨越多个章节，对某一大类问题进行概括。
+                3. "对比分析"：明确包含"比较"、"差异"、"不同"等，需要分别查询多个知识点。
+                4. "宏观总结"：需要对全局内容进行摘要总结的问题，比如第一章讲了什么内容。
 
                 # Output Format
                 {"intent": "对比分析", "reason": "问题需要对比主变和高备变的跳闸逻辑"}
@@ -400,7 +400,7 @@ public final class AppConstants {
                    - query: 留空。
                    - node_id: 必须从下方的<skeleton>中选择目标节点ID。
                 3. Generate: 综合前置任务的结果生成回答或中间结论。
-                   - query: 具体的生成指令（如"对比两者的跳闸逻辑差异"）。
+                   - query: 具体的生成指令（如"对比三者的安装工艺标准差异"）。
                    - node_id: 留空。
 
                 # Input
@@ -415,15 +415,17 @@ public final class AppConstants {
                 </skeleton>
 
                 # Rules
-                1. 任务拆解必须合理，支持并行执行的任务（如对比分析中的两个实体检索）不应有相互依赖。
+                1. 任务拆解必须合理，支持并行执行的任务（如对比分析中的多个实体检索）不应有相互依赖。
                 2. Scoped_Retrieve 的 query 必须是核心知识点关键词。
                 3. 必须仅输出 JSON 数组，不要包含任何其他解释。
+                4. **【关键】整个 DAG 中只能有一个 Generate 任务**（即最终汇总任务），该任务必须等待所有检索/摘要任务完成后才执行。严禁将对比或总结拆分成多个 Generate 任务——无论被比较的对象有多少个（2个、3个或更多），都只用一个 Generate 任务来统一综合所有检索结果。
 
-                # Output Format Example
+                # Output Format Example（以三元对比为例，展示正确的"N 个检索 → 1 个生成"结构）
                 [
-                  {"id": "T1", "type": "Scoped_Retrieve", "query": "主变压器 冷却器故障 跳闸逻辑", "node_id": "node_1", "dependsOn": []},
-                  {"id": "T2", "type": "Scoped_Retrieve", "query": "高备变压器 冷却器故障 跳闸逻辑", "node_id": "node_2", "dependsOn": []},
-                  {"id": "T3", "type": "Generate", "query": "对比主变和高备变在冷却器故障时的跳闸逻辑差异", "node_id": "", "dependsOn": ["T1", "T2"]}
+                  {"id": "T1", "type": "Scoped_Retrieve", "query": "油浸式站用变压器 安装工艺标准", "node_id": "node_1", "dependsOn": []},
+                  {"id": "T2", "type": "Scoped_Retrieve", "query": "干式站用变压器 安装工艺标准", "node_id": "node_2", "dependsOn": []},
+                  {"id": "T3", "type": "Scoped_Retrieve", "query": "配电盘 安装工艺标准", "node_id": "node_3", "dependsOn": []},
+                  {"id": "T4", "type": "Generate", "query": "比较油浸式站用变压器、干式站用变压器和配电盘安装工艺标准的区别", "node_id": "", "dependsOn": ["T1", "T2", "T3"]}
                 ]
                 """;
 
