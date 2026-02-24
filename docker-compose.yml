@@ -1,92 +1,114 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: smartdoc-mysql
-    restart: always
+  # 1. Etcd (Milvus 元数据依赖)
+  etcd:
+    container_name: smartrag-etcd
+    image: quay.io/coreos/etcd:v3.5.25
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-123456}
-      MYSQL_DATABASE: ${DB_NAME:-smart_doc}
-    # 不再创建额外用户，去掉 MYSQL_USER / MYSQL_PASSWORD
-    command: ["mysqld", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
-    ports:
-      - "13306:3306"
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ${DOCKER_VOLUME_DIRECTORY:-./data}/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     networks:
-      - smartdoc-net
+      - smartrag-network
 
+  # 2. Minio (Milvus 依赖 & SmartRAG 文档对象存储)
   minio:
-    image: minio/minio:RELEASE.2024-01-05T22-17-24Z
-    container_name: smartdoc-minio
-    restart: always
+    container_name: smartrag-minio
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-root}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-12345678}
-    command: server /data --console-address ":9001"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9001:9001" # 控制台端口
+      - "9000:9000" # API 端口
     volumes:
-      - minio_data:/data
+      - ${DOCKER_VOLUME_DIRECTORY:-./data}/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     networks:
-      - smartdoc-net
+      - smartrag-network
 
-  milvus-etcd:
-    image: quay.io/coreos/etcd:v3.5.5
-    container_name: smartdoc-milvus-etcd
-    restart: always
-    environment:
-      ETCD_AUTO_COMPACTION_MODE: revision
-      ETCD_AUTO_COMPACTION_RETENTION: "1000"
-      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
-      ETCD_SNAPSHOT_COUNT: "50000"
-      # 可选：这个只是消掉日志里的警告，不影响功能
-      # ETCD_UNSUPPORTED_ARCH: arm64
-    command: >
-      etcd
-      -advertise-client-urls http://milvus-etcd:2379
-      -listen-client-urls http://0.0.0.0:2379
-      -data-dir /etcd
-    volumes:
-      - milvus_etcd:/etcd
-    networks:
-      - smartdoc-net
-
-  milvus-minio:
-    image: minio/minio:RELEASE.2024-01-05T22-17-24Z
-    container_name: smartdoc-milvus-minio
-    restart: always
-    environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    command: server /data
-    volumes:
-      - milvus_minio:/data
-    networks:
-      - smartdoc-net
-
-  milvus-standalone:
-    image: milvusdb/milvus:v2.4.0
-    container_name: smartdoc-milvus
-    restart: always
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      ETCD_ENDPOINTS: milvus-etcd:2379
-      MINIO_ADDRESS: milvus-minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+  # 3. Milvus Standalone (SmartRAG 向量数据库)
+  milvus:
+    container_name: smartrag-milvus
+    image: milvusdb/milvus:v2.6.11
+    restart: unless-stopped
     command: ["milvus", "run", "standalone"]
-    ports:
-      - "19530:19530"
-      - "9091:9091"
-    depends_on:
-      - milvus-etcd
-      - milvus-minio
+    security_opt:
+    - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MQ_TYPE: woodpecker
     volumes:
-      - milvus_data:/var/lib/milvus
+      - ${DOCKER_VOLUME_DIRECTORY:-./data}/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530" # gRPC / RESTful API
+      - "9091:9091"   # 监控与健康检查
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
-      - smartdoc-net
+      - smartrag-network
+
+  # 4. Attu (SmartRAG 向量库可视化面板)
+  attu:
+    container_name: smartrag-attu
+    image: zilliz/attu:v2.6
+    restart: unless-stopped
+    environment:
+      - MILVUS_URL=milvus:19530 # 使用 docker compose 的 service 名称访问
+    ports:
+      - "8000:3000"
+    depends_on:
+      milvus:
+        condition: service_healthy
+    networks:
+      - smartrag-network
+
+  # 5. MySQL (SmartRAG 业务数据库)
+  mysql:
+    container_name: smartrag-mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-./data}/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - smartrag-network
 
   backend:
     build:
@@ -139,10 +161,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - backend_doc_data:/app/doc_data
-      - backend_processed_docs:/app/processed_docs
+      -
     networks:
-      - smartdoc-net
+      - smartrag_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
@@ -154,8 +175,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-      args:
-        - REACT_APP_API_BASE=http://localhost:8080
     container_name: smartdoc-frontend
     restart: always
     depends_on:
@@ -163,17 +182,12 @@ services:
     ports:
       - "3000:80"
     networks:
-      - smartdoc-net
+      - smartrag_network
 
 networks:
-  smartdoc-net:
+  smartrag-network:
+    name: smartrag_network
     driver: bridge
 
 volumes:
-  mysql_data:
-  minio_data:
-  milvus_etcd:
-  milvus_minio:
-  milvus_data:
-  backend_doc_data:
-  backend_processed_docs:
+

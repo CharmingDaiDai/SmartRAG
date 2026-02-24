@@ -26,15 +26,15 @@
 |------|------|------|------|
 | 框架 | React | 18.2 | 核心框架 |
 | 语言 | TypeScript | 5.x | 类型安全 |
-| 构建 | Vite | 6.x | 开发/构建工具 |
+| 构建 | Vite | 7.2.4 | 开发/构建工具 |
 | 组件库 | Ant Design | 6.0 | 通用 UI 组件 |
-| AI 组件 | @ant-design/x | 1.x | 对话气泡、输入框、Markdown 渲染 |
+| AI 组件 | @ant-design/x | 2.2.2 | 对话气泡、输入框、Markdown 渲染 |
 | 动画 | Framer Motion | 12.x | 页面/元素动画 |
 | 样式 | Tailwind CSS | 4.x | 工具类样式 |
 | 状态管理 | Zustand | 5.x | 全局状态（主题、用户、知识库） |
 | 路由 | React Router | 6.x | 页面路由 |
 | 图标 | @ant-design/icons | 6.x | Ant Design 图标 |
-| Markdown | @ant-design/x-markdown | 1.x | AI 消息的 Markdown + 代码高亮 |
+| Markdown | @ant-design/x-markdown | 2.x | AI 消息的 Markdown + 代码高亮 |
 
 ---
 
@@ -197,18 +197,18 @@ fontFamily: {
 
 这是整个 UI 风格的核心配置文件。通过 `ConfigProvider` 的 `theme` 属性注入全局 token。
 
-### Ant Design v5 样式覆盖最佳实践 (CSS-in-JS)
+### Ant Design v6 样式覆盖最佳实践 (CSS-in-JS)
 
-Ant Design v5 采用了 **CSS-in-JS** 架构，会在运行时动态生成带有 hash 的类名（例如 `.ant-card-css-dev-only-do-not-override-1n7nwfa`）。
+Ant Design v6 采用了 **CSS-in-JS** 架构，会在运行时动态生成带有 hash 的类名。
 **强烈不建议**在 `App.css` 中使用全局 CSS 类名（如 `.ant-card`）去强行覆盖样式，因为：
 1. 容易被 Ant Design 自身的高优先级样式覆盖。
 2. 破坏了主题切换的动态性。
 3. DOM 结构嵌套深时难以生效。
 
 **最佳实践：Token 穿透 + 独立 Canvas 背景层**
-如果需要深度定制主题（例如添加赛博朋克网格、粒子特效等）：
+如果需要深度定制主题（例如添加粒子特效等背景）：
 1. **修改 Design Token**：通过 `ConfigProvider` 将底层的 `colorBgLayout` 设为 `transparent`，将 `colorBgContainer` 设为半透明的 `rgba`，让底层透出来。
-2. **关闭原生动画**：对于需要夸张动画的主题，可以通过 Token 关闭原生过渡动画（`motion: false`）。
+2. **关闭原生动画**：对于需要复杂动画的主题，可以通过 Token 关闭原生过渡动画（`motion: false`）。
 3. **引入专业特效库**：在最底层放置一个 `z-index: 0` 且 `pointer-events: none` 的 Canvas 特效层（如 `tsparticles`）。
 
 ### 结构
@@ -439,7 +439,7 @@ export const YourAnimation: React.FC<HTMLMotionProps<"div">> = ({ children, ...p
 
 **文件**：[src/components/ThemeBackground.tsx](src/components/ThemeBackground.tsx)
 
-对于需要夸张视觉效果的主题（如“科技”或“花哨”），我们使用 `@tsparticles/react` 渲染高性能的 Canvas 粒子动画。
+对于需要视觉特效的主题（如粒子背景），我们使用 `@tsparticles/react` 渲染高性能的 Canvas 粒子动画。
 
 - **层级控制**：Canvas 必须设置 `position: fixed`, `z-index: 0`, `pointer-events: none`，确保不阻挡用户交互。
 - **Ant Design 配合**：在 `App.tsx` 的 `ConfigProvider` 中，将对应主题的 `colorBgLayout` 设为 `transparent`，`colorBgContainer` 设为半透明（如 `rgba(20, 20, 20, 0.6)`），让底层的 Canvas 特效能够透视出来。
@@ -653,7 +653,7 @@ interface ReferenceItem {
 
 ### 为什么我写的 CSS 覆盖没有生效？
 
-1. **CSS-in-JS 优先级**：Ant Design v5 使用动态 hash 类名，优先级极高。不要在 `App.css` 中写 `.ant-card { background: red !important; }`。
+1. **CSS-in-JS 优先级**：Ant Design v6 使用动态 hash 类名，优先级极高。不要在 `App.css` 中写 `.ant-card { background: red !important; }`。
 2. **正确做法**：在 `src/App.tsx` 的 `componentTokens` 中找到对应的组件（如 `Card`），修改其 `colorBgContainer` 或 `borderRadius` 等 Token。
 3. **透明背景**：如果你想让组件透明以显示底层 Canvas，必须在 Token 中设置 `rgba(..., 0.8)` 或 `transparent`，而不是用 CSS 强行覆盖。
 

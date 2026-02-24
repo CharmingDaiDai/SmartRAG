@@ -49,7 +49,7 @@ public class HisemRagIndexConfig extends IndexStrategyConfig {
      * 最大树深度
      */
     @Builder.Default
-    private Integer maxTreeDepth = 5;
+    private Integer maxTreeDepth = 6;
 
     @Override
     public IndexStrategyType getStrategyType() {

@@ -160,8 +160,8 @@ rag:
     search:
       maxRes: 10
     threshold:
-      beta: 0.9
-      gamma: 0.8
+      beta: 0.95
+      gamma: 0.95
       theta_min: 0.3
       k_min: 1
       k_max: 20
@@ -177,7 +177,7 @@ rag:
       maxRes: 10
     threshold:
       beta: 0.9
-      gamma: 0.8
+      gamma: 0.9
       theta_min: 0.3
       k_min: 1
       k_max: 20
