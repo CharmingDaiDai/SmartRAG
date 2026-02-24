@@ -62,6 +62,14 @@ public class IndexingTask {
     @Column(name = "current_step", columnDefinition = "VARCHAR(50)")
     private IndexingStep currentStep;
 
+    /** 当前细粒度步骤已处理条目数（LLM_ENRICHING / EMBEDDING 时有值） */
+    @Column(name = "current_step_processed")
+    private Integer currentStepProcessed;
+
+    /** 当前细粒度步骤总条目数 */
+    @Column(name = "current_step_total")
+    private Integer currentStepTotal;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

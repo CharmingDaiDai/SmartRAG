@@ -101,7 +101,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
 
             // 4. 向量化并存储到 Milvus
             callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
-            vectorizeAndStore(savedChunks, kb, docId);
+            vectorizeAndStore(savedChunks, kb, docId, callback, docName);
 
             log.info("Index built successfully: documentId={}, segments={}", docId, segments.size());
         } catch (Exception e) {
@@ -175,7 +175,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
             }
 
             List<Chunk> savedChunks = chunkRepository.saveAll(chunkEntities);
-            vectorizeAndStore(savedChunks, kb, documentId);
+            vectorizeAndStore(savedChunks, kb, documentId, IndexingProgressCallback.NOOP, "");
 
             log.info("Persisted {} chunks for document: {}", savedChunks.size(), documentId);
 
@@ -252,7 +252,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
             // 2. 删除旧向量 + 重新向量化
             callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
             deleteVectorsByDocumentIds(kb.getId(), List.of(docId));
-            vectorizeAndStore(chunks, kb, docId);
+            vectorizeAndStore(chunks, kb, docId, callback, docName);
 
             log.info("Index rebuilt from chunks successfully: documentId={}, chunks={}", docId, chunks.size());
 
@@ -265,7 +265,8 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
     /**
      * 向量化并存储到 Milvus
      */
-    private void vectorizeAndStore(List<Chunk> chunks, KnowledgeBase kb, Long documentId) {
+    private void vectorizeAndStore(List<Chunk> chunks, KnowledgeBase kb, Long documentId,
+                                   IndexingProgressCallback callback, String docName) {
         log.info("Vectorizing {} chunks for document: {}", chunks.size(), documentId);
 
         Long kbId = kb.getId();
@@ -298,6 +299,7 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
                 item.setMetadata(metadata);
 
                 vectorItems.add(item);
+                callback.onSubStepProgress(documentId, docName, IndexingStep.EMBEDDING, i + 1, chunks.size());
             }
 
             milvusService.store(kbId, vectorItems);

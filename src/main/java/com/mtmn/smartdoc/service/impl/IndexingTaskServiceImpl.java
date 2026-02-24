@@ -253,6 +253,9 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
                 task.setCurrentDocId(documentId);
                 task.setCurrentDocName(documentName);
                 task.setCurrentStep(step);
+                // 步骤切换时重置子进度
+                task.setCurrentStepProcessed(0);
+                task.setCurrentStepTotal(0);
                 indexingTaskRepository.save(task);
             }
 
@@ -264,6 +267,21 @@ public class IndexingTaskServiceImpl implements IndexingTaskService {
             @Override
             public void onDocumentFailed(Long documentId, String documentName, String error) {
                 log.warn("Document indexing failed: documentId={}, name={}, error={}", documentId, documentName, error);
+            }
+
+            @Override
+            public void onSubStepProgress(Long documentId, String documentName,
+                                          IndexingStep step, int processed, int total) {
+                // 节流：每 max(1, total/20) 个节点保存一次，最多 20 次 DB 写入/步骤
+                int saveInterval = Math.max(1, total / 20);
+                if (processed % saveInterval != 0 && processed != total) return;
+
+                task.setCurrentDocId(documentId);
+                task.setCurrentDocName(documentName);
+                task.setCurrentStep(step);
+                task.setCurrentStepProcessed(processed);
+                task.setCurrentStepTotal(total);
+                indexingTaskRepository.save(task);
             }
         };
     }

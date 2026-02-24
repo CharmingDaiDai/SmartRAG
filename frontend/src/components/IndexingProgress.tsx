@@ -17,6 +17,8 @@ interface ProgressState {
   completed: number;
   failed: number;
   percentage: number;
+  currentStepProcessed: number;
+  currentStepTotal: number;
 }
 
 interface StepState {
@@ -69,6 +71,8 @@ export default function IndexingProgress({ kbId, onComplete }: IndexingProgressP
           completed: task.completedDocs as number,
           failed: task.failedDocs as number,
           percentage: task.percentage as number,
+          currentStepProcessed: (task.currentStepProcessed as number) ?? 0,
+          currentStepTotal: (task.currentStepTotal as number) ?? 0,
         });
 
         if (task.currentDocId) {
@@ -173,6 +177,11 @@ export default function IndexingProgress({ kbId, onComplete }: IndexingProgressP
             </Text>
             <Tag color={STEP_COLORS[currentStep.step] || 'default'} style={{ margin: 0, fontSize: 11 }}>
               {currentStep.stepName}
+              {progress && progress.currentStepTotal > 0 && (
+                <span style={{ color: 'inherit', opacity: 0.75, marginLeft: 4 }}>
+                  ({progress.currentStepProcessed}/{progress.currentStepTotal})
+                </span>
+              )}
             </Tag>
           </div>
         )}

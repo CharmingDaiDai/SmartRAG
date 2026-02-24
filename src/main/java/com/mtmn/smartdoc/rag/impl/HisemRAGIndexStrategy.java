@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -133,7 +134,7 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
                 callback.onStepChanged(docId, docName, IndexingStep.LLM_ENRICHING);
                 log.info("Starting bottom-up LLM semantic enrichment...");
                 LLMClient llmClient = modelFactory.createLLMClient(hisemConfig.getLlmModelId());
-                buildBottomUpSummary(treeNodes, llmClient, hisemConfig);
+                buildBottomUpSummary(treeNodes, llmClient, callback, docId, docName);
                 log.info("LLM semantic enrichment complete");
             }
 
@@ -145,7 +146,7 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
 
             // 6. 批量向量化并存储
             callback.onStepChanged(docId, docName, IndexingStep.EMBEDDING);
-            batchVectorizeAndStore(savedNodes, kb);
+            batchVectorizeAndStore(savedNodes, kb, callback, docId, docName);
 
             log.info("HisemRAG (full) index built: documentId={}, nodes={}, llmEnriched={}", docId, savedNodes.size(), enableLlm);
 
@@ -270,11 +271,14 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
     /**
      * 自下而上 LLM 摘要聚合：从叶子到根，后序遍历
      */
-    private void buildBottomUpSummary(List<TreeNode> allNodes, LLMClient llmClient, HisemRagIndexConfig config) {
+    private void buildBottomUpSummary(List<TreeNode> allNodes, LLMClient llmClient,
+                                      IndexingProgressCallback callback, Long docId, String docName) {
         Map<String, TreeNode> nodeById = allNodes.stream()
                 .collect(Collectors.toMap(TreeNode::getNodeId, n -> n));
 
         int maxLevel = allNodes.stream().mapToInt(TreeNode::getLevel).max().orElse(0);
+        int totalNodes = allNodes.size();
+        AtomicInteger processedCount = new AtomicInteger(0);
 
         // Process level by level from deepest to shallowest
         for (int level = maxLevel; level >= 0; level--) {
@@ -299,6 +303,8 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
                         } catch (Exception e) {
                             log.warn("LLM enrichment failed for node {}: {}", node.getNodeId(), e.getMessage());
                         }
+                        int current = processedCount.incrementAndGet();
+                        callback.onSubStepProgress(docId, docName, IndexingStep.LLM_ENRICHING, current, totalNodes);
                     }))
                     .toList();
 
@@ -406,12 +412,14 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
      * 嵌入向量 = titlePath + keyKnowledge + summary（无增强信息时退化为 content）
      * Milvus text = titlePath + content
      */
-    private void batchVectorizeAndStore(List<TreeNode> nodes, KnowledgeBase kb) {
+    private void batchVectorizeAndStore(List<TreeNode> nodes, KnowledgeBase kb,
+                                        IndexingProgressCallback callback, Long docId, String docName) {
         log.info("Batch vectorizing {} nodes for kb={}", nodes.size(), kb.getId());
 
         Long kbId = kb.getId();
         EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(kb.getEmbeddingModelId());
         List<VectorItem> vectorItems = new ArrayList<>();
+        int totalNodes = nodes.size();
 
         for (TreeNode node : nodes) {
             String embedText = buildEmbedText(node);
@@ -452,6 +460,8 @@ public class HisemRAGIndexStrategy extends AbstractIndexStrategy {
 
                 vectorItems.add(item);
                 node.setVectorIds("[\"" + vectorId + "\"]");
+
+                callback.onSubStepProgress(docId, docName, IndexingStep.EMBEDDING, vectorItems.size(), totalNodes);
 
             } catch (Exception e) {
                 log.warn("Failed to vectorize node {}: {}", node.getNodeId(), e.getMessage());

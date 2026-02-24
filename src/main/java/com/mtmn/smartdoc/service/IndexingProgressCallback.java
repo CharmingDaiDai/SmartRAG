@@ -37,6 +37,22 @@ public interface IndexingProgressCallback {
     void onDocumentFailed(Long documentId, String documentName, String error);
 
     /**
+     * 慢步骤（LLM_ENRICHING / EMBEDDING）内部进度上报
+     *
+     * <p>每处理一个节点/chunk 时调用，使进度条在文档内部也能平滑推进。</p>
+     *
+     * @param documentId   文档 ID
+     * @param documentName 文档名
+     * @param step         当前步骤（LLM_ENRICHING 或 EMBEDDING）
+     * @param processed    已完成的条目数
+     * @param total        本步骤总条目数
+     */
+    default void onSubStepProgress(Long documentId, String documentName,
+                                   IndexingStep step, int processed, int total) {
+        // 默认不处理
+    }
+
+    /**
      * 空实现，用于不需要回调的场景
      */
     IndexingProgressCallback NOOP = new IndexingProgressCallback() {
@@ -50,6 +66,11 @@ public interface IndexingProgressCallback {
 
         @Override
         public void onDocumentFailed(Long documentId, String documentName, String error) {
+        }
+
+        @Override
+        public void onSubStepProgress(Long documentId, String documentName,
+                                      IndexingStep step, int processed, int total) {
         }
     };
 }
