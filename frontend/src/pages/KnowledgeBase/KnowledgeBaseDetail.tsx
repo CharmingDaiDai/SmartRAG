@@ -9,6 +9,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import IndexingProgress from '../../components/IndexingProgress';
+import ChunkDrawer from '../../components/ChunkDrawer';
 
 // Augment component to use theme token
 const formatDateTime = (val: string | undefined | null): string => {
@@ -167,6 +168,9 @@ export default function KnowledgeBaseDetail() {
     const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
     // 索引任务状态
     const [showIndexingProgress, setShowIndexingProgress] = useState(false);
+    // 切分块查看
+    const [chunkDrawerOpen, setChunkDrawerOpen] = useState(false);
+    const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
 
   // 动态计算表格滚动高度
   const tableWrapperRef = useRef<HTMLDivElement>(null);
@@ -458,7 +462,10 @@ export default function KnowledgeBaseDetail() {
                 <Button
                     type="text"
                     icon={<EyeOutlined />}
-                    onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}
+                    onClick={() => {
+                        setSelectedDocument(record);
+                        setChunkDrawerOpen(true);
+                    }}
                 />
             </Tooltip>
             <Tooltip title="重建索引">
@@ -681,6 +688,13 @@ export default function KnowledgeBaseDetail() {
               </Space>
           </Form>
       </Modal>
+      <ChunkDrawer
+        open={chunkDrawerOpen}
+        onClose={() => { setChunkDrawerOpen(false); setSelectedDocument(null); }}
+        document={selectedDocument}
+        kbId={id || ''}
+        indexStrategyType={kbInfo?.indexStrategyType || 'NAIVE_RAG'}
+      />
     </FadeIn>
   );
 }
