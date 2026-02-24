@@ -120,12 +120,12 @@ services:
       # Database Configuration
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-smart_doc}
-      DB_USERNAME: ${DB_USERNAME:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      DB_NAME: ${DB_NAME:-smartrag_db}
+      DB_USERNAME: ${DB_USERNAME:-smartrag_user}
+      DB_PASSWORD: ${DB_PASSWORD:-SmartRAG_user_2026!}
 
       # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER_URI: http://backend:8080
 
       # GitHub OAuth Configuration (Optional)
@@ -144,26 +144,27 @@ services:
       EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-bge-m3}
 
       # Milvus Vector Database Configuration
-      MILVUS_HOST: milvus-standalone
+      MILVUS_HOST: milvus
       MILVUS_PORT: 19530
 
       # MinIO Object Storage Configuration
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-root}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-12345678}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
 
       # Spring Boot Server Configuration
       SERVER_PORT: 8080
     depends_on:
-      - mysql
-      - minio
-      - milvus-standalone
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    volumes:
-      -
     networks:
-      - smartrag_network
+      - smartrag-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
@@ -182,12 +183,10 @@ services:
     ports:
       - "3000:80"
     networks:
-      - smartrag_network
+      - smartrag-network
 
 networks:
   smartrag-network:
     name: smartrag_network
     driver: bridge
-
-volumes:
 

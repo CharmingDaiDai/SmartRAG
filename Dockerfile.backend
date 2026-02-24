@@ -10,8 +10,8 @@ RUN mvn -B dependency:go-offline
 COPY src ./src
 RUN mvn -B package -DskipTests
 
-# 运行阶段
-FROM eclipse-temurin:17-jdk-jammy
+# 运行阶段：使用 JRE（比 JDK 小 ~100MB，运行 Spring Boot 无需编译工具）
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 # 拷贝打好的 jar
