@@ -65,6 +65,22 @@ public interface StreamEventHandler {
     }
 
     /**
+     * 流式调用完成时触发，携带本次调用的 token 用量和耗时（仅 SseEmitter 路径支持）
+     *
+     * <p>在 {@code onAfterChat} 之前、{@code done} 事件之前被调用。
+     * 若 LLM 未返回 tokenUsage，调用方会先用估算值填充再触发此回调。</p>
+     *
+     * @param emitter      SSE 发射器
+     * @param inputTokens  提示 token 数（实测或估算）
+     * @param outputTokens 完成 token 数（实测或估算）
+     * @param totalTokens  总 token 数
+     * @param durationMs   本次流式调用耗时（毫秒）
+     */
+    default void onTokenUsage(SseEmitter emitter, int inputTokens, int outputTokens, int totalTokens, long durationMs) {
+        // 默认不处理
+    }
+
+    /**
      * 默认实现：不做任何处理（用于普通对话）
      */
     class NoOpHandler implements StreamEventHandler {

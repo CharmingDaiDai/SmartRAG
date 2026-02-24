@@ -1,5 +1,5 @@
 import { AbstractChatProvider, XRequest, XRequestOptions } from '@ant-design/x-sdk';
-import { ChatMessage, ThoughtItem } from '../types';
+import { ChatMessage, ThoughtItem, RetrievalTreeNode, TokenUsageReport } from '../types';
 import { 
     EditOutlined, 
     SearchOutlined, 
@@ -169,6 +169,20 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
             ...currentMessage, 
             thoughts: [...updatedThoughts, newThought],
             status: thoughtStatus === 'error' ? 'error' : 'updating'
+        };
+
+      case 'retrieval_tree':
+        return {
+            ...currentMessage,
+            retrievalTree: Array.isArray(data) ? (data as RetrievalTreeNode[]) : [],
+            status: 'updating',
+        };
+
+      case 'token_usage':
+        return {
+            ...currentMessage,
+            tokenUsage: data as TokenUsageReport,
+            status: 'updating',
         };
 
       case 'ref':

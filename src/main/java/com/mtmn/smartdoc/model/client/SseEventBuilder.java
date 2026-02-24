@@ -1,12 +1,16 @@
 package com.mtmn.smartdoc.model.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.rag.retriever.RetrievalTreeNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
 
 /**
  * SSE 事件构建器
@@ -194,6 +198,24 @@ public class SseEventBuilder {
     }
 
     /**
+     * 发送检索路径树事件 (SseEmitter)
+     * event: "retrieval_tree"
+     * data: JSON array of RetrievalTreeNode
+     */
+    public static void sendRetrievalTreeEvent(SseEmitter emitter, List<RetrievalTreeNode> treeRoots) {
+        if (emitter == null || treeRoots == null || treeRoots.isEmpty()) return;
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(treeRoots);
+            emitter.send(SseEmitter.event()
+                    .name("retrieval_tree")
+                    .data(json)
+            );
+        } catch (Exception e) {
+            log.warn("发送检索路径树事件失败: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 发送完成事件 (SseEmitter)
      */
     public static void sendDoneEvent(SseEmitter emitter) {
@@ -204,6 +226,28 @@ public class SseEventBuilder {
             );
         } catch (Exception e) {
             log.error("发送完成事件失败", e);
+        }
+    }
+
+    /**
+     * 发送 Token 用量事件 (SseEmitter)
+     * event: "token_usage"
+     * data: {"entries": [...], "total": {...}}
+     * 在 done 事件之前发送，供前端展示 token 消耗明细
+     */
+    public static void sendTokenUsageEvent(SseEmitter emitter, TokenUsageLedger ledger) {
+        if (emitter == null || ledger == null) return;
+        try {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("entries", ledger.getEntries());
+            data.put("total", ledger.getTotal());
+            String json = OBJECT_MAPPER.writeValueAsString(data);
+            emitter.send(SseEmitter.event()
+                    .name("token_usage")
+                    .data(json)
+            );
+        } catch (Exception e) {
+            log.warn("发送 token_usage 事件失败: {}", e.getMessage());
         }
     }
 }

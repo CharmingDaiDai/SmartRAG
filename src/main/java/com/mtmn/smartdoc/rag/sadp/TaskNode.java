@@ -1,5 +1,7 @@
 package com.mtmn.smartdoc.rag.sadp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mtmn.smartdoc.vo.RetrievalResult;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -51,6 +53,20 @@ public class TaskNode {
      * 任务执行结果文本
      */
     private String result;
+
+    /**
+     * Scoped_Retrieve 算子的原始检索结果（用于向前端传递引用，不序列化）
+     */
+    @JsonIgnore
+    private List<RetrievalResult> rawResults;
+
+    /**
+     * 是否为最终 Generate 任务（由 executeDag 在执行前标记）。
+     * 为 true 时，executeGenerate 直接返回 prompt 而非同步调用 LLM，
+     * 由 RAGServiceImpl 使用该 prompt 发起流式调用，避免二次 LLM 调用。
+     */
+    @JsonIgnore
+    private boolean terminalGenerate;
 
     /**
      * 算子类型枚举

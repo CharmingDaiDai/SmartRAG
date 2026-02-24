@@ -52,6 +52,15 @@ export interface ThoughtItem {
   content?: string; // 详细思考内容
 }
 
+export interface RetrievalTreeNode {
+  nodeId: string;
+  titlePath: string;
+  score: number;
+  passedThreshold: boolean;
+  inResults: boolean;
+  children: RetrievalTreeNode[];
+}
+
 export interface ReferenceItem {
     id?: string | number;
     title: string;
@@ -60,14 +69,52 @@ export interface ReferenceItem {
     url?: string;
 }
 
+export interface TokenUsageEntry {
+  label: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  durationMs: number;
+}
+
+export interface TokenUsageReport {
+  entries: TokenUsageEntry[];
+  total: TokenUsageEntry;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   content: string;
   thoughts?: ThoughtItem[];
   references?: ReferenceItem[]; // 引用文档
+  retrievalTree?: RetrievalTreeNode[]; // 检索路径树（层级可视化）
+  tokenUsage?: TokenUsageReport; // Token 用量明细
   createTime: number;
   // 兼容字段
   status?: 'loading' | 'success' | 'error' | 'updating';
+}
+
+export interface ChunkVO {
+  id: number;
+  kbId: number;
+  documentId: number;
+  chunkIndex: number;
+  content: string;
+  keyKnowledge?: string;
+  summary?: string;
+  strategyType: string;
+}
+
+export interface TreeNodeVO {
+  id: number;
+  nodeId: string;
+  parentNodeId?: string;
+  titlePath: string;
+  level: number;
+  nodeType: string; // 'ROOT' | 'INTERNAL' | 'LEAF'
+  content: string;
+  summary?: string;
+  children: TreeNodeVO[];
 }
 

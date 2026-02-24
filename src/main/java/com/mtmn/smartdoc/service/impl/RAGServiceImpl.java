@@ -7,10 +7,13 @@ import com.mtmn.smartdoc.exception.MilvusConnectionException;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
+import com.mtmn.smartdoc.model.client.StreamEventHandler;
+import com.mtmn.smartdoc.model.client.TokenUsageLedger;
 import com.mtmn.smartdoc.model.dto.ReferenceDocument;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
+import com.mtmn.smartdoc.rag.retriever.RetrievalTreeNode;
 import com.mtmn.smartdoc.rag.sadp.SadpPlanner;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
@@ -522,13 +525,23 @@ public class RAGServiceImpl implements RAGService {
                 LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
                 EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
 
+                // Token 用量账本：追踪本次请求所有 LLM 调用的 token 消耗
+                TokenUsageLedger ledger = new TokenUsageLedger();
+                StreamEventHandler tokenHandler = new StreamEventHandler.NoOpHandler() {
+                    @Override
+                    public void onTokenUsage(SseEmitter em, int input, int output, int total, long durationMs) {
+                        ledger.record("综合生成", input, output, total, durationMs);
+                        SseEventBuilder.sendTokenUsageEvent(em, ledger);
+                    }
+                };
+
                 // 1. 意图识别（是否需要检索）
                 if (Boolean.TRUE.equals(request.getEnableIntentRecognition())) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索，直接聊天");
-                        llmClient.streamChatWithEmitter(question, emitter);
+                        llmClient.streamChatWithEmitter(question, emitter, tokenHandler);
                         return;
                     }
                     log.info("意图识别结果: 需要检索");
@@ -536,7 +549,7 @@ public class RAGServiceImpl implements RAGService {
 
                 // 2. SADP 意图路由（4 类）
                 SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析问题类型...", "edit");
-                String intent = sadpPlanner.routeIntent(question, llmClient);
+                String intent = sadpPlanner.routeIntent(question, llmClient, ledger);
                 log.info("SADP 意图路由结果: {}", intent);
 
                 // maxTopK：限制最终传递给大模型的上下文片段数量（仅标准检索分支使用）
@@ -546,9 +559,16 @@ public class RAGServiceImpl implements RAGService {
                     // ======== 标准自适应检索分支 ========
                     Set<String> searchQueries = Collections.singleton(question);
                     log.debug("HiSem standard retrieval: kbId={}", kbId);
-                    List<RetrievalResult> results = adaptiveRetriever.retrieve(
+                    // retrieve() 内部发送开始 thought 事件
+                    AdaptiveRetriever.RetrievalBundle bundle = adaptiveRetriever.retrieve(
                             searchQueries, kbId, embeddingClient, emitter);
-                    log.debug("HiSem retrieval complete: {} results", results.size());
+                    // 仅保留叶子节点作为参考文献（非叶子节点为中间检索层，不作为参考依据）
+                    List<RetrievalResult> results = bundle.results().stream()
+                            .filter(r -> r.getMetadata() != null
+                                    && "LEAF".equals(r.getMetadata().get("node_type")))
+                            .collect(Collectors.toList());
+                    log.debug("HiSem retrieval complete: {} leaf results (from {} total)",
+                            results.size(), bundle.results().size());
 
                     // 按 maxTopK 截断结果（限制传递给大模型的上下文片段数量）
                     if (results.size() > maxTopK) {
@@ -556,8 +576,21 @@ public class RAGServiceImpl implements RAGService {
                         results = results.subList(0, maxTopK);
                     }
 
-                    String hitMsg = String.format("检索完成，共命中 %d 个相关片段", results.size());
-                    SseEventBuilder.sendThoughtEvent(emitter, "success", hitMsg, "check");
+                    // 发送完成 thought：此时 results 已过滤+截断，数量与参考文献一致
+                    SseEventBuilder.sendThoughtEvent(emitter, "success",
+                            String.format("检索完成，共命中 %d 个相关片段", results.size()), "check");
+
+                    // 发送检索路径树：剪枝到仅包含最终参考文献节点的路径
+                    // 注意：sourceId 是 Milvus embeddingId，与树节点的 node_id 不同，
+                    // 必须从 metadata.node_id 取值才能与树节点匹配
+                    Set<String> finalNodeIds = results.stream()
+                            .filter(r -> r.getMetadata() != null
+                                    && r.getMetadata().get("node_id") != null)
+                            .map(r -> String.valueOf(r.getMetadata().get("node_id")))
+                            .collect(Collectors.toSet());
+                    List<RetrievalTreeNode> prunedTree = pruneTreeByNodeIds(
+                            bundle.treeRoots(), finalNodeIds);
+                    SseEventBuilder.sendRetrievalTreeEvent(emitter, prunedTree);
 
                     // 获取文档标题
                     List<Long> docIds = results.stream()
@@ -612,7 +645,7 @@ public class RAGServiceImpl implements RAGService {
                             .replace("{query}", question)
                             .replace("{context}", context);
 
-                    llmClient.streamChatWithEmitter(prompt, emitter);
+                    llmClient.streamChatWithEmitter(prompt, emitter, tokenHandler);
 
                 } else {
                     // ======== SADP 多跳分支（多跳推理 / 对比分析 / 宏观总结） ========
@@ -624,18 +657,18 @@ public class RAGServiceImpl implements RAGService {
                     String skeleton = sadpPlanner.buildSkeleton(kbId);
 
                     // DAG 任务规划（含算子类型和 node_id 范围约束）
-                    var tasks = sadpPlanner.planDag(question, skeleton, llmClient);
+                    var tasks = sadpPlanner.planDag(question, skeleton, llmClient, ledger);
                     SseEventBuilder.sendThoughtEvent(emitter, "processing",
                             String.format("任务规划完成，共 %d 个子任务", tasks.size()), "check");
 
                     // DAG 并行执行，返回最后一个 Generate 算子的输出
                     String finalAnswer = sadpPlanner.executeDag(
-                            tasks, question, kbId, emitter, llmClient, embeddingClient);
+                            tasks, question, kbId, emitter, llmClient, embeddingClient, ledger);
 
                     SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
 
                     // 流式输出最终答案
-                    llmClient.streamChatWithEmitter(finalAnswer, emitter);
+                    llmClient.streamChatWithEmitter(finalAnswer, emitter, tokenHandler);
                 }
 
             } catch (MilvusConnectionException e) {
@@ -678,5 +711,36 @@ public class RAGServiceImpl implements RAGService {
                 || msg.toLowerCase().contains("rate limit")
                 || msg.contains("速率限制")
                 || msg.contains("请求频率");
+    }
+
+    /**
+     * 按最终参考文献的 node_id 集合剪枝检索树。
+     *
+     * <p>只保留 nodeId 在 nodeIds 中的叶节点及其全部祖先路径，
+     * 其余分支整体移除。同时将 inResults 标志按最终结果集重新标记。
+     *
+     * @param nodes   待剪枝的节点列表
+     * @param nodeIds 最终参考文献的 node_id 集合（来自 metadata.node_id）
+     * @return 剪枝后的节点列表
+     */
+    private static List<RetrievalTreeNode> pruneTreeByNodeIds(
+            List<RetrievalTreeNode> nodes, Set<String> nodeIds) {
+        List<RetrievalTreeNode> result = new ArrayList<>();
+        for (RetrievalTreeNode node : nodes) {
+            boolean inFinal = nodeIds.contains(node.getNodeId());
+            List<RetrievalTreeNode> prunedChildren =
+                    pruneTreeByNodeIds(node.getChildren(), nodeIds);
+            if (inFinal || !prunedChildren.isEmpty()) {
+                result.add(RetrievalTreeNode.builder()
+                        .nodeId(node.getNodeId())
+                        .titlePath(node.getTitlePath())
+                        .score(node.getScore())
+                        .passedThreshold(node.isPassedThreshold())
+                        .inResults(inFinal)
+                        .children(prunedChildren)
+                        .build());
+            }
+        }
+        return result;
     }
 }

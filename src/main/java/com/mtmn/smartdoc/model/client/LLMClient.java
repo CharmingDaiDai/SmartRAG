@@ -31,6 +31,20 @@ public interface LLMClient {
     String chat(String prompt);
 
     /**
+     * 同步聊天（含 token 追踪）
+     *
+     * <p>若 LLM 提供商返回 tokenUsage，使用实测值；否则退而求其次进行字符级估算。</p>
+     *
+     * @param prompt  提示词
+     * @param label   用途标签，如 "意图路由"、"任务规划"、"生成[T1]"
+     * @param ledger  Token 账本，null 表示不追踪
+     * @return AI 回复文本
+     */
+    default String chat(String prompt, String label, TokenUsageLedger ledger) {
+        return chat(prompt);  // 默认降级：不追踪 token
+    }
+
+    /**
      * 同步聊天 - 结构化请求
      *
      * @param request 聊天请求对象,包含消息列表、温度等参数

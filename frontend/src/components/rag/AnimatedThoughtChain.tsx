@@ -51,7 +51,7 @@ const ThoughtContent = memo(({ items }: { items: ThoughtItem[] }) => {
                         <Space size={4}>
                             {item.icon}
                             <Typography.Text strong style={{ fontSize: 13 }}>{item.title}</Typography.Text>
-                            {item.duration && (
+                            {item.duration != null && item.duration > 0 && (
                                 <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                                     {item.duration}ms
                                 </Typography.Text>

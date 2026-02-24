@@ -4,6 +4,7 @@ import com.mtmn.smartdoc.constants.AppConstants;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
+import com.mtmn.smartdoc.model.client.TokenUsageLedger;
 import com.mtmn.smartdoc.po.TreeNode;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
 import com.mtmn.smartdoc.repository.TreeNodeRepository;
@@ -55,14 +56,15 @@ public class SadpPlanner {
      *
      * @param query     用户原始问题
      * @param llmClient LLM 客户端
+     * @param ledger    Token 用量账本，null 表示不追踪
      * @return "简单事实" | "多跳推理" | "对比分析" | "宏观总结"
      */
-    public String routeIntent(String query, LLMClient llmClient) {
+    public String routeIntent(String query, LLMClient llmClient, TokenUsageLedger ledger) {
         try {
             log.debug("SADP intent routing for query: '{}'", query);
             String prompt = AppConstants.PromptTemplates.SADP_INTENT_ROUTING
                     .replace("{query}", query);
-            String llmOutput = llmClient.chat(prompt);
+            String llmOutput = llmClient.chat(prompt, "意图路由", ledger);
             log.debug("SADP intent routing LLM response: {}", llmOutput);
 
             Map<String, Object> result = LlmJsonUtils.parseMap(llmOutput);
@@ -137,15 +139,16 @@ public class SadpPlanner {
      * @param query     用户原始问题
      * @param skeleton  文档骨架文本
      * @param llmClient LLM 客户端
+     * @param ledger    Token 用量账本，null 表示不追踪
      * @return 任务节点列表（拓扑顺序）
      */
-    public List<TaskNode> planDag(String query, String skeleton, LLMClient llmClient) {
+    public List<TaskNode> planDag(String query, String skeleton, LLMClient llmClient, TokenUsageLedger ledger) {
         try {
             log.debug("SADP DAG planning for query: '{}'", query);
             String prompt = AppConstants.PromptTemplates.SADP_DAG_PLANNING
                     .replace("{query}", query)
                     .replace("{skeleton}", skeleton);
-            String llmOutput = llmClient.chat(prompt);
+            String llmOutput = llmClient.chat(prompt, "任务规划", ledger);
             log.debug("SADP DAG planning LLM response: {}", llmOutput);
 
             @SuppressWarnings("unchecked")
@@ -189,11 +192,19 @@ public class SadpPlanner {
      * @param emitter         SSE 推送器
      * @param llmClient       LLM 客户端
      * @param embeddingClient 向量化客户端
+     * @param ledger          Token 用量账本，null 表示不追踪
      * @return 最终答案文本
      */
     public String executeDag(List<TaskNode> tasks, String originalQuery, Long kbId,
-                              SseEmitter emitter, LLMClient llmClient, EmbeddingClient embeddingClient) {
+                              SseEmitter emitter, LLMClient llmClient, EmbeddingClient embeddingClient,
+                              TokenUsageLedger ledger) {
         int totalTasks = tasks.size();
+
+        // 标记最终 Generate 任务：执行时直接返回 prompt，由 RAGServiceImpl 发起流式调用
+        tasks.stream()
+                .filter(t -> t.getType() == TaskNode.TaskType.Generate)
+                .reduce((a, b) -> b)
+                .ifPresent(t -> t.setTerminalGenerate(true));
 
         Map<String, Integer> taskIndexMap = new LinkedHashMap<>();
         for (int i = 0; i < tasks.size(); i++) {
@@ -214,7 +225,7 @@ public class SadpPlanner {
                 // 无依赖：直接并行执行
                 taskFuture = CompletableFuture.supplyAsync(() ->
                         executeSubTask(task, Collections.emptyMap(), kbId,
-                                emitter, llmClient, embeddingClient, taskIndexMap, totalTasks));
+                                emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger));
             } else {
                 // 有依赖：等待所有前置任务完成后执行
                 CompletableFuture<Void> allDeps = CompletableFuture.allOf(
@@ -233,7 +244,7 @@ public class SadpPlanner {
                         }
                     }
                     return executeSubTask(task, priorResults, kbId,
-                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks);
+                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger);
                 });
             }
 
@@ -254,6 +265,38 @@ public class SadpPlanner {
                     task.setStatus(TaskNode.TaskStatus.FAILED);
                 }
             }
+        }
+
+        // 收集所有 Scoped_Retrieve 任务的原始检索结果，发送参考文档事件
+        // 仅保留叶子节点，按 sourceId 去重（取分数最高的）
+        Map<String, RetrievalResult> dedupMap = new LinkedHashMap<>();
+        tasks.stream()
+                .filter(t -> t.getType() == TaskNode.TaskType.Scoped_Retrieve)
+                .filter(t -> t.getRawResults() != null)
+                .flatMap(t -> t.getRawResults().stream())
+                .filter(r -> r.getMetadata() != null && "LEAF".equals(r.getMetadata().get("node_type")))
+                .forEach(r -> {
+                    String key = r.getSourceId();
+                    if (!dedupMap.containsKey(key) || r.getScore() > dedupMap.get(key).getScore()) {
+                        dedupMap.put(key, r);
+                    }
+                });
+        List<RetrievalResult> allRawResults = new ArrayList<>(dedupMap.values());
+
+        if (!allRawResults.isEmpty()) {
+            List<Map<String, Object>> refs = allRawResults.stream()
+                    .map(r -> {
+                        Map<String, Object> ref = new LinkedHashMap<>();
+                        ref.put("title", r.getMetadata() != null
+                                ? String.valueOf(r.getMetadata().getOrDefault("title_path", "Unknown"))
+                                : "Unknown");
+                        ref.put("score", r.getScore());
+                        ref.put("content", r.getContent() != null ? r.getContent() : "");
+                        return ref;
+                    })
+                    .collect(Collectors.toList());
+            SseEventBuilder.sendRefEvent(emitter, refs);
+            log.debug("SADP DAG sent {} ref documents", refs.size());
         }
 
         // 返回最后一个 Generate 任务的结果作为最终答案
@@ -278,7 +321,8 @@ public class SadpPlanner {
     private String executeSubTask(TaskNode task, Map<String, String> priorResults,
                                    Long kbId, SseEmitter emitter,
                                    LLMClient llmClient, EmbeddingClient embeddingClient,
-                                   Map<String, Integer> taskIndexMap, int totalTasks) {
+                                   Map<String, Integer> taskIndexMap, int totalTasks,
+                                   TokenUsageLedger ledger) {
         task.setStatus(TaskNode.TaskStatus.RUNNING);
 
         int taskIndex = taskIndexMap.getOrDefault(task.getId(), 0);
@@ -295,7 +339,7 @@ public class SadpPlanner {
             String result = switch (type) {
                 case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient);
                 case Get_Summary     -> executeGetSummary(task, kbId);
-                case Generate        -> executeGenerate(task, priorResults, llmClient);
+                case Generate        -> executeGenerate(task, priorResults, llmClient, ledger);
             };
             task.setStatus(TaskNode.TaskStatus.DONE);
             log.info("SADP subtask {} completed (length={})", task.getId(), result.length());
@@ -314,23 +358,26 @@ public class SadpPlanner {
      */
     private String executeScopedRetrieve(TaskNode task, Long kbId, EmbeddingClient embeddingClient) {
         String nodeId = task.getNodeId();
-        List<RetrievalResult> results;
+        AdaptiveRetriever.RetrievalBundle bundle;
 
         if (nodeId == null || nodeId.isBlank()) {
             // 无 scope：走完整自适应层级检索（全知识库）
             log.debug("Scoped_Retrieve: no nodeId, falling back to full-kb adaptive retrieval");
-            results = adaptiveRetriever.retrieve(Set.of(task.getQuery()), kbId, embeddingClient, null);
+            bundle = adaptiveRetriever.retrieve(Set.of(task.getQuery()), kbId, embeddingClient, null);
         } else {
             // 有 scope：从 LLM 选定节点的子层开始层级检索
             log.debug("Scoped_Retrieve: nodeId='{}', using retrieveFromScope", nodeId);
-            results = adaptiveRetriever.retrieveFromScope(nodeId, task.getQuery(), kbId, embeddingClient, null);
+            bundle = adaptiveRetriever.retrieveFromScope(nodeId, task.getQuery(), kbId, embeddingClient, null);
         }
 
-        if (results.isEmpty()) {
+        // 存储原始结果，供 executeDag 结束后发送 ref 事件
+        task.setRawResults(bundle.results());
+
+        if (bundle.results().isEmpty()) {
             return "（未在指定范围内检索到相关内容）";
         }
 
-        return results.stream()
+        return bundle.results().stream()
                 .map(RetrievalResult::getContent)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining("\n\n"));
@@ -356,20 +403,35 @@ public class SadpPlanner {
     }
 
     /**
-     * Generate 算子：综合前置任务结果，调用 LLM 生成回答或中间结论
+     * 构建 Generate 算子的 prompt（供内部 LLM 调用或外部流式调用共用）
      */
-    private String executeGenerate(TaskNode task, Map<String, String> priorResults, LLMClient llmClient) {
+    private String buildGeneratePrompt(TaskNode task, Map<String, String> priorResults) {
         String depsText = priorResults.isEmpty()
                 ? "（无前置任务结果）"
                 : priorResults.entrySet().stream()
                         .map(e -> "任务[" + e.getKey() + "]:\n" + e.getValue())
                         .collect(Collectors.joining("\n\n"));
 
-        String prompt = AppConstants.PromptTemplates.SADP_GENERATE_OPERATOR
+        return AppConstants.PromptTemplates.SADP_GENERATE_OPERATOR
                 .replace("{query}", task.getQuery())
                 .replace("{dependencies_results}", depsText);
+    }
 
-        return llmClient.chat(prompt);
+    /**
+     * Generate 算子：综合前置任务结果，生成回答或中间结论。
+     *
+     * <p>若当前任务为最终 Generate 节点（{@code terminalGenerate=true}），
+     * 直接返回 prompt 而不调用 LLM，由 RAGServiceImpl 使用该 prompt 发起流式调用，
+     * 避免二次 LLM 调用（先同步生成 → 再将答案作为 prompt 流式输出）。</p>
+     */
+    private String executeGenerate(TaskNode task, Map<String, String> priorResults,
+                                    LLMClient llmClient, TokenUsageLedger ledger) {
+        String prompt = buildGeneratePrompt(task, priorResults);
+        if (task.isTerminalGenerate()) {
+            log.debug("Terminal Generate task {}: returning prompt for streaming (skip sync LLM call)", task.getId());
+            return prompt;
+        }
+        return llmClient.chat(prompt, "生成[" + task.getId() + "]", ledger);
     }
 
     // =====================================================================

@@ -3,6 +3,7 @@ package com.mtmn.smartdoc.model.client.impl;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
 import com.mtmn.smartdoc.model.client.StreamEventHandler;
+import com.mtmn.smartdoc.model.client.TokenUsageLedger;
 import com.mtmn.smartdoc.model.config.ModelProperties;
 import com.mtmn.smartdoc.model.dto.ChatRequest;
 import com.mtmn.smartdoc.model.dto.ChatResponse;
@@ -93,6 +94,70 @@ public abstract class AbstractLLMClient implements LLMClient {
             }
         }
         throw new RuntimeException("LLM调用失败: 超过最大重试次数");
+    }
+
+    @Override
+    public String chat(String prompt, String label, TokenUsageLedger ledger) {
+        log.debug("同步聊天请求（追踪）: label={}, prompt长度={}", label, prompt.length());
+
+        for (int attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+            try {
+                long startTime = System.currentTimeMillis();
+                dev.langchain4j.model.chat.response.ChatResponse response =
+                        chatModel.chat(List.of(UserMessage.from(prompt)));
+                long durationMs = System.currentTimeMillis() - startTime;
+                String text = response.aiMessage().text();
+                if (ledger != null) {
+                    int inputTokens, outputTokens, totalTokens;
+                    if (response.tokenUsage() != null) {
+                        inputTokens  = response.tokenUsage().inputTokenCount();
+                        outputTokens = response.tokenUsage().outputTokenCount();
+                        totalTokens  = response.tokenUsage().totalTokenCount();
+                    } else {
+                        inputTokens  = estimateTokens(prompt);
+                        outputTokens = estimateTokens(text);
+                        totalTokens  = inputTokens + outputTokens;
+                        log.debug("Token 估算 [{}]: input≈{}, output≈{}", label, inputTokens, outputTokens);
+                    }
+                    ledger.record(label, inputTokens, outputTokens, totalTokens, durationMs);
+                }
+                return text;
+            } catch (Exception e) {
+                if (isRateLimitError(e) && attempt < RATE_LIMIT_MAX_RETRIES) {
+                    rateLimitBackoff(attempt + 1);
+                    continue;
+                }
+                log.error("同步聊天失败: {}", e.getMessage(), e);
+                throw new RuntimeException("LLM调用失败: " + e.getMessage(), e);
+            }
+        }
+        throw new RuntimeException("LLM调用失败: 超过最大重试次数");
+    }
+
+    /**
+     * 估算文本 token 数（当 LLM 未返回 tokenUsage 时的兜底）。
+     * CJK 字符约 1 token/字；ASCII 连续序列约 1 token/4 字符（词级估算）。
+     */
+    private static int estimateTokens(String text) {
+        if (text == null || text.isEmpty()) return 0;
+        int count = 0;
+        int asciiSeq = 0;
+        for (char c : text.toCharArray()) {
+            Character.UnicodeBlock block = Character.UnicodeBlock.of(c);
+            if (block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+                    || block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
+                    || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
+                    || block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B) {
+                if (asciiSeq > 0) { count += Math.max(1, asciiSeq / 4); asciiSeq = 0; }
+                count++;
+            } else if (Character.isWhitespace(c)) {
+                if (asciiSeq > 0) { count += Math.max(1, asciiSeq / 4); asciiSeq = 0; }
+            } else {
+                asciiSeq++;
+            }
+        }
+        if (asciiSeq > 0) count += Math.max(1, asciiSeq / 4);
+        return Math.max(1, count);
     }
 
     @Override
@@ -328,10 +393,15 @@ public abstract class AbstractLLMClient implements LLMClient {
                 eventHandler.onBeforeChat(emitter, prompt);
             }
 
+            // 累计流式输出文本，用于 LLM 未返回 tokenUsage 时的兜底估算
+            StringBuilder outputBuilder = new StringBuilder();
+            final long streamStartTime = System.currentTimeMillis();
+
             streamingModel.chat(prompt, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
                     if (partialResponse != null && !partialResponse.isEmpty()) {
+                        outputBuilder.append(partialResponse);
                         log.trace("Emitter LLM分片响应: {}", partialResponse);
                         SseEventBuilder.sendMessageEvent(emitter, partialResponse);
                     }
@@ -340,6 +410,20 @@ public abstract class AbstractLLMClient implements LLMClient {
                 @Override
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
                     log.info("流式聊天完成");
+                    long durationMs = System.currentTimeMillis() - streamStartTime;
+                    // token 用量回调（实测值优先，估算值兜底）
+                    int inputTokens, outputTokens, totalTokens;
+                    if (response.tokenUsage() != null) {
+                        inputTokens  = response.tokenUsage().inputTokenCount();
+                        outputTokens = response.tokenUsage().outputTokenCount();
+                        totalTokens  = response.tokenUsage().totalTokenCount();
+                    } else {
+                        inputTokens  = estimateTokens(prompt);
+                        outputTokens = estimateTokens(outputBuilder.toString());
+                        totalTokens  = inputTokens + outputTokens;
+                        log.debug("流式 Token 估算: input≈{}, output≈{}", inputTokens, outputTokens);
+                    }
+                    eventHandler.onTokenUsage(emitter, inputTokens, outputTokens, totalTokens, durationMs);
                     eventHandler.onAfterChat(emitter);
                     SseEventBuilder.sendDoneEvent(emitter);
                     emitter.complete();

@@ -52,10 +52,12 @@ import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { documentService } from '../../services/documentService';
 import { modelService } from '../../services/modelService';
-import { KnowledgeBaseItem, DocumentItem, ThoughtItem, ReferenceItem } from '../../types';
+import { KnowledgeBaseItem, DocumentItem, ThoughtItem, ReferenceItem, RetrievalTreeNode, TokenUsageReport } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { SmartRAGChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
+import RetrievalTreeViewer from '../../components/RetrievalTreeViewer';
+import { TokenUsagePanel } from '../../components/TokenUsagePanel';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { getMethodConfig, RAG_STRATEGIES } from '../../config/ragConfig';
 import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
@@ -72,6 +74,8 @@ interface ExtendedMessageContent {
     content: string;           // 消息文本内容
     thoughts?: ThoughtItem[];  // AI 的执行流程（检索、重排序等步骤）
     references?: ReferenceItem[]; // 参考的文档片段
+    retrievalTree?: RetrievalTreeNode[]; // 检索路径树
+    tokenUsage?: TokenUsageReport; // Token 用量明细
 }
 
 /**
@@ -422,8 +426,19 @@ const ChatPage: React.FC = () => {
                     <Avatar icon={<RobotOutlined />} style={{ background: token.colorPrimary }} />
                 ),
                 variant: extendedMsg.role === 'user' ? 'outlined' : 'shadow',
-                footer: extendedMsg.references && extendedMsg.references.length > 0 ? (
-                    <ReferenceViewer references={extendedMsg.references} />
+                footer: (extendedMsg.retrievalTree?.length || extendedMsg.references?.length || extendedMsg.tokenUsage) ? (
+                    // Wrap in same maxWidth as the bubble so tree/refs don't overflow wider
+                    <div style={{ maxWidth: '88%' }}>
+                        {extendedMsg.retrievalTree && extendedMsg.retrievalTree.length > 0 && (
+                            <RetrievalTreeViewer treeRoots={extendedMsg.retrievalTree} />
+                        )}
+                        {extendedMsg.references && extendedMsg.references.length > 0 && (
+                            <ReferenceViewer references={extendedMsg.references} />
+                        )}
+                        {extendedMsg.tokenUsage && (
+                            <TokenUsagePanel tokenUsage={extendedMsg.tokenUsage} />
+                        )}
+                    </div>
                 ) : undefined,
                 // 用户气泡：主题色调浅底
                 ...(extendedMsg.role === 'user' ? {
@@ -692,40 +707,44 @@ const ChatPage: React.FC = () => {
                 ) : (
                     <>
                         {/* 历史消息气泡列表 — 只在流式结束后更新，不在每个chunk时重建 */}
+                        {/* autoScroll={false}: 禁用内部 column-reverse 自动滚动，由外层 scrollRef 统一管理滚动 */}
+                        {/* style={{ maxHeight: 'none' }}: 移除默认 maxHeight:100% 约束，让列表自由增长，避免与流式消息div发生位置重叠 */}
                         <Bubble.List
                             items={items}
+                            autoScroll={false}
+                            style={{ maxHeight: 'none' }}
                             styles={{
                                 bubble: { maxWidth: '88%' }
                             }}
                             role={bubbleRole}
                         />
-                        {/* 正在流式输出的消息 — 单独渲染，不触发Bubble.List重渲染 */}
+                        {/* 正在流式输出的消息 — 用 Bubble 组件渲染，保持与历史消息一致的气泡样式 */}
                         {streamingMessage && (
-                            <div style={{ display: 'flex', gap: 12, marginTop: 8, paddingBottom: 8 }}>
-                                <Avatar icon={<RobotOutlined />} style={{ background: token.colorPrimary, flexShrink: 0 }} />
-                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {/* 执行流程 — 统一渲染，避免重复 */}
-                                    {streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0 && (
-                                        <AnimatedThoughtChain items={streamingMessage.extendedMsg.thoughts} />
-                                    )}
-                                    {/* "生成回答中..." 指示器：所有 thoughts 结束且 content 还没到达 */}
-                                    {!streamingMessage.extendedMsg.content &&
-                                     streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0 &&
-                                     streamingMessage.extendedMsg.thoughts.every(t => t.status === 'success') && (
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            color: token.colorTextSecondary,
-                                            fontSize: 13,
-                                            marginTop: 4
-                                        }}>
-                                            <LoadingOutlined spin style={{ color: token.colorPrimary }} />
-                                            <span>生成回答中...</span>
-                                        </div>
-                                    )}
-                                    {/* 流式文本内容 */}
-                                    {streamingMessage.extendedMsg.content && (
+                            <Bubble
+                                placement="start"
+                                variant="shadow"
+                                style={{ maxWidth: '88%', marginTop: 8, marginBottom: 8 }}
+                                avatar={<Avatar icon={<RobotOutlined />} style={{ background: token.colorPrimary }} />}
+                                header={
+                                    streamingMessage.extendedMsg.thoughts && streamingMessage.extendedMsg.thoughts.length > 0
+                                        ? <AnimatedThoughtChain items={streamingMessage.extendedMsg.thoughts} />
+                                        : undefined
+                                }
+                                content={streamingMessage.extendedMsg.content || ''}
+                                contentRender={(content) => {
+                                    // 无文本内容时显示加载指示器
+                                    if (!content) {
+                                        const thoughts = streamingMessage.extendedMsg.thoughts ?? [];
+                                        const allThoughtsDone = thoughts.length > 0 && thoughts.every(t => t.status === 'success');
+                                        return (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: token.colorTextSecondary, fontSize: 13 }}>
+                                                <LoadingOutlined spin style={{ color: token.colorPrimary }} />
+                                                <span>{allThoughtsDone ? '生成回答中...' : '思考中...'}</span>
+                                            </div>
+                                        );
+                                    }
+                                    // 有内容时渲染流式 Markdown
+                                    return (
                                         <XMarkdown
                                             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                             config={MD_CONFIG}
@@ -737,15 +756,28 @@ const ChatPage: React.FC = () => {
                                                 animationConfig: { fadeDuration: 80 },
                                             }}
                                         >
-                                            {streamingMessage.extendedMsg.content}
+                                            {content}
                                         </XMarkdown>
-                                    )}
-                                    {/* 参考文档 — 流式阶段也要展示 */}
-                                    {streamingMessage.extendedMsg.references && streamingMessage.extendedMsg.references.length > 0 && (
-                                        <ReferenceViewer references={streamingMessage.extendedMsg.references} />
-                                    )}
-                                </div>
-                            </div>
+                                    );
+                                }}
+                                footer={
+                                    (streamingMessage.extendedMsg.retrievalTree?.length || streamingMessage.extendedMsg.references?.length || streamingMessage.extendedMsg.tokenUsage)
+                                        ? (
+                                            <div style={{ maxWidth: '88%' }}>
+                                                {streamingMessage.extendedMsg.retrievalTree && streamingMessage.extendedMsg.retrievalTree.length > 0 && (
+                                                    <RetrievalTreeViewer treeRoots={streamingMessage.extendedMsg.retrievalTree} />
+                                                )}
+                                                {streamingMessage.extendedMsg.references && streamingMessage.extendedMsg.references.length > 0 && (
+                                                    <ReferenceViewer references={streamingMessage.extendedMsg.references} />
+                                                )}
+                                                {streamingMessage.extendedMsg.tokenUsage && (
+                                                    <TokenUsagePanel tokenUsage={streamingMessage.extendedMsg.tokenUsage} />
+                                                )}
+                                            </div>
+                                        )
+                                        : undefined
+                                }
+                            />
                         )}
                     </>
                 )}
