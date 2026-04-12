@@ -2,6 +2,7 @@ package com.mtmn.smartdoc.config;
 
 import com.mtmn.smartdoc.repository.UserRepository;
 import com.mtmn.smartdoc.service.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -58,7 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // 测试接口（临时开放，生产环境应移除）
 //                        .requestMatchers("/api/kb/chat/**").permitAll()
-                        .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/api/chat/**").authenticated()
                         // 要求认证的路径
                         .requestMatchers("/api/users/**").authenticated()
                         .requestMatchers("/api/documents/**").authenticated()
@@ -76,18 +78,14 @@ public class SecurityConfig {
                 .exceptionHandling(exceptionHandling ->
                         exceptionHandling.authenticationEntryPoint((request, response, authException) -> {
                             // 针对流式响应的特殊处理
-                            boolean isStreamRequest = request.getRequestURI().contains("/api/kb/chat/") &&
-                                    (MediaType.TEXT_EVENT_STREAM_VALUE.equals(request.getHeader("Accept")) ||
-                                            request.getRequestURI().endsWith(".stream"));
+                            boolean isStreamRequest = isStreamingChatRequest(request);
 
                             if (response.isCommitted()) {
                                 // 响应已经提交，不要尝试写入错误信息
                                 return;
                             } else if (isStreamRequest && !response.isCommitted()) {
-                                // 流式请求但响应尚未提交，发送401状态但不终止连接
-                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                                response.getWriter().write("event: error\ndata: Unauthorized\n\n");
-                                response.flushBuffer();
+                                // 流式请求但响应尚未提交，返回 SSE error 事件
+                                writeStreamingUnauthorized(response, "认证失败，请重新登录。");
                             } else {
                                 // 普通请求，发送标准401响应
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
@@ -140,5 +138,28 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    private static boolean isStreamingChatRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if (uri == null || !uri.startsWith("/api/chat/rag/")) {
+            return false;
+        }
+
+        String accept = request.getHeader("Accept");
+        return accept == null
+                || accept.contains(MediaType.TEXT_EVENT_STREAM_VALUE)
+                || uri.endsWith(".stream");
+    }
+
+    private static void writeStreamingUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        String safeMessage = message == null
+                ? "认证失败，请重新登录。"
+                : message.replace("\\", "\\\\").replace("\"", "\\\"");
+        response.getWriter().write("event: error\\ndata: {\"error\":\"" + safeMessage + "\"}\\n\\n");
+        response.flushBuffer();
     }
 }

@@ -15,9 +15,9 @@ import reactor.core.publisher.Flux;
  */
 public interface RAGService {
 
-    SseEmitter naiveRagChat(NaiveRagChatRequest request);
+    SseEmitter naiveRagChat(Long userId, NaiveRagChatRequest request);
 
-    SseEmitter hisemRagFastChat(HisemRagChatRequest request);
+    SseEmitter hisemRagFastChat(Long userId, HisemRagChatRequest request);
 
-    SseEmitter hisemRagChat(HisemRagChatRequest request);
+    SseEmitter hisemRagChat(Long userId, HisemRagChatRequest request);
 }

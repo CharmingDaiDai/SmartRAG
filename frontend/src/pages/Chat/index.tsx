@@ -52,7 +52,8 @@ import { useSearchParams } from 'react-router-dom';
 import { kbService } from '../../services/kbService';
 import { documentService } from '../../services/documentService';
 import { modelService } from '../../services/modelService';
-import { KnowledgeBaseItem, DocumentItem, ThoughtItem, ReferenceItem, RetrievalTreeNode, TokenUsageReport } from '../../types';
+import { conversationService } from '../../services/conversationService';
+import { KnowledgeBaseItem, DocumentItem, ThoughtItem, ReferenceItem, RetrievalTreeNode, TokenUsageReport, ConversationSessionItem, ConversationSessionDetail } from '../../types';
 import { useAppStore } from '../../store/useAppStore';
 import { SmartRAGChatProvider } from '../../utils/SmartRagChatProvider';
 import ReferenceViewer from '../../components/ReferenceViewer';
@@ -105,17 +106,28 @@ const MD_COMPONENTS = {
 const LATEX_EXTENSIONS = Latex({ katexOptions: { output: 'html', throwOnError: false } });
 const MD_CONFIG = { extensions: LATEX_EXTENSIONS };
 
-/**
- * 模拟历史对话数据（按日期分组）
- * TODO: 后续需要从后端 API 获取真实的历史对话记录
- */
-const MOCK_HISTORY = [
-    { id: '1', title: '关于 RAG 的原理', date: '2023-11-29', group: '今天' },
-    { id: '2', title: '如何优化检索效果', date: '2023-11-28', group: '昨天' },
-    { id: '3', title: '向量数据库对比', date: '2023-11-27', group: '更早' },
-    { id: '4', title: 'LangChain 实践', date: '2023-11-26', group: '更早' },
-    { id: '5', title: '大模型微调指南', date: '2023-11-25', group: '更早' },
-];
+const createSessionId = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID().replace(/-/g, '');
+    }
+    return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`;
+};
+
+const getDateGroup = (isoDate?: string): string => {
+    if (!isoDate) return '更早';
+
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return '更早';
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+    if (date >= startOfToday) return '今天';
+    if (date >= startOfYesterday) return '昨天';
+    return '更早';
+};
 
 /** 建议问题（空状态展示） */
 const SUGGESTION_QUESTIONS = [
@@ -138,8 +150,9 @@ const ChatPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const kbIdParam = searchParams.get('kbId');
 
-  const [historyList, setHistoryList] = useState(MOCK_HISTORY);
+    const [historyList, setHistoryList] = useState<ConversationSessionItem[]>([]);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -238,6 +251,38 @@ const ChatPage: React.FC = () => {
     provider,
   });
 
+  const fetchHistorySessions = useCallback(async (kbId: string, silent = false) => {
+      if (!kbId) {
+          setHistoryList([]);
+          setActiveHistoryId(null);
+          return;
+      }
+
+      if (!silent) {
+          setHistoryLoading(true);
+      }
+
+      try {
+          const res: any = await conversationService.listSessions(kbId, { page: 0, size: 50 });
+          if (res.code === 200) {
+              const sessions: ConversationSessionItem[] = Array.isArray(res.data?.content) ? res.data.content : [];
+              setHistoryList(sessions);
+              setActiveHistoryId(prev => {
+                  if (!prev) return prev;
+                  return sessions.some(item => item.sessionId === prev) ? prev : null;
+              });
+          }
+      } catch (e) {
+          if (!silent) {
+              message.error('历史会话加载失败');
+          }
+      } finally {
+          if (!silent) {
+              setHistoryLoading(false);
+          }
+      }
+    }, []);
+
   // ── Throttled scroll-to-bottom ──────────────────────────────────────────
   // Use RAF to avoid forcing layout reflow on every SSE chunk.
   const rafScrollRef = useRef<number | null>(null);
@@ -283,6 +328,23 @@ const ChatPage: React.FC = () => {
       fetchKbs();
   }, []);
 
+  useEffect(() => {
+      if (!currentKbId) {
+          setHistoryList([]);
+          setActiveHistoryId(null);
+          return;
+      }
+      fetchHistorySessions(String(currentKbId));
+  }, [currentKbId, fetchHistorySessions]);
+
+  const wasRequestingRef = useRef(false);
+  useEffect(() => {
+      if (wasRequestingRef.current && !isRequesting && currentKbId) {
+          fetchHistorySessions(String(currentKbId), true);
+      }
+      wasRequestingRef.current = isRequesting;
+  }, [isRequesting, currentKbId, fetchHistorySessions]);
+
   // 当知识库切换且策略为 HiSem-SADP 时，预加载文档列表用于文件类型校验
   useEffect(() => {
       if (!currentKbId || strategy !== RAG_STRATEGIES.HISEM_RAG) {
@@ -325,6 +387,11 @@ const ChatPage: React.FC = () => {
 
       const ragParams = form.getFieldsValue();
 
+      const sessionId = activeHistoryId || createSessionId();
+      if (!activeHistoryId) {
+          setActiveHistoryId(sessionId);
+      }
+
       const historyMessages = messages.map(m => ({
           role: m.message.role === 'user' ? 'user' : 'ai',
           content: m.message.content,
@@ -334,6 +401,8 @@ const ChatPage: React.FC = () => {
       const requestBody: any = {
           kbId: currentKbId,
           question: text,
+          sessionId,
+          historyWindow: 8,
           embeddingModelId: currentKb.embeddingModelId,
           llmModelId: ragParams.llmModelId,
           rerankModelId: ragParams.rerankModelId,
@@ -364,21 +433,55 @@ const ChatPage: React.FC = () => {
   };
 
   const handleNewChat = () => {
+      if (isRequesting) {
+          abort();
+      }
       setMessages([]);
-      setActiveHistoryId(null);
+      setActiveHistoryId(createSessionId());
       message.success('已开启新对话');
   };
 
-  const handleHistoryClick = (id: string) => {
-      setActiveHistoryId(id);
+  const handleHistoryClick = async (sessionId: string) => {
+      if (!currentKbId) {
+          message.warning('知识库尚未加载完成，请稍后再试');
+          return;
+      }
+
+      if (isRequesting) {
+          abort();
+      }
+      setActiveHistoryId(sessionId);
       setMessages([]);
-      message.info('加载历史对话...');
-      setTimeout(() => {
-          setMessages([
-              { id: '1', status: 'success', message: { role: 'user', content: '你好，什么是 RAG？' } as any },
-              { id: '2', status: 'success', message: { role: 'assistant', content: 'RAG (Retrieval-Augmented Generation) 是一种结合了检索和生成的 AI 技术...' } as any }
-          ]);
-      }, 500);
+      try {
+          const res: any = await conversationService.getSessionDetail(String(currentKbId), sessionId);
+          if (res.code !== 200) {
+              message.error(res.message || '加载历史对话失败');
+              return;
+          }
+
+          const detail = res.data as ConversationSessionDetail;
+          const restoredMessages: any[] = [];
+          detail.messages?.forEach((msg, index) => {
+              if (msg.query) {
+                  restoredMessages.push({
+                      id: `${msg.id || index}-u`,
+                      status: 'success',
+                      message: { role: 'user', content: msg.query }
+                  });
+              }
+              if (msg.response) {
+                  restoredMessages.push({
+                      id: `${msg.id || index}-a`,
+                      status: 'success',
+                      message: { role: 'assistant', content: msg.response }
+                  });
+              }
+          });
+
+          setMessages(restoredMessages as any);
+      } catch (e) {
+          message.error('加载历史对话失败');
+      }
   };
 
   const items: GetProp<typeof Bubble.List, 'items'> = useMemo(() => {
@@ -466,10 +569,11 @@ const ChatPage: React.FC = () => {
 
   // 按分组整理历史对话
   const groupedHistory = useMemo(() => {
-    const groups: Record<string, typeof MOCK_HISTORY> = {};
+        const groups: Record<string, ConversationSessionItem[]> = {};
     historyList.forEach(item => {
-      if (!groups[item.group]) groups[item.group] = [];
-      groups[item.group].push(item);
+            const group = getDateGroup(item.lastActiveAt);
+            if (!groups[group]) groups[group] = [];
+            groups[group].push(item);
     });
     return groups;
   }, [historyList]);
@@ -548,6 +652,16 @@ const ChatPage: React.FC = () => {
 
             {/* 历史对话分组列表 */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                {historyLoading && (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: token.colorTextSecondary }}>
+                        加载历史会话中...
+                    </div>
+                )}
+                {!historyLoading && historyList.length === 0 && (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: token.colorTextSecondary }}>
+                        暂无历史会话
+                    </div>
+                )}
                 {Object.entries(groupedHistory).map(([group, items]) => (
                     <div key={group}>
                         {/* 分组标题 */}
@@ -563,23 +677,23 @@ const ChatPage: React.FC = () => {
                         </div>
                         {items.map((item) => (
                             <div
-                                key={item.id}
+                                key={item.sessionId}
                                 className="chat-history-item"
                                 style={{
                                     padding: '8px 12px',
                                     margin: '1px 6px',
                                     borderRadius: 8,
                                     cursor: 'pointer',
-                                    background: activeHistoryId === item.id
+                                    background: activeHistoryId === item.sessionId
                                         ? `${token.colorPrimary}14`
                                         : 'transparent',
-                                    borderLeft: activeHistoryId === item.id
+                                    borderLeft: activeHistoryId === item.sessionId
                                         ? `2px solid ${token.colorPrimary}`
                                         : '2px solid transparent',
                                     transition: 'all 0.15s ease',
                                     position: 'relative',
                                 }}
-                                onClick={() => handleHistoryClick(item.id)}
+                                onClick={() => handleHistoryClick(item.sessionId)}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden', flex: 1 }}>
@@ -588,11 +702,11 @@ const ChatPage: React.FC = () => {
                                             ellipsis
                                             style={{
                                                 fontSize: 13,
-                                                color: activeHistoryId === item.id ? token.colorPrimary : token.colorText,
-                                                fontWeight: activeHistoryId === item.id ? 500 : 400,
+                                                color: activeHistoryId === item.sessionId ? token.colorPrimary : token.colorText,
+                                                fontWeight: activeHistoryId === item.sessionId ? 500 : 400,
                                             }}
                                         >
-                                            {item.title}
+                                            {item.title || item.lastQuestion || '新对话'}
                                         </Text>
                                     </div>
                                     {/* hover 时显示删除按钮 */}
@@ -603,10 +717,23 @@ const ChatPage: React.FC = () => {
                                     >
                                         <Popconfirm
                                             title="确定删除该对话吗？"
-                                            onConfirm={() => {
-                                                message.success('删除成功');
-                                                setHistoryList(prev => prev.filter(h => h.id !== item.id));
-                                                if (activeHistoryId === item.id) setActiveHistoryId(null);
+                                            onConfirm={async () => {
+                                                if (!currentKbId) return;
+                                                try {
+                                                    const res: any = await conversationService.deleteSession(String(currentKbId), item.sessionId);
+                                                    if (res.code === 200) {
+                                                        message.success('删除成功');
+                                                        setHistoryList(prev => prev.filter(h => h.sessionId !== item.sessionId));
+                                                        if (activeHistoryId === item.sessionId) {
+                                                            setActiveHistoryId(null);
+                                                            setMessages([]);
+                                                        }
+                                                    } else {
+                                                        message.error(res.message || '删除失败');
+                                                    }
+                                                } catch (e) {
+                                                    message.error('删除失败');
+                                                }
                                             }}
                                             okText="确定"
                                             cancelText="取消"
@@ -1052,9 +1179,9 @@ const ChatPage: React.FC = () => {
  * ========================================
  *
  * 【历史对话持久化】
- * - 当前使用模拟数据（MOCK_HISTORY）
- * - 需要实现：保存对话到后端、从后端加载历史对话、对话分页加载
- * - 建议接口：GET /api/chat/conversations, GET /api/chat/conversations/:id
+ * - 已接入后端会话接口
+ * - 支持：加载会话列表、按会话回放、删除会话
+ * - 请求体已携带 sessionId，回答完成后由后端持久化
  *
  * 【流式渲染优化】
  * - SmartRAGChatProvider 处理 SSE 事件流

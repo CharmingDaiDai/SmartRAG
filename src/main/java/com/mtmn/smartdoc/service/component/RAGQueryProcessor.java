@@ -32,10 +32,21 @@ public class RAGQueryProcessor {
      * @return 是否需要检索
      */
     public boolean analyzeIntent(String question) {
+        return analyzeIntent(question, "");
+    }
+
+    /**
+     * 意图识别（带历史上下文）
+     *
+     * @param question    用户问题
+     * @param historyText 历史对话文本
+     * @return 是否需要检索
+     */
+    public boolean analyzeIntent(String question, String historyText) {
         try {
             String message = AppConstants.PromptTemplates.PROMPT_INTENT_RECOGNITION
                     .replace("{query}", question)
-                    .replace("{history}", ""); // TODO: 传入历史记录
+                    .replace("{history}", historyText == null ? "" : historyText);
 
             String resp = modelFactory.createDefaultLLMClient().chat(message);
             Map<String, Object> map = LlmJsonUtils.parseMap(resp);
@@ -64,10 +75,21 @@ public class RAGQueryProcessor {
      * @return 重写后的查询
      */
     public String rewriteQuery(String question) {
+        return rewriteQuery(question, "");
+    }
+
+    /**
+     * 查询重写（带历史上下文）
+     *
+     * @param question    用户问题
+     * @param historyText 历史对话文本
+     * @return 重写后的查询
+     */
+    public String rewriteQuery(String question, String historyText) {
         try {
             String message = AppConstants.PromptTemplates.PROMPT_QUERY_REWRITE
                     .replace("{query}", question)
-                    .replace("{history}", ""); // TODO: 传入历史记录
+                    .replace("{history}", historyText == null ? "" : historyText);
 
             String resp = modelFactory.createDefaultLLMClient().chat(message);
             // 尝试解析 JSON

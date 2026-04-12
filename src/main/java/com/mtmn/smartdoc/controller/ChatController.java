@@ -2,6 +2,7 @@ package com.mtmn.smartdoc.controller;
 
 import com.mtmn.smartdoc.dto.HisemRagChatRequest;
 import com.mtmn.smartdoc.dto.NaiveRagChatRequest;
+import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import com.mtmn.smartdoc.model.client.StreamEventHandler;
 import com.mtmn.smartdoc.model.client.handler.FullRagEventHandlerExample;
 import com.mtmn.smartdoc.model.dto.ReferenceDocument;
@@ -45,7 +46,10 @@ public class ChatController {
     public SseEmitter naiveRagChat(@AuthenticationPrincipal User user, @RequestBody NaiveRagChatRequest request) {
         log.info("收到普通对话测试请求");
 
-        return ragService.naiveRagChat(request);
+        if (user == null) {
+            throw new UnauthorizedAccessException("用户未登录");
+        }
+        return ragService.naiveRagChat(user.getId(), request);
     }
 
     @Operation(summary = "hisem rag fast", description = "hisem rag 快速版问答")
@@ -53,7 +57,10 @@ public class ChatController {
     public SseEmitter hisemRagFastChat(@AuthenticationPrincipal User user, @RequestBody HisemRagChatRequest request) {
         log.info("收到简单 RAG 对话测试请求");
 
-        return ragService.hisemRagFastChat(request);
+        if (user == null) {
+            throw new UnauthorizedAccessException("用户未登录");
+        }
+        return ragService.hisemRagFastChat(user.getId(), request);
     }
 
     @Operation(summary = "hisem rag", description = "hisem rag 问答")
@@ -61,7 +68,10 @@ public class ChatController {
     public SseEmitter hisemRagChat(@AuthenticationPrincipal User user, @RequestBody HisemRagChatRequest request) {
         log.info("收到高级 RAG 对话测试请求");
 
-        return ragService.hisemRagChat(request);
+        if (user == null) {
+            throw new UnauthorizedAccessException("用户未登录");
+        }
+        return ragService.hisemRagChat(user.getId(), request);
     }
 
 //     @Operation(summary = "完整 RAG 演示", description = "演示完整的 RAG 流程（带参考文档）")

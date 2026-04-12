@@ -256,11 +256,13 @@
 
 .chat-history-item .chat-history-actions {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
 .chat-history-item:hover .chat-history-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* ==================== 建议问题卡片 ==================== */

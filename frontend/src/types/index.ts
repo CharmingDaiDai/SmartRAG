@@ -82,6 +82,30 @@ export interface TokenUsageReport {
   total: TokenUsageEntry;
 }
 
+export interface ConversationSessionItem {
+  sessionId: string;
+  title?: string;
+  lastQuestion?: string;
+  lastResponse?: string;
+  messageCount: number;
+  lastActiveAt?: string;
+}
+
+export interface ConversationMessageItem {
+  id?: number;
+  query: string;
+  response?: string;
+  createdAt?: string;
+}
+
+export interface ConversationSessionDetail {
+  kbId: number;
+  sessionId: string;
+  messageCount: number;
+  lastActiveAt?: string;
+  messages: ConversationMessageItem[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'ai';

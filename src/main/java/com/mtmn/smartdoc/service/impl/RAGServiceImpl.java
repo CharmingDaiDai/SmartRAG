@@ -1,9 +1,12 @@
 package com.mtmn.smartdoc.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mtmn.smartdoc.constants.AppConstants;
 import com.mtmn.smartdoc.dto.HisemRagChatRequest;
 import com.mtmn.smartdoc.dto.NaiveRagChatRequest;
-import com.mtmn.smartdoc.exception.MilvusConnectionException;
+import com.mtmn.smartdoc.dto.RagChatRequest;
+import com.mtmn.smartdoc.exception.ResourceNotFoundException;
+import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
@@ -11,12 +14,15 @@ import com.mtmn.smartdoc.model.client.StreamEventHandler;
 import com.mtmn.smartdoc.model.client.TokenUsageLedger;
 import com.mtmn.smartdoc.model.dto.ReferenceDocument;
 import com.mtmn.smartdoc.model.factory.ModelFactory;
+import com.mtmn.smartdoc.po.Conversation;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
 import com.mtmn.smartdoc.rag.retriever.RetrievalTreeNode;
 import com.mtmn.smartdoc.rag.sadp.SadpPlanner;
+import com.mtmn.smartdoc.rag.support.RagStreamErrorMapper;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
+import com.mtmn.smartdoc.service.ConversationService;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.RAGService;
 import com.mtmn.smartdoc.service.component.RAGQueryProcessor;
@@ -28,8 +34,11 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -50,26 +59,32 @@ public class RAGServiceImpl implements RAGService {
     private final MilvusService milvusService;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final DocumentRepository documentRepository;
+    private final ConversationService conversationService;
     private final RAGQueryProcessor ragQueryProcessor;
     private final AdaptiveRetriever adaptiveRetriever;
     private final SadpPlanner sadpPlanner;
+    private final ObjectMapper objectMapper;
 
     /**
      * @param request
      * @return
      */
     @Override
-    // TODO 实现历史对话和对话存储功能
-    public SseEmitter naiveRagChat(NaiveRagChatRequest request) {
-        log.info("收到 Naive RAG 对话请求: kbId={}, question={}", request.getKbId(), request.getQuestion());
+    public SseEmitter naiveRagChat(Long userId, NaiveRagChatRequest request) {
+        log.info("收到 Naive RAG 对话请求: userId={}, kbId={}, question={}", userId, request.getKbId(), request.getQuestion());
 
         // 创建 SseEmitter，设置超时时间 (例如 5 分钟)
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
 
+        Long kbId = request.getKbId();
+        validateKnowledgeBaseAccess(kbId, userId);
+        String sessionId = conversationService.resolveSessionId(request.getSessionId());
+        request.setSessionId(sessionId);
+        String historyText = conversationService.buildHistoryText(kbId, userId, sessionId, request.getHistoryWindow());
+
         // 异步执行，避免阻塞 Tomcat 线程
         CompletableFuture.runAsync(() -> {
             try {
-                Long kbId = request.getKbId();
                 String question = request.getQuestion();
                 LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
                 EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
@@ -77,11 +92,15 @@ public class RAGServiceImpl implements RAGService {
                 // 1. 意图识别
                 if (request.getEnableIntentRecognition()) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
-                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
+                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索");
                         // 直接聊天
-                        llmClient.streamChatWithEmitter(question, emitter);
+                        llmClient.streamChatWithEmitter(
+                                question,
+                                emitter,
+                                buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList())
+                        );
                         return;
                     }
                     log.info("意图识别结果: 需要检索");
@@ -94,7 +113,7 @@ public class RAGServiceImpl implements RAGService {
                 String finalQuery = question;
                 if (request.getEnableQueryRewrite()) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在重写查询语句...", "edit");
-                    String rewritten = ragQueryProcessor.rewriteQuery(question);
+                    String rewritten = ragQueryProcessor.rewriteQuery(question, historyText);
                     if (rewritten != null && !rewritten.equals(question)) {
                         finalQuery = rewritten;
                         log.info("查询重写结果: {}", finalQuery);
@@ -219,26 +238,14 @@ public class RAGServiceImpl implements RAGService {
                         .replace("{context}", context);
 
                 // 大模型回答
-                llmClient.streamChatWithEmitter(prompt, emitter);
+                llmClient.streamChatWithEmitter(
+                    prompt,
+                    emitter,
+                    buildPersistenceHandler(userId, kbId, sessionId, request, documents)
+                );
 
-            } catch (MilvusConnectionException e) {
-                log.error("向量数据库连接失败: {}", e.getMessage());
-                String errorMsg = "向量数据库服务暂时不可用，请稍后重试。(" + e.getMessage() + ")";
-                try {
-                    SseEventBuilder.sendThoughtEvent(emitter, "error", errorMsg, "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
             } catch (Exception e) {
-                log.error("流式聊天启动失败: {}", e.getMessage(), e);
-                try {
-                    String userMsg = isRateLimitError(e)
-                            ? "AI 服务请求频率超限，请稍后再试。"
-                            : "服务异常，请稍后重试。";
-                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
+                handleStreamException(emitter, "NaiveRAG 对话失败", e);
             }
         });
 
@@ -260,36 +267,49 @@ public class RAGServiceImpl implements RAGService {
             return Collections.emptyList();
         }
 
+        AtomicInteger failureCount = new AtomicInteger(0);
+        AtomicReference<Throwable> firstFailure = new AtomicReference<>(null);
+
         List<CompletableFuture<List<RetrievalResult>>> futures = queries.stream()
                 .map(query -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        Embedding queryVector = embeddingClient.embed(query);
-                        return milvusService.search(kbId, queryVector, topK, threshold);
-                    } catch (Exception e) {
-                        log.error("检索失败: query={}, error={}", query, e.getMessage());
-                        return new ArrayList<RetrievalResult>();
+                    Embedding queryVector = embeddingClient.embed(query);
+                    return milvusService.search(kbId, queryVector, topK, threshold);
+                }).handle((results, throwable) -> {
+                    if (throwable == null) {
+                        return results == null ? Collections.<RetrievalResult>emptyList() : results;
                     }
+
+                    failureCount.incrementAndGet();
+                    Throwable root = RagStreamErrorMapper.unwrap(throwable);
+                    firstFailure.compareAndSet(null, root);
+                    log.warn("检索失败: query={}, error={}",
+                            query,
+                            root != null ? root.getMessage() : throwable.getMessage());
+                        return Collections.<RetrievalResult>emptyList();
                 }))
                 .toList();
 
         // 等待所有任务完成
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
+        if (failureCount.get() == queries.size()) {
+            throw new RuntimeException("全部检索任务执行失败", firstFailure.get());
+        }
+        if (failureCount.get() > 0) {
+            log.warn("并行检索部分失败: failed={}/{}", failureCount.get(), queries.size());
+        }
+
         // 合并结果并去重
         Map<String, RetrievalResult> uniqueResults = new HashMap<>();
         for (CompletableFuture<List<RetrievalResult>> future : futures) {
-            try {
-                List<RetrievalResult> results = future.get();
-                for (RetrievalResult result : results) {
-                    // 使用 sourceId (chunkId) 作为去重键
-                    // 如果同一个 chunk 被多次检索到，保留分数最高的那个（通常 Milvus 返回的就是最高分，这里简单覆盖即可，或者比较 score）
-                    String key = result.getSourceId();
-                    if (!uniqueResults.containsKey(key) || result.getScore() > uniqueResults.get(key).getScore()) {
-                        uniqueResults.put(key, result);
-                    }
+            List<RetrievalResult> results = future.join();
+            for (RetrievalResult result : results) {
+                // 使用 sourceId (chunkId) 作为去重键
+                // 如果同一个 chunk 被多次检索到，保留分数最高的那个（通常 Milvus 返回的就是最高分，这里简单覆盖即可，或者比较 score）
+                String key = result.getSourceId();
+                if (!uniqueResults.containsKey(key) || result.getScore() > uniqueResults.get(key).getScore()) {
+                    uniqueResults.put(key, result);
                 }
-            } catch (Exception e) {
-                log.error("获取检索结果失败", e);
             }
         }
 
@@ -308,16 +328,21 @@ public class RAGServiceImpl implements RAGService {
      * @return SSE 事件流
      */
     @Override
-    public SseEmitter hisemRagFastChat(HisemRagChatRequest request) {
-        log.info("收到 HisemRAG Fast 对话请求: kbId={}, question={}", request.getKbId(), request.getQuestion());
+    public SseEmitter hisemRagFastChat(Long userId, HisemRagChatRequest request) {
+        log.info("收到 HisemRAG Fast 对话请求: userId={}, kbId={}, question={}", userId, request.getKbId(), request.getQuestion());
 
         // 创建 SseEmitter，设置超时时间 (5 分钟)
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
 
+        Long kbId = request.getKbId();
+        validateKnowledgeBaseAccess(kbId, userId);
+        String sessionId = conversationService.resolveSessionId(request.getSessionId());
+        request.setSessionId(sessionId);
+        String historyText = conversationService.buildHistoryText(kbId, userId, sessionId, request.getHistoryWindow());
+
         // 异步执行，避免阻塞 Tomcat 线程
         CompletableFuture.runAsync(() -> {
             try {
-                Long kbId = request.getKbId();
                 String question = request.getQuestion();
                 LLMClient llmClient = modelFactory.createLLMClient(request.getLlmModelId());
                 EmbeddingClient embeddingClient = modelFactory.createEmbeddingClient(request.getEmbeddingModelId());
@@ -325,10 +350,14 @@ public class RAGServiceImpl implements RAGService {
                 // 1. 意图识别
                 if (Boolean.TRUE.equals(request.getEnableIntentRecognition())) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
-                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
+                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索");
-                        llmClient.streamChatWithEmitter(question, emitter);
+                        llmClient.streamChatWithEmitter(
+                                question,
+                                emitter,
+                                buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList())
+                        );
                         return;
                     }
                     log.info("意图识别结果: 需要检索");
@@ -341,7 +370,7 @@ public class RAGServiceImpl implements RAGService {
                 String finalQuery = question;
                 if (Boolean.TRUE.equals(request.getEnableQueryRewrite())) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在重写查询语句...", "edit");
-                    String rewritten = ragQueryProcessor.rewriteQuery(question);
+                    String rewritten = ragQueryProcessor.rewriteQuery(question, historyText);
                     if (rewritten != null && !rewritten.equals(question)) {
                         finalQuery = rewritten;
                         log.info("查询重写结果: {}", finalQuery);
@@ -461,26 +490,14 @@ public class RAGServiceImpl implements RAGService {
                         .replace("{context}", context);
 
                 // 大模型回答
-                llmClient.streamChatWithEmitter(prompt, emitter);
+                llmClient.streamChatWithEmitter(
+                    prompt,
+                    emitter,
+                    buildPersistenceHandler(userId, kbId, sessionId, request, documents)
+                );
 
-            } catch (MilvusConnectionException e) {
-                log.error("向量数据库连接失败: {}", e.getMessage());
-                String errorMsg = "向量数据库服务暂时不可用，请稍后重试。(" + e.getMessage() + ")";
-                try {
-                    SseEventBuilder.sendThoughtEvent(emitter, "error", errorMsg, "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
             } catch (Exception e) {
-                log.error("HisemRAG Fast 对话失败: {}", e.getMessage(), e);
-                try {
-                    String userMsg = isRateLimitError(e)
-                            ? "AI 服务请求频率超限，请稍后再试。"
-                            : "服务异常，请稍后重试。";
-                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
+                handleStreamException(emitter, "HisemRAG Fast 对话失败", e);
             }
         });
 
@@ -494,14 +511,19 @@ public class RAGServiceImpl implements RAGService {
      * @return SSE 事件流
      */
     @Override
-    public SseEmitter hisemRagChat(HisemRagChatRequest request) {
-        log.info("收到 HisemRAG 对话请求: kbId={}, question={}", request.getKbId(), request.getQuestion());
+    public SseEmitter hisemRagChat(Long userId, HisemRagChatRequest request) {
+        log.info("收到 HisemRAG 对话请求: userId={}, kbId={}, question={}", userId, request.getKbId(), request.getQuestion());
 
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
 
+        Long kbId = request.getKbId();
+        validateKnowledgeBaseAccess(kbId, userId);
+        String sessionId = conversationService.resolveSessionId(request.getSessionId());
+        request.setSessionId(sessionId);
+        String historyText = conversationService.buildHistoryText(kbId, userId, sessionId, request.getHistoryWindow());
+
         CompletableFuture.runAsync(() -> {
             try {
-                Long kbId = request.getKbId();
                 String question = request.getQuestion();
 
                 // 0. 文件类型校验：HiSem-SADP 仅支持 Markdown 文件
@@ -538,10 +560,14 @@ public class RAGServiceImpl implements RAGService {
                 // 1. 意图识别（是否需要检索）
                 if (Boolean.TRUE.equals(request.getEnableIntentRecognition())) {
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
-                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question);
+                    boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索，直接聊天");
-                        llmClient.streamChatWithEmitter(question, emitter, tokenHandler);
+                        llmClient.streamChatWithEmitter(
+                                question,
+                                emitter,
+                                wrapHandlers(tokenHandler, buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList()))
+                        );
                         return;
                     }
                     log.info("意图识别结果: 需要检索");
@@ -645,7 +671,11 @@ public class RAGServiceImpl implements RAGService {
                             .replace("{query}", question)
                             .replace("{context}", context);
 
-                    llmClient.streamChatWithEmitter(prompt, emitter, tokenHandler);
+                        llmClient.streamChatWithEmitter(
+                            prompt,
+                            emitter,
+                            wrapHandlers(tokenHandler, buildPersistenceHandler(userId, kbId, sessionId, request, documents))
+                        );
 
                 } else {
                     // ======== SADP 多跳分支（多跳推理 / 对比分析 / 宏观总结） ========
@@ -668,31 +698,131 @@ public class RAGServiceImpl implements RAGService {
                     SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
 
                     // 流式输出最终答案
-                    llmClient.streamChatWithEmitter(finalAnswer, emitter, tokenHandler);
+                        llmClient.streamChatWithEmitter(
+                            finalAnswer,
+                            emitter,
+                            wrapHandlers(tokenHandler, buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList()))
+                        );
                 }
 
-            } catch (MilvusConnectionException e) {
-                log.error("向量数据库连接失败: {}", e.getMessage());
-                try {
-                    SseEventBuilder.sendThoughtEvent(emitter, "error",
-                            "向量数据库服务暂时不可用，请稍后重试。(" + e.getMessage() + ")", "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
             } catch (Exception e) {
-                log.error("HisemRAG 对话失败: {}", e.getMessage(), e);
-                try {
-                    String userMsg = isRateLimitError(e)
-                            ? "AI 服务请求频率超限，请稍后再试。"
-                            : "服务异常，请稍后重试。";
-                    SseEventBuilder.sendThoughtEvent(emitter, "error", userMsg, "error");
-                } catch (Exception ignored) {
-                }
-                emitter.completeWithError(e);
+                handleStreamException(emitter, "HisemRAG 对话失败", e);
             }
         });
 
         return emitter;
+    }
+
+    private StreamEventHandler wrapHandlers(StreamEventHandler... handlers) {
+        return new StreamEventHandler.NoOpHandler() {
+            @Override
+            public void onAfterChat(SseEmitter emitter) {
+                for (StreamEventHandler handler : handlers) {
+                    handler.onAfterChat(emitter);
+                }
+            }
+
+            @Override
+            public void onTokenUsage(SseEmitter emitter, int inputTokens, int outputTokens, int totalTokens, long durationMs) {
+                for (StreamEventHandler handler : handlers) {
+                    handler.onTokenUsage(emitter, inputTokens, outputTokens, totalTokens, durationMs);
+                }
+            }
+
+            @Override
+            public void onPartialResponse(SseEmitter emitter, String partialResponse) {
+                for (StreamEventHandler handler : handlers) {
+                    handler.onPartialResponse(emitter, partialResponse);
+                }
+            }
+
+            @Override
+            public void onCompleteResponse(SseEmitter emitter, String fullResponse) {
+                for (StreamEventHandler handler : handlers) {
+                    handler.onCompleteResponse(emitter, fullResponse);
+                }
+            }
+        };
+    }
+
+    private StreamEventHandler buildPersistenceHandler(
+            Long userId,
+            Long kbId,
+            String sessionId,
+            RagChatRequest request,
+            List<ReferenceDocument> documents) {
+        return new StreamEventHandler.NoOpHandler() {
+            private String fullResponse = "";
+
+            @Override
+            public void onCompleteResponse(SseEmitter emitter, String response) {
+                this.fullResponse = response == null ? "" : response;
+            }
+
+            @Override
+            public void onAfterChat(SseEmitter emitter) {
+                saveConversationRecord(userId, kbId, sessionId, request, fullResponse, documents);
+            }
+        };
+    }
+
+    private void saveConversationRecord(
+            Long userId,
+            Long kbId,
+            String sessionId,
+            RagChatRequest request,
+            String response,
+            List<ReferenceDocument> documents) {
+        try {
+            Conversation conversation = Conversation.builder()
+                    .kbId(kbId)
+                    .userId(userId)
+                    .sessionId(sessionId)
+                    .query(request.getQuestion())
+                    .response(response)
+                    .retrievalConfig(toJsonSafe(request))
+                    .llmModelId(request.getLlmModelId())
+                    .rerankModelId(request.getRerankModelId())
+                    .retrievedChunks(toRetrievedChunksJson(documents))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            conversationService.saveConversation(conversation);
+        } catch (Exception e) {
+            log.warn("保存会话记录失败: kbId={}, userId={}, sessionId={}, error={}",
+                    kbId, userId, sessionId, e.getMessage());
+        }
+    }
+
+    private String toRetrievedChunksJson(List<ReferenceDocument> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return null;
+        }
+
+        List<Map<String, Object>> chunkMeta = documents.stream()
+                .map(doc -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("documentId", doc.getDocumentId());
+                    item.put("chunkId", doc.getChunkId());
+                    item.put("title", doc.getTitle());
+                    item.put("score", doc.getScore());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        return toJsonSafe(chunkMeta);
+    }
+
+    private String toJsonSafe(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            log.debug("对象序列化失败: {}", e.getMessage());
+            return null;
+        }
     }
 
     @NotNull
@@ -700,17 +830,24 @@ public class RAGServiceImpl implements RAGService {
         return MILVUS_CHUNKS_COLLECTION_TEMPLATE.formatted(kbId);
     }
 
+    private void validateKnowledgeBaseAccess(Long kbId, Long userId) {
+        var kb = knowledgeBaseRepository.findById(kbId)
+                .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
+
+        if (!Objects.equals(kb.getUserId(), userId)) {
+            throw new UnauthorizedAccessException(userId, "KnowledgeBase", kbId);
+        }
+    }
+
     /**
-     * 判断异常是否为速率限制（429）
+     * 统一发送流式错误事件并结束连接。
      */
-    private static boolean isRateLimitError(Throwable e) {
-        if (e == null) return false;
-        String msg = e.getMessage();
-        if (msg == null) return false;
-        return msg.contains("429")
-                || msg.toLowerCase().contains("rate limit")
-                || msg.contains("速率限制")
-                || msg.contains("请求频率");
+    private void handleStreamException(SseEmitter emitter, String scene, Throwable error) {
+        Throwable root = RagStreamErrorMapper.unwrap(error);
+        String rootMessage = root == null ? "unknown" : root.getMessage();
+        log.error("{}: {}", scene, rootMessage, error);
+        SseEventBuilder.sendErrorEvent(emitter, RagStreamErrorMapper.toUserMessage(error));
+        emitter.complete();
     }
 
     /**

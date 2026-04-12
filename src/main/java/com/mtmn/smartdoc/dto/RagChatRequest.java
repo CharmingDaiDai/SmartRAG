@@ -35,4 +35,10 @@ public class RagChatRequest {
 
     @Schema(description = "Rerank 模型 ID，可为空")
     private String rerankModelId;
+
+    @Schema(description = "会话 ID，用于关联历史对话")
+    private String sessionId;
+
+    @Schema(description = "历史对话窗口（轮数），默认 8")
+    private Integer historyWindow = 8;
 }

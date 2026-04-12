@@ -53,12 +53,10 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
     requestParams: Partial<ChatInput>,
     _options: XRequestOptions<ChatInput, ChatOutput>
   ): ChatInput {
-    const { messages, ragParams } = requestParams;
-    const history = messages?.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+    const { ragParams } = requestParams;
 
     return {
-        ...ragParams,
-        history
+        ...ragParams
     } as any;
   }
 
@@ -89,27 +87,56 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
       status: 'loading'
     };
 
+      const finalizeProcessingThoughts = (targetStatus: 'success' | 'error') =>
+        currentMessage.thoughts?.map(t => {
+          if (t.status === 'processing') {
+            const startTime = (t as any).startTime || Date.now();
+            return {
+              ...t,
+              status: targetStatus,
+              duration: Date.now() - startTime
+            };
+          }
+          return t;
+        });
+
+      const toErrorMessage = (errorText: string): ChatMessage => {
+        const safeErrorText = errorText || '服务异常，请稍后重试。';
+        const baseContent = currentMessage.content || '';
+        const hasContent = baseContent.trim().length > 0;
+        const tip = `[系统提示] ${safeErrorText}`;
+
+        const nextContent = hasContent
+          ? (baseContent.includes(tip) ? baseContent : `${baseContent}\n\n${tip}`)
+          : safeErrorText;
+
+        return {
+          ...currentMessage,
+          thoughts: finalizeProcessingThoughts('error'),
+          content: nextContent,
+          status: 'error'
+        };
+      };
+
     // Handle final success state
     if (status === 'success') {
         return {
             ...currentMessage,
             status: 'success',
-            // Ensure the last thought is marked as success if it exists
-            thoughts: currentMessage.thoughts?.map(t => {
-                if (t.status === 'processing') {
-                    const startTime = (t as any).startTime || Date.now();
-                    return { 
-                        ...t, 
-                        status: 'success',
-                        duration: Date.now() - startTime
-                    };
-                }
-                return t;
-            })
+          thoughts: finalizeProcessingThoughts('success')
         };
     }
 
-    if (!chunk) return currentMessage;
+      if (!chunk) {
+        if (status === 'error' || status === 'abort') {
+          const fallback = status === 'abort'
+            ? '请求已中断，请重试。'
+            : '服务异常，请稍后重试。';
+          message.error(fallback);
+          return toErrorMessage(fallback);
+        }
+        return currentMessage;
+      }
 
     // Handle SSE chunk from XRequest
     let { event, data } = chunk;
@@ -129,6 +156,17 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
     
     // Ensure data is a string for concatenation if it's not an object
     const textData = typeof data === 'string' ? data : (data?.delta || JSON.stringify(data));
+
+    if (status === 'error' || status === 'abort') {
+      const fallback = status === 'abort'
+        ? '请求已中断，请重试。'
+        : '服务异常，请稍后重试。';
+      const errorText = (data && typeof data === 'object' && data.error)
+        ? data.error
+        : (typeof data === 'string' && data.trim() ? data : fallback);
+      message.error(errorText);
+      return toErrorMessage(errorText);
+    }
 
     switch (event) {
       case 'thought':
@@ -220,14 +258,19 @@ export class SmartRAGChatProvider extends AbstractChatProvider<ChatMessage, Chat
             ...currentMessage,
             status: 'success',
             // Finalize any remaining processing thoughts
-            thoughts: currentMessage.thoughts?.map(t => {
-                if (t.status === 'processing') {
-                    const startTime = (t as any).startTime || Date.now();
-                    return { ...t, status: 'success' as const, duration: Date.now() - startTime };
-                }
-                return t;
-            })
+          thoughts: finalizeProcessingThoughts('success')
         };
+
+        case 'error': {
+          const streamErrorText = (data && typeof data === 'object' && data.error)
+              ? data.error
+              : (typeof data === 'string' && data.trim() ? data : '服务异常，请稍后重试。');
+          message.error(streamErrorText);
+          // Throwing here lets x-sdk enter onError and reset isRequesting immediately.
+          const streamError = new Error(streamErrorText);
+          streamError.name = 'StreamEventError';
+          throw streamError;
+        }
         
       default:
         return currentMessage;
