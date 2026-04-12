@@ -5,11 +5,11 @@
 /* ==================== CSS Variables ==================== */
 :root,
 [data-theme='light'] {
-  --color-bg-base: #f4f6fb;
+  --color-bg-base: #eef2f8;
   --color-bg-elevated: #ffffff;
-  --color-bg-muted: #eef3fa;
-  --color-border: #dce3ee;
-  --color-border-subtle: #e9eef6;
+  --color-bg-muted: #e6edf7;
+  --color-border: #ced9e8;
+  --color-border-subtle: #dbe5f3;
   --color-text: #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted: #94a3b8;
@@ -17,6 +17,7 @@
   --color-primary-hover: #1d4ed8;
   --color-primary-soft: rgba(37, 99, 235, 0.1);
   --color-primary-border: rgba(37, 99, 235, 0.24);
+  --color-bg-mask: rgba(15, 23, 42, 0.36);
   --scrollbar-thumb: #c7d2e5;
   --scrollbar-track: transparent;
   --md-table-border: #dce3ee;
@@ -29,6 +30,34 @@
   --ref-item-border: #dce3ee;
   --ref-item-hover-bg: #f5f8fd;
   --ref-item-hover-border: rgba(37, 99, 235, 0.24);
+
+  --glass-bg: rgba(255, 255, 255, 0.74);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(160, 180, 210, 0.68);
+  --glass-highlight: rgba(255, 255, 255, 0.82);
+  --glass-tint: rgba(37, 99, 235, 0.18);
+  --glass-shadow: none;
+  --glass-shadow-hover: none;
+  --glass-blur: 14px;
+  --glass-blur-strong: 22px;
+  --glass-noise-opacity: 0.035;
+  --glass-prism-a: rgba(255, 255, 255, 0.5);
+  --glass-prism-b: rgba(var(--color-primary-rgb), 0.18);
+  --glass-prism-c: rgba(56, 189, 248, 0.14);
+  --glass-film-opacity: 0.68;
+  --glass-caustic-opacity: 0.24;
+  --glass-edge-strong: rgba(255, 255, 255, 0.96);
+  --glass-edge-soft: rgba(177, 191, 214, 0.64);
+  --glass-border-width: 1.6px;
+  --glass-edge-width: 1.4px;
+  --glass-ambient-line: rgba(148, 163, 184, 0.22);
+
+  --ui-hover-lift-sm: -1px;
+  --ui-hover-lift-md: -2px;
+  --ui-hover-lift-lg: -3px;
+  --ui-transition-fast: 0.16s;
+  --ui-transition-mid: 0.22s;
+  --ui-transition-slow: 0.3s;
 }
 
 [data-theme='dark'] {
@@ -44,6 +73,7 @@
   --color-primary-hover: #3b82f6;
   --color-primary-soft: rgba(96, 165, 250, 0.16);
   --color-primary-border: rgba(96, 165, 250, 0.28);
+  --color-bg-mask: rgba(2, 6, 23, 0.72);
   --scrollbar-thumb: #334155;
   --scrollbar-track: rgba(148, 163, 184, 0.08);
   --md-table-border: rgba(148, 163, 184, 0.22);
@@ -56,6 +86,77 @@
   --ref-item-border: rgba(148, 163, 184, 0.24);
   --ref-item-hover-bg: #162033;
   --ref-item-hover-border: rgba(96, 165, 250, 0.3);
+
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-bg-strong: rgba(17, 26, 43, 0.8);
+  --glass-border: rgba(148, 163, 184, 0.4);
+  --glass-highlight: rgba(191, 219, 254, 0.22);
+  --glass-tint: rgba(96, 165, 250, 0.2);
+  --glass-shadow: none;
+  --glass-shadow-hover: none;
+  --glass-blur: 16px;
+  --glass-blur-strong: 26px;
+  --glass-noise-opacity: 0.05;
+  --glass-prism-a: rgba(191, 219, 254, 0.24);
+  --glass-prism-b: rgba(var(--color-primary-rgb), 0.3);
+  --glass-prism-c: rgba(56, 189, 248, 0.22);
+  --glass-film-opacity: 0.66;
+  --glass-caustic-opacity: 0.2;
+  --glass-edge-strong: rgba(226, 232, 240, 0.58);
+  --glass-edge-soft: rgba(148, 163, 184, 0.42);
+  --glass-border-width: 1.3px;
+  --glass-edge-width: 1.2px;
+  --glass-ambient-line: rgba(148, 163, 184, 0.18);
+
+  --ui-hover-lift-sm: -1px;
+  --ui-hover-lift-md: -2px;
+  --ui-hover-lift-lg: -3px;
+  --ui-transition-fast: 0.16s;
+  --ui-transition-mid: 0.22s;
+  --ui-transition-slow: 0.3s;
+}
+
+html[data-performance='lite'] {
+  --glass-blur: 8px;
+  --glass-blur-strong: 12px;
+  --glass-noise-opacity: 0;
+  --glass-film-opacity: 0.3;
+  --glass-caustic-opacity: 0.08;
+  --glass-border-width: 1.3px;
+  --glass-edge-width: 1.1px;
+  --ui-hover-lift-sm: 0px;
+  --ui-hover-lift-md: 0px;
+  --ui-hover-lift-lg: 0px;
+  --ui-transition-fast: 0.12s;
+  --ui-transition-mid: 0.16s;
+  --ui-transition-slow: 0.2s;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root,
+  [data-theme='light'] {
+    --glass-bg: rgba(255, 255, 255, 0.92);
+    --glass-bg-strong: rgba(255, 255, 255, 0.96);
+    --glass-border: rgba(176, 190, 210, 0.92);
+    --glass-highlight: rgba(255, 255, 255, 0);
+    --glass-noise-opacity: 0;
+    --glass-film-opacity: 0.2;
+    --glass-caustic-opacity: 0;
+    --glass-border-width: 1.4px;
+    --glass-edge-width: 1.2px;
+  }
+
+  [data-theme='dark'] {
+    --glass-bg: rgba(15, 23, 42, 0.92);
+    --glass-bg-strong: rgba(17, 26, 43, 0.96);
+    --glass-border: rgba(71, 85, 105, 0.86);
+    --glass-highlight: rgba(255, 255, 255, 0);
+    --glass-noise-opacity: 0;
+    --glass-film-opacity: 0.24;
+    --glass-caustic-opacity: 0;
+    --glass-border-width: 1.2px;
+    --glass-edge-width: 1.1px;
+  }
 }
 
 /* ==================== Global Base ==================== */

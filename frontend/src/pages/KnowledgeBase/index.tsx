@@ -244,6 +244,7 @@ export default function KnowledgeBasePage() {
         <Spin spinning={loading}>
             {data.length === 0 && !loading ? (
                 <Empty
+                    className="ui-empty-panel"
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
                         <div style={{ textAlign: 'center' }}>
@@ -308,7 +309,7 @@ export default function KnowledgeBasePage() {
                                     <HoverCard style={{ height: '100%' }}>
                                         <Card
                                             hoverable
-                                            className="kb-card"
+                                            className="kb-card kb-grid-card"
                                             onClick={() => deletingKbId !== item.id && handleNavigateDetail(item.id)}
                                             style={{
                                                 height: '100%',

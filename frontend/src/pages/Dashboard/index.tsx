@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
                         <Col xs={24} sm={12} xl={8} key={card.key}>
                             <StaggerItem>
                                 <HoverCard>
-                                    <Card hoverable style={{ borderRadius: 12, overflow: 'hidden' }}>
+                                    <Card className="dashboard-stat-card" hoverable style={{ borderRadius: 12, overflow: 'hidden' }}>
                                         {/* 顶部彩色强调条 */}
                                         <div style={{
                                             position: 'absolute',
@@ -229,6 +229,7 @@ const Dashboard: React.FC = () => {
                         <StaggerItem>
                             <HoverCard>
                                 <Card
+                                    className="dashboard-chart-card"
                                     title="近 7 天对话趋势"
                                     hoverable
                                     styles={{
@@ -246,7 +247,9 @@ const Dashboard: React.FC = () => {
                                             // @ts-ignore
                                             <Tiny.Area {...areaConfig} />
                                         ) : (
-                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无趋势数据" />
+                                            <div className="ui-empty-panel" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无趋势数据" />
+                                            </div>
                                         )}
                                     </div>
                                 </Card>
@@ -257,6 +260,7 @@ const Dashboard: React.FC = () => {
                         <StaggerItem>
                             <HoverCard>
                                 <Card
+                                    className="dashboard-chart-card"
                                     title="热门关键词"
                                     hoverable
                                     styles={{
@@ -274,7 +278,9 @@ const Dashboard: React.FC = () => {
                                             // @ts-ignore
                                             <WordCloud {...wordCloudConfig} />
                                         ) : (
-                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键词数据" />
+                                            <div className="ui-empty-panel" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键词数据" />
+                                            </div>
                                         )}
                                     </div>
                                 </Card>

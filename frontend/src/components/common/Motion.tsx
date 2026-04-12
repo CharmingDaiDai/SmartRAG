@@ -4,6 +4,8 @@ import { motion, HTMLMotionProps, Variants } from 'framer-motion';
 // 统一的贝塞尔曲线（ease-out-quart，比弹簧更克制）
 const EASE_OUT = [0.25, 0.46, 0.45, 0.94] as const;
 const EASE_IN_OUT = [0.4, 0, 0.2, 1] as const;
+const HOVER_LIFT_Y = -2;
+const HOVER_LIFT_Y_SOFT = -1;
 
 // ==================== 基础动画 ====================
 
@@ -129,8 +131,8 @@ export const StaggerItem: React.FC<HTMLMotionProps<"div">> = ({ children, ...pro
 // 悬停放大效果（轻量版）
 export const HoverScale: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={{ scale: 1.02, y: HOVER_LIFT_Y_SOFT }}
+        whileTap={{ scale: 0.985, y: 0 }}
         transition={{ duration: 0.18, ease: EASE_IN_OUT }}
         {...props}
     >
@@ -141,7 +143,7 @@ export const HoverScale: React.FC<HTMLMotionProps<"div">> = ({ children, ...prop
 // 悬停上浮效果（用上移替代 scale，更优雅）
 export const HoverLift: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
-        whileHover={{ y: -3, boxShadow: "0 8px 20px rgba(28,25,23,0.12)" }}
+        whileHover={{ y: HOVER_LIFT_Y }}
         whileTap={{ y: 0 }}
         transition={{ duration: 0.2, ease: EASE_OUT }}
         {...props}
@@ -154,8 +156,7 @@ export const HoverLift: React.FC<HTMLMotionProps<"div">> = ({ children, ...props
 export const HoverCard: React.FC<HTMLMotionProps<"div">> = ({ children, ...props }) => (
     <motion.div
         whileHover={{
-            y: -3,
-            boxShadow: "0 10px 28px rgba(28,25,23,0.12), 0 4px 10px rgba(28,25,23,0.06)",
+            y: HOVER_LIFT_Y,
             transition: { duration: 0.2, ease: EASE_OUT }
         }}
         whileTap={{ y: 0, transition: { duration: 0.1 } }}

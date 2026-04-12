@@ -27,8 +27,11 @@ export default function ThemeBackground() {
       className={`app-ambient-bg${prefersReducedMotion ? ' app-ambient-bg-reduced' : ''}`}
       aria-hidden="true"
     >
+      <div className="app-ambient-veil" />
+      <div className="app-ambient-caustic" />
       <div className="app-ambient-orb app-ambient-orb-one" />
       <div className="app-ambient-orb app-ambient-orb-two" />
+      <div className="app-ambient-orb app-ambient-orb-three" />
     </div>
   );
 }

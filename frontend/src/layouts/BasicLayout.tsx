@@ -219,10 +219,11 @@ export default function BasicLayout() {
           width={232}
           collapsedWidth={72}
           style={{
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            borderRight: '1px solid var(--glass-border)',
             overflow: 'hidden',
-            background: token.colorBgContainer,
-            boxShadow: `0 8px 28px rgba(15, 23, 42, ${location.pathname === '/chat' ? '0.08' : '0.05'})`,
+            background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
+            backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+            WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
           }}
         >
           <SidebarContent
@@ -243,7 +244,14 @@ export default function BasicLayout() {
           width={240}
           closeIcon={null}
           styles={{
-            body: { padding: 0, display: 'flex', flexDirection: 'column', background: token.colorBgContainer },
+            body: {
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
+              backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+              WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+            },
             header: { display: 'none' },
           }}
           style={{ zIndex: 1001 }}
@@ -261,11 +269,13 @@ export default function BasicLayout() {
         {/* ── 顶部栏 ── */}
         <Header style={{
           padding: isMobile ? '0 12px' : '0 20px',
-          background: token.colorBgContainer,
+          background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
+          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          borderBottom: '1px solid var(--glass-border)',
           height: headerHeight,
           flexShrink: 0,
         }}>
@@ -375,10 +385,11 @@ export default function BasicLayout() {
           style={{
             margin: isFullPage ? 0 : (isMobile ? '12px 8px' : `${token.marginLG}px ${token.margin}px`),
             padding: isFullPage ? 0 : (isMobile ? 12 : token.paddingLG),
-            background: isFullPage ? token.colorBgLayout : token.colorBgContainer,
+            background: isFullPage ? token.colorBgLayout : 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
+            backdropFilter: isFullPage ? 'none' : 'blur(var(--glass-blur-strong)) saturate(155%)',
+            WebkitBackdropFilter: isFullPage ? 'none' : 'blur(var(--glass-blur-strong)) saturate(155%)',
             borderRadius: isFullPage ? 0 : (isMobile ? 10 : token.borderRadiusLG),
-            border: isFullPage ? 'none' : `1px solid ${token.colorBorderSecondary}`,
-            boxShadow: isFullPage ? 'none' : `0 10px 28px rgba(15, 23, 42, ${isMobile ? '0.06' : '0.05'})`,
+            border: isFullPage ? 'none' : '1px solid var(--glass-border)',
             overflow: isFullPage ? 'hidden' : 'auto',
             height: isFullPage ? `calc(100dvh - ${headerHeight}px)` : undefined,
             flex: isFullPage ? 'none' : 1,

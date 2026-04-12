@@ -38,8 +38,23 @@ function hexToRgb(hex: string): string {
   return `${r},${g},${b}`;
 }
 
+type NavigatorWithDeviceMemory = Navigator & {
+  deviceMemory?: number;
+};
+
+function detectLitePerformance(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const nav = navigator as NavigatorWithDeviceMemory;
+  const memory = typeof nav.deviceMemory === 'number' ? nav.deviceMemory : 8;
+  const cores = navigator.hardwareConcurrency || 8;
+
+  return memory <= 4 || cores <= 4;
+}
+
 function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: FontSizeDef, us: UIStyleDef) {
-  const shadowMul = Math.max(0.85, us.shadowScale);
   const base = {
     colorPrimary: ct.primary,
     colorSuccess: '#16a34a',
@@ -120,9 +135,9 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     controlHeightSM: fs.controlHeightSM,
     controlHeightLG: fs.controlHeightLG,
 
-    boxShadow: `0 ${6 * shadowMul}px ${18 * shadowMul}px rgba(15,23,42,${(0.08 * shadowMul).toFixed(2)}), 0 ${2 * shadowMul}px ${6 * shadowMul}px rgba(15,23,42,${(0.05 * shadowMul).toFixed(2)})`,
-    boxShadowSecondary: `0 ${2 * shadowMul}px ${6 * shadowMul}px rgba(15,23,42,${(0.08 * shadowMul).toFixed(2)})`,
-    boxShadowTertiary: `0 ${10 * shadowMul}px ${30 * shadowMul}px rgba(15,23,42,${(0.12 * shadowMul).toFixed(2)})`,
+    boxShadow: 'none',
+    boxShadowSecondary: 'none',
+    boxShadowTertiary: 'none',
 
     motionDurationFast: us.motionSpeed === 'fast' ? '0.1s' : '0.15s',
     motionDurationMid: us.motionSpeed === 'fast' ? '0.15s' : '0.25s',
@@ -163,9 +178,9 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
 
       colorSplit: 'rgba(148, 163, 184, 0.2)',
 
-      boxShadow: `0 ${8 * shadowMul}px ${24 * shadowMul}px rgba(2,6,23,${(0.45 * shadowMul).toFixed(2)})`,
-      boxShadowSecondary: `0 ${4 * shadowMul}px ${12 * shadowMul}px rgba(2,6,23,${(0.32 * shadowMul).toFixed(2)})`,
-      boxShadowTertiary: `0 ${12 * shadowMul}px ${36 * shadowMul}px rgba(2,6,23,${(0.55 * shadowMul).toFixed(2)})`,
+      boxShadow: 'none',
+      boxShadowSecondary: 'none',
+      boxShadowTertiary: 'none',
     };
   }
 
@@ -298,13 +313,48 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const primaryHover = isDark ? ct.primaryLightHover : ct.primaryHover;
   const primarySoft = isDark ? ct.primaryLightSoft : ct.primarySoft;
   const primaryBorder = isDark ? ct.primaryLightBorder : ct.primaryBorder;
+  const primaryRgb = hexToRgb(primary);
+  const primaryHoverRgb = hexToRgb(primaryHover);
+
+  const glassBg = isDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.74)';
+  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.8)' : 'rgba(255, 255, 255, 0.92)';
+  const glassBorder = isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(160, 180, 210, 0.68)';
+  const glassHighlight = isDark ? 'rgba(191, 219, 254, 0.22)' : 'rgba(255, 255, 255, 0.82)';
+  const glassTint = isDark ? `rgba(${primaryRgb}, 0.22)` : `rgba(${primaryRgb}, 0.18)`;
+  const glassFilmOpacity = isDark ? '0.66' : '0.68';
+  const glassCausticOpacity = isDark ? '0.2' : '0.24';
+  const glassEdgeStrong = isDark ? 'rgba(226, 232, 240, 0.58)' : 'rgba(255, 255, 255, 0.96)';
+  const glassEdgeSoft = isDark ? 'rgba(148, 163, 184, 0.42)' : 'rgba(177, 191, 214, 0.64)';
+  const glassBorderWidth = isDark ? '1.3px' : '1.6px';
+  const glassEdgeWidth = isDark ? '1.2px' : '1.4px';
+  const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.22)';
+  const glassShadow = 'none';
+  const glassShadowHover = 'none';
 
   root.style.setProperty('--color-primary', primary);
   root.style.setProperty('--color-primary-hover', primaryHover);
   root.style.setProperty('--color-primary-soft', primarySoft);
   root.style.setProperty('--color-primary-border', primaryBorder);
-  root.style.setProperty('--color-primary-rgb', hexToRgb(primary));
-  root.style.setProperty('--color-primary-hover-rgb', hexToRgb(primaryHover));
+  root.style.setProperty('--color-primary-rgb', primaryRgb);
+  root.style.setProperty('--color-primary-hover-rgb', primaryHoverRgb);
+
+  root.style.setProperty('--glass-bg', glassBg);
+  root.style.setProperty('--glass-bg-strong', glassBgStrong);
+  root.style.setProperty('--glass-border', glassBorder);
+  root.style.setProperty('--glass-highlight', glassHighlight);
+  root.style.setProperty('--glass-tint', glassTint);
+  root.style.setProperty('--glass-shadow', glassShadow);
+  root.style.setProperty('--glass-shadow-hover', glassShadowHover);
+  root.style.setProperty('--glass-blur', isDark ? '16px' : '14px');
+  root.style.setProperty('--glass-blur-strong', isDark ? '26px' : '22px');
+  root.style.setProperty('--glass-noise-opacity', isDark ? '0.05' : '0.035');
+  root.style.setProperty('--glass-film-opacity', glassFilmOpacity);
+  root.style.setProperty('--glass-caustic-opacity', glassCausticOpacity);
+  root.style.setProperty('--glass-edge-strong', glassEdgeStrong);
+  root.style.setProperty('--glass-edge-soft', glassEdgeSoft);
+  root.style.setProperty('--glass-border-width', glassBorderWidth);
+  root.style.setProperty('--glass-edge-width', glassEdgeWidth);
+  root.style.setProperty('--glass-ambient-line', glassAmbientLine);
 
   // UI style CSS variables
   root.style.setProperty('--ui-border-radius', `${us.borderRadius}px`);
@@ -331,6 +381,30 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const applyRuntimeFlags = () => {
+      root.setAttribute('data-motion', mediaQuery.matches ? 'reduced' : 'normal');
+      root.setAttribute('data-performance', detectLitePerformance() ? 'lite' : 'full');
+    };
+
+    applyRuntimeFlags();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', applyRuntimeFlags);
+      return () => mediaQuery.removeEventListener('change', applyRuntimeFlags);
+    }
+
+    mediaQuery.addListener(applyRuntimeFlags);
+    return () => mediaQuery.removeListener(applyRuntimeFlags);
+  }, []);
 
   const isDark = themeMode === 'dark';
   const ct = COLOR_THEMES[colorTheme];

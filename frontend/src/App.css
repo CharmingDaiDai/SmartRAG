@@ -11,28 +11,77 @@
   pointer-events: none;
   overflow: hidden;
   background:
-    radial-gradient(1200px 520px at -12% -18%, rgba(var(--color-primary-rgb), 0.12), transparent 62%),
-    radial-gradient(760px 360px at 110% 8%, rgba(var(--color-primary-rgb), 0.08), transparent 64%),
-    linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-base) 100%);
+    radial-gradient(1240px 560px at -14% -22%, rgba(var(--color-primary-rgb), 0.2), transparent 62%),
+    radial-gradient(860px 420px at 110% 6%, rgba(56, 189, 248, 0.14), transparent 66%),
+    radial-gradient(820px 460px at 54% 122%, rgba(var(--color-primary-rgb), 0.1), transparent 72%),
+    conic-gradient(from 210deg at 46% 36%, rgba(255, 255, 255, 0.08), transparent 48%, rgba(148, 163, 184, 0.08) 72%, transparent 100%),
+    linear-gradient(180deg, var(--color-bg-base) 0%, color-mix(in srgb, var(--color-bg-base) 86%, rgba(var(--color-primary-rgb), 0.12)) 100%);
 }
 
 .app-ambient-bg::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.4px, transparent 1.4px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.4px, transparent 1.4px);
   background-size: 64px 64px;
   mask-image: radial-gradient(circle at 50% -20%, black 20%, transparent 80%);
-  opacity: 0.2;
+  opacity: 0.28;
+}
+
+.app-ambient-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0 1.5px, transparent 1.5px 16px),
+    repeating-linear-gradient(35deg, rgba(148, 163, 184, 0.06) 0 1.5px, transparent 1.5px 20px),
+    conic-gradient(from 180deg at 40% 35%, transparent 0 24%, rgba(255, 255, 255, 0.12) 34%, transparent 44%, rgba(var(--color-primary-rgb), 0.12) 64%, transparent 80%);
+  mix-blend-mode: soft-light;
+  opacity: calc(var(--glass-noise-opacity, 0.03) + 0.01);
+  transform-origin: 48% 42%;
+  animation: ambient-prism-drift 30s linear infinite;
+}
+
+.app-ambient-veil,
+.app-ambient-caustic {
+  position: absolute;
+  pointer-events: none;
+}
+
+.app-ambient-veil {
+  inset: -12%;
+  background:
+    conic-gradient(from 170deg at 22% 12%, var(--glass-prism-a) 0%, transparent 42%, var(--glass-prism-b) 62%, transparent 84%),
+    conic-gradient(from 320deg at 80% 68%, transparent 0%, var(--glass-prism-c) 36%, transparent 72%);
+  mix-blend-mode: screen;
+  opacity: var(--glass-film-opacity, 0.56);
+  filter: blur(0.8px);
+  transform-origin: 52% 46%;
+  animation: ambient-prism-drift 36s linear infinite reverse;
+}
+
+.app-ambient-caustic {
+  inset: -4%;
+  background:
+    radial-gradient(42% 28% at 18% 24%, rgba(var(--color-primary-rgb), 0.16), transparent 72%),
+    radial-gradient(36% 24% at 84% 16%, rgba(56, 189, 248, 0.14), transparent 70%),
+    linear-gradient(118deg, transparent 0%, rgba(255, 255, 255, 0.12) 32%, transparent 64%);
+  mix-blend-mode: soft-light;
+  opacity: var(--glass-caustic-opacity, 0.2);
+  filter: blur(1.2px);
+  animation: caustic-shift 18s ease-in-out infinite;
 }
 
 .app-ambient-orb {
   position: absolute;
   border-radius: 999px;
-  filter: blur(40px);
-  opacity: 0.55;
+  filter: blur(52px);
+  opacity: 0.62;
   transform: translate3d(0, 0, 0);
+  will-change: transform;
+  mix-blend-mode: screen;
   animation: ambient-float 18s ease-in-out infinite;
 }
 
@@ -53,8 +102,23 @@
   background: radial-gradient(circle at 40% 40%, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.02) 70%);
 }
 
+.app-ambient-orb-three {
+  width: 420px;
+  height: 420px;
+  left: 34%;
+  top: -180px;
+  animation-delay: -4s;
+  background: radial-gradient(circle at 50% 50%, rgba(var(--color-primary-rgb), 0.12), rgba(var(--color-primary-rgb), 0.01) 74%);
+}
+
 .app-ambient-bg-reduced .app-ambient-orb {
   animation: none;
+}
+
+.app-ambient-bg-reduced .app-ambient-veil,
+.app-ambient-bg-reduced .app-ambient-caustic {
+  animation: none;
+  opacity: 0.18;
 }
 
 .app-ambient-bg + * {
@@ -64,15 +128,17 @@
 
 [data-theme='dark'] .app-ambient-bg {
   background:
-    radial-gradient(980px 460px at -18% -22%, rgba(var(--color-primary-rgb), 0.18), transparent 68%),
-    radial-gradient(700px 340px at 110% 0%, rgba(56, 189, 248, 0.12), transparent 66%),
+    radial-gradient(1040px 480px at -20% -24%, rgba(var(--color-primary-rgb), 0.28), transparent 68%),
+    radial-gradient(760px 360px at 110% 2%, rgba(56, 189, 248, 0.2), transparent 66%),
+    radial-gradient(760px 400px at 48% 118%, rgba(var(--color-primary-rgb), 0.16), transparent 74%),
+    conic-gradient(from 220deg at 50% 34%, rgba(191, 219, 254, 0.1), transparent 46%, rgba(56, 189, 248, 0.1) 74%, transparent 100%),
     linear-gradient(180deg, #090f1b 0%, #090f1b 100%);
 }
 
 [data-theme='dark'] .app-ambient-bg::before {
-  background-image: linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  opacity: 0.28;
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.3px, transparent 1.3px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.3px, transparent 1.3px);
+  opacity: 0.24;
 }
 
 @keyframes ambient-float {
@@ -85,6 +151,30 @@
   }
 }
 
+@keyframes ambient-prism-drift {
+  0% {
+    transform: translate3d(-2%, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(2%, -1%, 0) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-2%, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes caustic-shift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: var(--glass-caustic-opacity, 0.2);
+  }
+  50% {
+    transform: translate3d(-1%, 1.4%, 0) scale(1.06);
+    opacity: calc(var(--glass-caustic-opacity, 0.2) + 0.06);
+  }
+}
+
 /* ==================== Surface & Card ==================== */
 .ant-layout,
 .ant-layout-content,
@@ -93,45 +183,203 @@
   background: transparent;
 }
 
+:where(
+  .ant-card,
+  .kb-card,
+  .suggestion-card,
+  .chat-input-bar,
+  .auth-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content,
+  .ant-btn,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number
+) {
+  box-shadow: none !important;
+}
+
+:where(
+  .ant-card,
+  .kb-card,
+  .suggestion-card,
+  .chat-input-bar,
+  .auth-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content,
+  .ant-btn,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number
+):is(:hover, :focus, :focus-visible, :focus-within, :active) {
+  box-shadow: none !important;
+}
+
+:where(
+  .ant-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content
+) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    var(--glass-bg-strong) 0%,
+    color-mix(in srgb, var(--glass-bg) 74%, rgba(var(--color-primary-rgb), 0.16)) 100%
+  ) !important;
+  border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
+  outline: 1px solid color-mix(in srgb, var(--glass-edge-soft) 42%, transparent);
+  outline-offset: -1px;
+  backdrop-filter: blur(var(--glass-blur)) saturate(165%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(165%);
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              background-color var(--ui-transition-mid, 0.22s) ease,
+              transform var(--ui-transition-mid, 0.22s) ease;
+}
+
+:where(
+  .ant-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content
+)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(160deg, var(--glass-highlight) 0%, transparent 48%),
+    radial-gradient(132% 92% at 88% 118%, var(--glass-tint), transparent 66%),
+    conic-gradient(from 225deg at 18% 16%, var(--glass-prism-a), var(--glass-prism-b), var(--glass-prism-c), transparent 70%);
+  background-size: 145% 145%, 150% 150%, 175% 175%;
+  background-position: 2% 0%, 98% 102%, 32% 14%;
+  mix-blend-mode: screen;
+  opacity: var(--glass-film-opacity, 0.56);
+  transform: translateY(0);
+  transition: opacity 0.24s ease, transform 0.24s ease, background-position 0.36s ease;
+}
+
+:where(
+  .ant-card,
+  .kb-card,
+  .suggestion-card,
+  .chat-input-bar,
+  .auth-card
+):is(:hover, :focus-within)::before {
+  opacity: calc(var(--glass-film-opacity, 0.56) + 0.16);
+  transform: translateY(-2px) scale(1.01);
+  background-position: 0% 2%, 100% 98%, 40% 20%;
+}
+
+:where(
+  .ant-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content
+)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 80%, transparent);
+  border-top-color: var(--glass-edge-strong);
+  border-left-color: color-mix(in srgb, var(--glass-edge-strong) 78%, transparent);
+  border-right-color: color-mix(in srgb, var(--glass-edge-soft) 64%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--glass-edge-soft) 76%, transparent);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 34%, transparent 66%, rgba(var(--color-primary-rgb), 0.1));
+  opacity: 0.92;
+}
+
+:where(
+  .ant-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content
+) > * {
+  position: relative;
+  z-index: 1;
+}
+
 .ant-card {
-  border: 1px solid var(--color-border);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  isolation: isolate;
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              transform var(--ui-transition-mid, 0.22s) ease,
+              background-color var(--ui-transition-mid, 0.22s) ease;
 }
 
 .ant-card:hover {
-  border-color: var(--color-primary-border);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  border-color: color-mix(in srgb, var(--color-primary-border) 78%, var(--glass-border));
+  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.16)) !important;
+  transform: translateY(var(--ui-hover-lift-md, -2px));
 }
 
-[data-theme='dark'] .ant-card:hover {
-  box-shadow: 0 16px 30px rgba(2, 6, 23, 0.42);
+.ant-card:active {
+  transform: translateY(0);
+}
+
+.ant-card:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary-border) 82%, var(--glass-border));
 }
 
 .kb-card {
   border-radius: var(--ui-card-radius, 14px) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
-  transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
+  border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              transform var(--ui-transition-mid, 0.22s) ease !important;
   overflow: hidden;
 }
 
 .kb-card .ant-card-head {
-  border-bottom: 1px solid var(--color-border-subtle) !important;
+  border-bottom: var(--glass-edge-width, 1px) solid var(--color-border-subtle) !important;
   padding-bottom: 0;
 }
 
 .kb-card:hover {
-  border-color: var(--color-primary-border) !important;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
-  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--color-primary-border) 78%, var(--glass-border)) !important;
+  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.16)) !important;
+  transform: translateY(var(--ui-hover-lift-md, -2px));
 }
 
-[data-theme='dark'] .kb-card {
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.28);
-}
-
-[data-theme='dark'] .kb-card:hover {
-  box-shadow: 0 18px 34px rgba(2, 6, 23, 0.44);
+.kb-card:active {
+  transform: translateY(0);
 }
 
 .kb-card .kb-card-cta {
@@ -150,35 +398,114 @@
 .ant-btn:not(:disabled) {
   letter-spacing: var(--ui-btn-letter-spacing, 0.01em);
   text-transform: var(--ui-btn-text-transform, none);
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--ui-transition-mid, 0.22s) cubic-bezier(0.4, 0, 0.2, 1),
+              border-color var(--ui-transition-fast, 0.16s) ease,
+              background-color var(--ui-transition-fast, 0.16s) ease,
+              color var(--ui-transition-fast, 0.16s) ease,
+              filter var(--ui-transition-fast, 0.16s) ease;
+}
+
+.ant-btn-default:not(:disabled),
+.ant-btn-dashed:not(:disabled) {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.2)),
+    linear-gradient(118deg, rgba(var(--color-primary-rgb), 0.1), transparent 56%);
+  border: var(--glass-border-width, 1px) solid var(--glass-border);
+  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+}
+
+[data-theme='dark'] .ant-btn-default:not(:disabled),
+[data-theme='dark'] .ant-btn-dashed:not(:disabled) {
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.45)),
+    linear-gradient(118deg, rgba(var(--color-primary-rgb), 0.16), transparent 56%);
 }
 
 .ant-btn-primary:not(:disabled) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   border-color: transparent;
-  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.22);
+}
+
+.ant-btn-primary:not(:disabled)::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: linear-gradient(104deg, transparent 18%, rgba(255, 255, 255, 0.44) 42%, rgba(255, 255, 255, 0.08) 56%, transparent 80%);
+  transform: translateX(-120%);
+  opacity: 0.72;
+  transition: transform 0.72s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  z-index: 0;
+}
+
+.ant-btn-primary:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: -140% -18%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 200deg,
+    rgba(255, 255, 255, 0.24),
+    var(--glass-prism-b),
+    rgba(255, 255, 255, 0.08),
+    var(--glass-prism-c),
+    rgba(255, 255, 255, 0.24)
+  );
+  animation: liquid-flow 10.5s linear infinite;
+  mix-blend-mode: overlay;
+  opacity: 0.64;
+  z-index: 0;
+}
+
+.ant-btn-primary:not(:disabled) > span,
+.ant-btn-primary:not(:disabled) > .anticon {
+  position: relative;
+  z-index: 1;
 }
 
 .ant-btn-primary:not(:disabled):hover {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
   border-color: transparent !important;
-  box-shadow: 0 10px 22px rgba(var(--color-primary-rgb), 0.28) !important;
-  transform: translateY(-1px);
+  filter: saturate(1.08) brightness(1.04);
+  outline: 1px solid rgba(255, 255, 255, 0.34);
+  outline-offset: -1px;
+  transform: translateY(var(--ui-hover-lift-md, -2px));
+}
+
+.ant-btn-primary:not(:disabled):hover::before {
+  transform: translateX(120%);
+  opacity: 0.9;
 }
 
 .ant-btn-primary:not(:disabled):active {
+  filter: saturate(0.98) brightness(0.98);
   transform: translateY(0);
-  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.18) !important;
 }
 
 .ant-btn-default:not(:disabled):hover,
 .ant-btn-dashed:not(:disabled):hover {
-  border-color: var(--color-primary) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--glass-border)) !important;
   color: var(--color-primary) !important;
+  background:
+    linear-gradient(145deg, rgba(var(--color-primary-rgb), 0.13), rgba(255, 255, 255, 0.16)),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.2), transparent 62%);
+  transform: translateY(var(--ui-hover-lift-sm, -1px));
+}
+
+.ant-btn-default:not(:disabled):active,
+.ant-btn-dashed:not(:disabled):active {
+  transform: translateY(0);
+  background:
+    linear-gradient(145deg, rgba(var(--color-primary-rgb), 0.1), rgba(255, 255, 255, 0.14)),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.12), transparent 62%);
 }
 
 .ant-btn-text:not(:disabled):hover {
-  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  background: rgba(var(--color-primary-rgb), 0.12) !important;
 }
 
 /* ==================== Input & Select ==================== */
@@ -187,7 +514,32 @@
 .ant-select-selector,
 .ant-picker,
 .ant-input-number {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.2)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%) !important;
+  border-color: var(--glass-border) !important;
+  border-width: var(--glass-border-width, 1px) !important;
+  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  transition: border-color 0.18s ease, outline-color 0.18s ease;
+}
+
+[data-theme='dark'] .ant-input,
+[data-theme='dark'] .ant-input-affix-wrapper,
+[data-theme='dark'] .ant-select-selector,
+[data-theme='dark'] .ant-picker,
+[data-theme='dark'] .ant-input-number {
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.42)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.14), transparent 58%) !important;
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select:hover .ant-select-selector,
+.ant-picker:hover,
+.ant-input-number:hover {
+  border-color: var(--color-primary-border) !important;
 }
 
 .ant-input:focus,
@@ -198,36 +550,57 @@
 .ant-picker-focused,
 .ant-input-number-focused {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.22)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.16), transparent 58%) !important;
+  outline: 2px solid rgba(var(--color-primary-rgb), 0.26);
+  outline-offset: 1px;
+}
+
+[data-theme='dark'] .ant-input:focus,
+[data-theme='dark'] .ant-input-focused,
+[data-theme='dark'] .ant-input-affix-wrapper:focus,
+[data-theme='dark'] .ant-input-affix-wrapper-focused,
+[data-theme='dark'] .ant-select-focused .ant-select-selector,
+[data-theme='dark'] .ant-picker-focused,
+[data-theme='dark'] .ant-input-number-focused {
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.74), rgba(15, 23, 42, 0.44)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.2), transparent 58%) !important;
 }
 
 /* ==================== Table ==================== */
+.ant-table-container {
+  border-radius: 12px;
+  overflow: hidden;
+  border: var(--glass-border-width, 1px) solid var(--glass-border);
+}
+
+.ant-table-thead > tr > th {
+  background: linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)) !important;
+  border-bottom: var(--glass-edge-width, 1px) solid var(--color-border-subtle) !important;
+  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+}
+
 .ant-table-tbody > tr {
   transition: background-color 0.16s ease;
 }
 
 .ant-table-tbody > tr:hover > td {
-  background: rgba(var(--color-primary-rgb), 0.06) !important;
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
 }
 
 [data-theme='dark'] .ant-table-thead > tr > th {
-  background: rgba(30, 41, 59, 0.72) !important;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.56)) !important;
   border-bottom-color: rgba(148, 163, 184, 0.16) !important;
 }
 
 [data-theme='dark'] .ant-table-tbody > tr:hover > td {
-  background: rgba(148, 163, 184, 0.12) !important;
+  background: rgba(148, 163, 184, 0.14) !important;
 }
 
 /* ==================== Overlay ==================== */
-.ant-modal-content {
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18), 0 10px 26px rgba(15, 23, 42, 0.1) !important;
-}
-
-[data-theme='dark'] .ant-modal-content {
-  box-shadow: 0 24px 62px rgba(2, 6, 23, 0.62), 0 12px 30px rgba(2, 6, 23, 0.35) !important;
-}
-
 .ant-select-dropdown,
 .ant-dropdown-menu,
 .ant-popover-inner,
@@ -239,7 +612,13 @@
   animation: message-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.ant-message-notice .ant-message-notice-content {
+  border-radius: 12px;
+}
+
 .ant-modal-mask {
+  background: radial-gradient(circle at 40% -20%, rgba(var(--color-primary-rgb), 0.12), transparent 46%),
+              var(--color-bg-mask, rgba(15, 23, 42, 0.36)) !important;
   animation: fade-in 0.2s ease-out;
 }
 
@@ -274,9 +653,41 @@
   }
 }
 
+@keyframes liquid-flow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes chat-liquid-glide {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    background-position: 0% 0%, 0% 0%;
+  }
+  50% {
+    transform: translateY(-2px) scale(1.02);
+    background-position: 6% -4%, 8% 4%;
+  }
+}
+
 /* ==================== Menu ==================== */
 .ant-menu-item {
-  transition: background-color 0.15s ease, color 0.15s ease !important;
+  transition: background-color var(--ui-transition-fast, 0.16s) ease,
+              color var(--ui-transition-fast, 0.16s) ease,
+              transform var(--ui-transition-fast, 0.16s) ease !important;
+}
+
+.ant-menu-item:hover {
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  transform: translateX(1px);
+}
+
+.ant-menu-item:active {
+  transform: translateX(0);
 }
 
 .ant-menu-item-selected {
@@ -357,7 +768,10 @@
 .chat-history-item {
   position: relative;
   border-radius: 10px;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--ui-transition-fast, 0.16s) ease,
+              border-color var(--ui-transition-fast, 0.16s) ease,
+              transform var(--ui-transition-fast, 0.16s) ease;
+  border: 1px solid transparent;
 }
 
 .chat-history-item .chat-history-actions {
@@ -377,20 +791,68 @@
   outline-offset: 1px;
 }
 
+.chat-history-item:hover,
+.chat-history-item:focus-within {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.24);
+  transform: translateY(var(--ui-hover-lift-sm, -1px));
+}
+
+.chat-history-item:active {
+  transform: translateY(0);
+}
+
 .suggestion-card {
-  border: 1px solid var(--color-border);
+  position: relative;
+  isolation: isolate;
+  border: var(--glass-border-width, 1px) solid var(--glass-border);
   border-radius: 12px;
   padding: 12px 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--color-bg-elevated);
+  transition: border-color var(--ui-transition-fast, 0.16s) ease,
+              background-color var(--ui-transition-fast, 0.16s) ease,
+              transform var(--ui-transition-mid, 0.22s) ease;
+  background:
+    linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%);
+  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+}
+
+.suggestion-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.32), transparent 50%),
+    conic-gradient(from 210deg at 16% 16%, var(--glass-prism-a), transparent 42%, var(--glass-prism-b) 66%, transparent 84%);
+  opacity: 0.52;
+  transition: opacity 0.24s ease, transform 0.24s ease;
+  z-index: 0;
+}
+
+.suggestion-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .suggestion-card:hover {
-  border-color: var(--color-primary);
-  background: rgba(var(--color-primary-rgb), 0.08);
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--glass-border));
+  background:
+    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.12)),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.18), transparent 62%);
+  transform: translateY(var(--ui-hover-lift-sm, -1px));
+}
+
+.suggestion-card:hover::before,
+.suggestion-card:focus-visible::before {
+  opacity: 0.72;
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(var(--color-primary-rgb), 0.14);
+}
+
+.suggestion-card:active {
+  transform: translateY(0);
 }
 
 .suggestion-card:focus-visible {
@@ -399,8 +861,239 @@
 }
 
 .chat-input-bar {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   flex-shrink: 0;
-  backdrop-filter: blur(10px);
+  background:
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(124deg, rgba(var(--color-primary-rgb), 0.1), transparent 58%);
+  border: var(--glass-border-width, 1px) solid var(--glass-border);
+  border-radius: 14px;
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(162%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(162%);
+}
+
+.chat-input-bar::before {
+  content: '';
+  position: absolute;
+  inset: -24% -8% 28%;
+  pointer-events: none;
+  background:
+    radial-gradient(62% 52% at 16% 32%, rgba(255, 255, 255, 0.34), transparent 72%),
+    conic-gradient(from 220deg at 72% 58%, transparent 0%, var(--glass-prism-b) 34%, transparent 70%, var(--glass-prism-c) 86%, transparent 100%);
+  mix-blend-mode: screen;
+  opacity: 0.68;
+  transform: translateY(0);
+  animation: chat-liquid-glide 14s ease-in-out infinite;
+}
+
+.chat-input-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 82%, transparent);
+  border-top-color: var(--glass-edge-strong);
+  border-left-color: color-mix(in srgb, var(--glass-edge-strong) 74%, transparent);
+  opacity: 0.9;
+}
+
+.chat-input-bar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chat-input-bar:is(:hover, :focus-within)::before {
+  opacity: 0.84;
+  transform: translateY(-2px);
+}
+
+/* ==================== Page Rhythm ==================== */
+.dashboard-stat-card.ant-card,
+.dashboard-chart-card.ant-card,
+.kb-grid-card.ant-card {
+  border-radius: 14px !important;
+  border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
+  background:
+    linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%) !important;
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              transform var(--ui-transition-mid, 0.22s) ease,
+              background-color var(--ui-transition-mid, 0.22s) ease !important;
+}
+
+.dashboard-stat-card.ant-card:hover,
+.dashboard-chart-card.ant-card:hover,
+.kb-grid-card.ant-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary-border) 76%, var(--glass-border)) !important;
+  background:
+    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.18)),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 62%) !important;
+  transform: translateY(var(--ui-hover-lift-md, -2px));
+}
+
+.dashboard-stat-card.ant-card:active,
+.dashboard-chart-card.ant-card:active,
+.kb-grid-card.ant-card:active {
+  transform: translateY(0);
+}
+
+.dashboard-chart-card .ant-card-head,
+.kb-grid-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: var(--glass-edge-width, 1px) solid var(--color-border-subtle) !important;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .dashboard-stat-card .ant-statistic-content-value {
+    background: linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--color-primary) 56%, var(--color-text) 44%),
+      var(--color-text) 52%,
+      color-mix(in srgb, var(--color-primary) 30%, var(--color-text) 70%)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+  }
+}
+
+.chat-side-panel.ant-layout-sider {
+  background:
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(124deg, rgba(var(--color-primary-rgb), 0.08), transparent 60%) !important;
+  border: var(--glass-border-width, 1px) solid var(--glass-border);
+  outline: 1px solid color-mix(in srgb, var(--glass-edge-soft) 40%, transparent);
+  outline-offset: -1px;
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
+}
+
+.chat-side-panel .ant-collapse-item {
+  border-bottom: var(--glass-edge-width, 1px) solid var(--color-border-subtle) !important;
+}
+
+.chat-side-panel .ant-collapse-content,
+.chat-side-panel .ant-collapse-header {
+  background: transparent !important;
+}
+
+.ui-empty-panel {
+  border: var(--glass-border-width, 1px) dashed color-mix(in srgb, var(--color-primary-border) 70%, var(--glass-border));
+  border-radius: 14px;
+  padding: 16px;
+  background:
+    linear-gradient(155deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.08)),
+    linear-gradient(118deg, rgba(255, 255, 255, 0.18), transparent 64%);
+  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+}
+
+html[data-performance='lite'] :where(
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card
+):is(:hover, :active) {
+  transform: none !important;
+}
+
+html[data-performance='lite'] .app-ambient-orb-two,
+html[data-performance='lite'] .app-ambient-orb-three {
+  opacity: 0.36;
+  filter: blur(30px);
+}
+
+html[data-performance='lite'] .app-ambient-veil,
+html[data-performance='lite'] .app-ambient-caustic {
+  animation: none;
+  opacity: 0.14;
+}
+
+html[data-performance='lite'] :where(
+  .ant-card,
+  .ant-modal-content,
+  .ant-drawer-content,
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner,
+  .ant-notification-notice,
+  .ant-message-notice-content,
+  .chat-input-bar
+) {
+  backdrop-filter: blur(var(--glass-blur)) saturate(130%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(130%);
+}
+
+html[data-performance='lite'] .ant-btn-primary:not(:disabled)::after {
+  animation-duration: 14s;
+  opacity: 0.46;
+}
+
+html[data-performance='lite'] .chat-input-bar::before {
+  animation: none;
+  opacity: 0.4;
+}
+
+html[data-performance='lite'] .suggestion-card::before {
+  opacity: 0.4;
+}
+
+html[data-performance='lite'] :where(
+  .ant-card,
+  .kb-card,
+  .suggestion-card,
+  .chat-history-item,
+  .ant-btn,
+  .ant-menu-item
+):is(:hover, :active, :focus-within) {
+  transform: none !important;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :where(
+    .ant-card,
+    .ant-modal-content,
+    .ant-drawer-content,
+    .ant-dropdown-menu,
+    .ant-select-dropdown,
+    .ant-picker-dropdown,
+    .ant-popover-inner,
+    .ant-notification-notice,
+    .ant-message-notice-content,
+    .chat-input-bar,
+    .ant-input,
+    .ant-input-affix-wrapper,
+    .ant-select-selector,
+    .ant-picker,
+    .ant-input-number
+  ) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  :where(
+    .ant-card,
+    .ant-modal-content,
+    .ant-drawer-content,
+    .ant-dropdown-menu,
+    .ant-select-dropdown,
+    .ant-picker-dropdown,
+    .ant-popover-inner,
+    .ant-notification-notice,
+    .ant-message-notice-content
+  )::before {
+    opacity: 0.45;
+  }
+
+  .app-ambient-veil,
+  .app-ambient-caustic,
+  .chat-input-bar::before,
+  .suggestion-card::before {
+    animation: none !important;
+    opacity: 0.3;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -428,8 +1121,8 @@
     z-index: 100;
     padding: 10px 14px 18px !important;
     padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
-    border-top: 1px solid var(--color-border-subtle) !important;
+    border-radius: 16px 16px 0 0;
+    border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
   }
 
   .chat-messages-scroll {
@@ -439,15 +1132,30 @@
 
 @media (prefers-reduced-motion: reduce) {
   .app-ambient-orb,
+  .app-ambient-veil,
+  .app-ambient-caustic,
+  .app-ambient-bg::after,
   .ant-select-dropdown,
   .ant-dropdown-menu,
   .ant-popover-inner,
   .ant-picker-dropdown,
   .ant-message-notice,
   .ant-modal-mask,
+  .chat-input-bar::before,
+  .ant-btn-primary:not(:disabled)::after,
+  .ant-btn-primary:not(:disabled)::before,
   .theme-icon-enter,
   .icon-spin,
   .loading-pulse {
     animation: none !important;
+  }
+
+  .ant-card:hover,
+  .kb-card:hover,
+  .ant-btn-primary:not(:disabled):hover,
+  .ant-btn-default:not(:disabled):hover,
+  .ant-btn-dashed:not(:disabled):hover,
+  .suggestion-card:hover {
+    transform: none !important;
   }
 }

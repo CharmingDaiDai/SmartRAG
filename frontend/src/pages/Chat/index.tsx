@@ -623,10 +623,8 @@ const ChatPage: React.FC = () => {
         {/* ==================== 左侧边栏：历史对话列表 ==================== */}
         <Sider
             width={240}
-            className="chat-sidebar-left"
+            className="chat-sidebar-left chat-side-panel"
             style={{
-                borderRight: `1px solid ${token.colorBorderSecondary}`,
-                background: token.colorBgContainer,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column'
@@ -829,11 +827,7 @@ const ChatPage: React.FC = () => {
                                                 alignItems: 'center',
                                                 gap: 12,
                                                 padding: '12px 16px',
-                                                borderRadius: 10,
-                                                border: `1px solid ${token.colorBorderSecondary}`,
-                                                background: token.colorBgContainer,
                                                 cursor: 'pointer',
-                                                transition: 'all 0.18s ease',
                                                 fontSize: 14,
                                                 color: token.colorText,
                                             }}
@@ -938,7 +932,7 @@ const ChatPage: React.FC = () => {
                 )}
             </div>
             {/* 输入框区域 */}
-            <div className="chat-input-bar" style={{ padding: '12px 20px 16px', borderTop: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0, background: token.colorBgContainer }}>
+            <div className="chat-input-bar" style={{ padding: '12px 20px 16px', flexShrink: 0 }}>
                 <Sender
                     value={input}
                     onChange={setInput}
@@ -954,10 +948,8 @@ const ChatPage: React.FC = () => {
         {/* ==================== 右侧边栏：知识库选择 + 参数配置 ==================== */}
         <Sider
             width={300}
-            className="chat-sidebar-right"
+            className="chat-sidebar-right chat-side-panel"
             style={{
-                borderLeft: `1px solid ${token.colorBorderSecondary}`,
-                background: token.colorBgContainer,
                 height: '100%'
             }}
         >

@@ -9,8 +9,9 @@
   position: relative;
   overflow: auto;
   background:
-    radial-gradient(900px 420px at -10% 10%, rgba(var(--color-primary-rgb), 0.12), transparent 70%),
-    radial-gradient(700px 320px at 110% 90%, rgba(var(--color-primary-rgb), 0.08), transparent 68%),
+    radial-gradient(900px 420px at -10% 10%, rgba(var(--color-primary-rgb), 0.14), transparent 70%),
+    radial-gradient(700px 320px at 110% 90%, rgba(var(--color-primary-rgb), 0.1), transparent 68%),
+    conic-gradient(from 220deg at 54% 36%, rgba(255, 255, 255, 0.08), transparent 48%, rgba(var(--color-primary-rgb), 0.08) 72%, transparent 100%),
     linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-base) 100%);
 }
 
@@ -19,23 +20,56 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.3px, transparent 1.3px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.3px, transparent 1.3px);
   background-size: 54px 54px;
-  opacity: 0.14;
+  opacity: 0.22;
   mask-image: radial-gradient(circle at 50% 45%, black 25%, transparent 85%);
 }
 
 .auth-card {
   width: min(920px, 96vw);
   margin: auto 0;
+  position: relative;
+  isolation: isolate;
   border-radius: 24px !important;
   overflow: hidden;
-  border: 1px solid var(--color-border) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.14), 0 10px 24px rgba(15, 23, 42, 0.08) !important;
+  border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
+  background:
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(122deg, rgba(var(--color-primary-rgb), 0.18), transparent 60%) !important;
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(155%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(155%);
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.42), transparent 50%),
+    radial-gradient(130% 90% at 86% 118%, rgba(var(--color-primary-rgb), 0.14), transparent 68%),
+    conic-gradient(from 220deg at 20% 16%, var(--glass-prism-a), var(--glass-prism-b), transparent 70%);
+  mix-blend-mode: screen;
+  opacity: var(--glass-film-opacity, 0.56);
+  animation: auth-film-shift 16s ease-in-out infinite;
+}
+
+.auth-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 82%, transparent);
+  border-top-color: var(--glass-edge-strong);
+  border-left-color: color-mix(in srgb, var(--glass-edge-strong) 74%, transparent);
+  opacity: 0.9;
+}
+
+.auth-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .auth-card .ant-card-body {
@@ -51,8 +85,10 @@
   padding: 42px 30px;
   min-height: 430px;
   overflow: hidden;
-  border-right: 1px solid var(--color-border-subtle);
-  background: linear-gradient(165deg, rgba(var(--color-primary-rgb), 0.12) 0%, rgba(var(--color-primary-rgb), 0.04) 56%, rgba(56, 189, 248, 0.1) 100%);
+  border-right: var(--glass-edge-width, 1px) solid var(--color-border-subtle);
+  background:
+    linear-gradient(165deg, rgba(var(--color-primary-rgb), 0.14) 0%, rgba(var(--color-primary-rgb), 0.05) 56%, rgba(56, 189, 248, 0.12) 100%),
+    conic-gradient(from 230deg at 30% 18%, rgba(255, 255, 255, 0.14), transparent 46%, rgba(var(--color-primary-rgb), 0.14) 72%, transparent 100%);
 }
 
 .auth-illustration::before,
@@ -114,7 +150,6 @@
   font-size: 16px;
   border: 1px solid var(--color-primary-border);
   background: rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.12);
 }
 
 .illus-feature-text {
@@ -140,7 +175,19 @@
 
 .auth-form .ant-input-affix-wrapper,
 .auth-form .ant-input {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.2)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.1), transparent 58%) !important;
+  border-color: var(--glass-border) !important;
+  border-width: var(--glass-border-width, 1px) !important;
   border-radius: 11px;
+}
+
+html[data-theme='dark'] .auth-form .ant-input-affix-wrapper,
+html[data-theme='dark'] .auth-form .ant-input {
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.44)),
+    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.16), transparent 58%) !important;
 }
 
 .auth-form .ant-input-affix-wrapper:hover,
@@ -150,18 +197,26 @@
 
 .auth-form .ant-btn-primary {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
-  border: none !important;
+  border: var(--glass-edge-width, 1px) solid rgba(255, 255, 255, 0.42) !important;
   height: 44px !important;
   font-size: 15px !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em;
-  box-shadow: 0 10px 20px rgba(var(--color-primary-rgb), 0.22);
+  box-shadow: none !important;
 }
 
 .auth-form .ant-btn-primary:hover {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
-  box-shadow: 0 14px 26px rgba(var(--color-primary-rgb), 0.28) !important;
+  filter: saturate(1.08) brightness(1.04);
   transform: translateY(-1px);
+  box-shadow: none !important;
+}
+
+.auth-form .ant-btn-primary:active,
+.social-row .ant-btn:hover,
+.social-row .ant-btn:focus,
+.social-row .ant-btn:active {
+  box-shadow: none !important;
 }
 
 .form-row {
@@ -230,21 +285,23 @@
 /* ==================== Dark Mode ==================== */
 html[data-theme='dark'] .auth-page {
   background:
-    radial-gradient(820px 380px at -14% 8%, rgba(var(--color-primary-rgb), 0.2), transparent 72%),
-    radial-gradient(680px 300px at 112% 88%, rgba(56, 189, 248, 0.16), transparent 70%),
+    radial-gradient(820px 380px at -14% 8%, rgba(var(--color-primary-rgb), 0.22), transparent 72%),
+    radial-gradient(680px 300px at 112% 88%, rgba(56, 189, 248, 0.18), transparent 70%),
+    conic-gradient(from 220deg at 54% 36%, rgba(191, 219, 254, 0.1), transparent 48%, rgba(56, 189, 248, 0.1) 72%, transparent 100%),
     linear-gradient(180deg, #090f1b 0%, #090f1b 100%);
 }
 
 html[data-theme='dark'] .auth-page::before {
-  background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.2px, transparent 1.2px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.2px, transparent 1.2px);
   opacity: 0.24;
 }
 
 html[data-theme='dark'] .auth-card {
-  background: rgba(15, 23, 42, 0.78) !important;
-  border-color: rgba(148, 163, 184, 0.22) !important;
-  box-shadow: 0 34px 70px rgba(2, 6, 23, 0.56), 0 14px 30px rgba(2, 6, 23, 0.34) !important;
+  background:
+    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(122deg, rgba(var(--color-primary-rgb), 0.2), transparent 60%) !important;
+  border-color: var(--glass-border) !important;
 }
 
 html[data-theme='dark'] .auth-illustration {
@@ -263,6 +320,32 @@ html[data-theme='dark'] .pwd-strength {
 
 html[data-theme='dark'] .pwd-strength .bar {
   background: rgba(148, 163, 184, 0.22);
+}
+
+html[data-performance='lite'] .auth-card {
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+html[data-performance='lite'] .auth-card::before {
+  animation: none;
+  opacity: 0.34;
+}
+
+@keyframes auth-film-shift {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.01);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card::before {
+    animation: none !important;
+  }
 }
 
 /* ==================== Responsive ==================== */
