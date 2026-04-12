@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  *
  * <p>基于树形结构的层级检索策略：
  * <ol>
- *   <li>从最高层（level=1）开始向量搜索，使用 Milvus 原生 filter 精确限定层级</li>
+ *   <li>优先从根层（level=1）开始向量搜索；若无候选则按层级逐级回退（level=2..N）</li>
  *   <li>使用分布感知动态阈值公式筛选候选节点</li>
  *   <li>对通过阈值的非叶子节点递归检索其子节点（filter: parent_node_id == X）</li>
  *   <li>最终返回所有命中的叶子节点内容</li>
@@ -40,6 +40,8 @@ public class AdaptiveRetriever {
 
     private final MilvusService milvusService;
     private final RagProperties ragProperties;
+        private static final int ROOT_LEVEL_MIN = 1;
+        private static final int ROOT_LEVEL_MAX = 10;
 
     // =====================================================================
     // 公开返回类型
@@ -113,10 +115,9 @@ public class AdaptiveRetriever {
                 Embedding queryVector = embeddingClient.embed(query);
                 log.debug("Query embedded, dimension={}", queryVector.dimension());
 
-                // 根层过滤：Milvus 原生 filter level == 1
-                Filter rootFilter = MetadataFilterBuilder.metadataKey("level").isEqualTo(1);
-                LevelBundle levelBundle = retrieveLevel(
-                        queryVector, kbId, rootFilter, beta, gamma, thetaMin, kMin, kMax);
+                                // 根层搜索：优先 level=1，若无候选按层级逐级回退
+                                LevelBundle levelBundle = retrieveFromRootLevels(
+                                                queryVector, kbId, beta, gamma, thetaMin, kMin, kMax);
 
                 log.debug("Query retrieval complete: {} results, {} tree nodes",
                         levelBundle.results().size(), levelBundle.treeNodes().size());
@@ -208,6 +209,34 @@ public class AdaptiveRetriever {
         return new RetrievalBundle(bundle.results(), bundle.treeNodes());
     }
 
+        /**
+         * 根层检索入口：优先从 level=1 开始，若无候选则按层级逐级回退。
+         *
+         * <p>目的：兼容文档最高标题不是 H1（例如从 H2 开始）的场景，
+         * 避免根层固定 level=1 导致递归检索无法启动。
+         */
+        private LevelBundle retrieveFromRootLevels(Embedding queryVector, Long kbId,
+                                                                                           double beta, double gamma,
+                                                                                           double thetaMin, int kMin, int kMax) {
+                for (int rootLevel = ROOT_LEVEL_MIN; rootLevel <= ROOT_LEVEL_MAX; rootLevel++) {
+                        Filter rootFilter = MetadataFilterBuilder.metadataKey("level").isEqualTo(rootLevel);
+                        LevelBundle levelBundle = retrieveLevel(
+                                        queryVector, kbId, rootFilter, beta, gamma, thetaMin, kMin, kMax);
+
+                        if (!levelBundle.results().isEmpty()) {
+                                if (rootLevel > ROOT_LEVEL_MIN) {
+                                        log.info("Adaptive retrieval root level fallback applied: kbId={}, rootLevel={}", kbId, rootLevel);
+                                }
+                                return levelBundle;
+                        }
+
+                        log.debug("No root candidates at level={}, trying next level", rootLevel);
+                }
+
+                log.debug("No root candidates found for kbId={} in levels [{}-{}]", kbId, ROOT_LEVEL_MIN, ROOT_LEVEL_MAX);
+                return new LevelBundle(Collections.emptyList(), Collections.emptyList());
+        }
+
     // =====================================================================
     // 私有方法：核心层级检索（不发 SSE 事件）
     // =====================================================================
@@ -218,9 +247,9 @@ public class AdaptiveRetriever {
      * <p>此方法不发送任何 SSE 事件，仅负责检索逻辑和树节点构建。
      * SSE 事件统一在 {@link #retrieve} 方法中发送（开始 + 结束各一条）。
      *
-     * <p>使用 Milvus 原生 filter 精确限定本次搜索范围：
+        * <p>使用 Milvus 原生 filter 精确限定本次搜索范围：
      * <ul>
-     *   <li>根层调用：filter = level == 1</li>
+        *   <li>根层调用：filter = level == L（L 由根层回退策略在 1..N 动态选择）</li>
      *   <li>子层调用：filter = parent_node_id == parentNodeId</li>
      * </ul>
      *
