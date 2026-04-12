@@ -141,21 +141,21 @@ public class MarkdownProcessor {
                     // 为每个块创建子节点
                     for (int i = 0; i < contentChunks.size(); i++) {
                         String blockNumber = String.format("%d/%d", i + 1, contentChunks.size());
-                        String childId = UUID.randomUUID().toString();
-
                         MyNode childNode = new MyNode(
                                 contentChunks.get(i),
-                                node.getLevel() + 1,
+                                node.getLevel(),
                                 String.format("%s (%s)", node.getTitle(), blockNumber),
                                 blockNumber
                         );
                         childNode.setParentId(node.getId());
+                        childNode.getMetadata().put("chunk_child", true);
+                        childNode.getMetadata().put("original_level", node.getLevel());
 
                         // 将子节点加入节点字典
-                        nodesDict.put(childId, childNode);
+                        nodesDict.put(childNode.getId(), childNode);
 
                         // 在父节点中添加子节点ID
-                        node.addChild(childId);
+                        node.addChild(childNode.getId());
                     }
 
                     // 在父节点元数据中标记它已被分块
@@ -176,7 +176,7 @@ public class MarkdownProcessor {
                     documentTitle
             );
 
-            Map<String, MyNode> nodesDict = new HashMap<>();
+            Map<String, MyNode> nodesDict = new LinkedHashMap<>();
             nodesDict.put(rootNode.getId(), rootNode);
 
             return new AbstractMap.SimpleEntry<>(rootNode, nodesDict);
@@ -766,7 +766,7 @@ public class MarkdownProcessor {
      * @return 包含所有叶子节点的映射
      */
     public static Map<String, MyNode> findLeafNodes(Map<String, MyNode> nodesDict) {
-        Map<String, MyNode> leafNodes = new HashMap<>();
+        Map<String, MyNode> leafNodes = new LinkedHashMap<>();
 
         for (Map.Entry<String, MyNode> entry : nodesDict.entrySet()) {
             String nodeId = entry.getKey();

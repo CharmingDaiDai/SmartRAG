@@ -29,21 +29,16 @@ public class MarkdownParser {
         MyNode rootNode = new MyNode("", 0, documentTitle);
 
         // 存储所有节点的字典，键为节点ID
-        Map<String, MyNode> nodesDict = new HashMap<>();
+        Map<String, MyNode> nodesDict = new LinkedHashMap<>();
         nodesDict.put(rootNode.getId(), rootNode);
 
         // 按行分割Markdown文本
-        String[] lines = markdownText.split("\\n");
+        String[] lines = markdownText.split("\\n", -1);
 
-        // 正则表达式匹配标题
-        Pattern headerPattern = Pattern.compile("^(#+)\\s+(.*)$");
-
-        // 正则表达式匹配代码块
-        Pattern codeBlockPattern = Pattern.compile("^```|^~~~");
-
-        // 标记是否在代码块内
-        boolean inCodeBlock = false;
-        String codeBlockMarker = ""; // 记录代码块的起始标记（```或~~~）
+        // 标记是否在 fenced code block 内
+        boolean inFencedCodeBlock = false;
+        char fencedMarkerChar = '\0';
+        int fencedMarkerLength = 0;
 
         // 阶段1: 收集所有标题和内容，但不建立层级关系
         List<HeaderInfo> allHeaders = new ArrayList<>();
@@ -54,74 +49,52 @@ public class MarkdownParser {
         List<String> rootContent = new ArrayList<>();
 
         for (String line : lines) {
-            // 检查代码块开始/结束
-            Matcher codeBlockMatcher = codeBlockPattern.matcher(line.trim());
+            FenceMarker fenceMarker = parseFenceMarker(line);
 
-            // 如果找到代码块标记
-            if (codeBlockMatcher.find()) {
-                String marker = codeBlockMatcher.group();
-
-                if (!inCodeBlock) {
-                    // 开始代码块
-                    inCodeBlock = true;
-                    codeBlockMarker = marker;
-                } else if (line.trim().startsWith(codeBlockMarker)) {
-                    // 结束代码块
-                    inCodeBlock = false;
+            // fenced code block 边界判定
+            if (inFencedCodeBlock) {
+                if (fenceMarker != null
+                        && fenceMarker.getMarkerChar() == fencedMarkerChar
+                        && fenceMarker.getMarkerLength() >= fencedMarkerLength
+                        && fenceMarker.getTrailing().trim().isEmpty()) {
+                    inFencedCodeBlock = false;
+                    fencedMarkerChar = '\0';
+                    fencedMarkerLength = 0;
                 }
 
-                // 将代码块标记行添加到当前内容中
-                if (currentHeader != null) {
-                    currentContent.add(line);
-                } else {
-                    rootContent.add(line);
-                }
-
+                appendLineToCurrentContent(currentHeader, currentContent, rootContent, line);
                 continue;
             }
 
-            // 如果在代码块内，直接添加到内容，不做其他处理
-            if (inCodeBlock) {
-                if (currentHeader != null) {
-                    currentContent.add(line);
-                } else {
-                    rootContent.add(line);
-                }
+            if (fenceMarker != null) {
+                inFencedCodeBlock = true;
+                fencedMarkerChar = fenceMarker.getMarkerChar();
+                fencedMarkerLength = fenceMarker.getMarkerLength();
+
+                appendLineToCurrentContent(currentHeader, currentContent, rootContent, line);
                 continue;
             }
 
-            // 检查是否是4个空格或Tab开头的缩进代码块
+            // 缩进代码块（4空格/Tab）
             if (line.startsWith("    ") || line.startsWith("\t")) {
-                if (currentHeader != null) {
-                    currentContent.add(line);
-                } else {
-                    rootContent.add(line);
-                }
+                appendLineToCurrentContent(currentHeader, currentContent, rootContent, line);
                 continue;
             }
 
-            // 处理普通行
-            Matcher headerMatcher = headerPattern.matcher(line);
+            // 处理 ATX 标题（支持最多 3 个前导空格）
+            HeaderInfo parsedHeader = parseAtxHeader(line);
 
-            if (headerMatcher.find()) {
-                // 获取标题级别和文本
-                int level = headerMatcher.group(1).length();  // '#'的数量表示级别
-                String titleText = headerMatcher.group(2).trim();
+            if (parsedHeader != null) {
+                int level = parsedHeader.getLevel();
 
                 // 检查是否超过最大层级
                 if (maxLevel != null && level > maxLevel) {
-                    // 如果超过最大层级，将其当作普通文本处理
-                    if (currentHeader != null) {
-                        currentContent.add(line);
-                    } else {
-                        rootContent.add(line);
-                    }
+                    appendLineToCurrentContent(currentHeader, currentContent, rootContent, line);
                     continue;
                 }
 
                 // 如果遇到新标题，先保存之前的内容
                 if (currentHeader != null) {
-                    // 保存之前的标题和内容
                     String contentText = String.join("\n", currentContent).trim();
                     currentHeader.setContent(contentText);
                     currentHeader.setOriginalLevel(currentHeader.getLevel());
@@ -129,14 +102,9 @@ public class MarkdownParser {
                     currentContent = new ArrayList<>();
                 }
 
-                currentHeader = new HeaderInfo(level, titleText, "");
+                currentHeader = parsedHeader;
             } else {
-                // 如果尚未遇到任何标题，则内容属于根节点
-                if (currentHeader == null) {
-                    rootContent.add(line);
-                } else {
-                    currentContent.add(line);
-                }
+                appendLineToCurrentContent(currentHeader, currentContent, rootContent, line);
             }
         }
 
@@ -151,7 +119,9 @@ public class MarkdownParser {
         // 设置根节点内容
         rootNode.setPageContent(String.join("\n", rootContent).trim());
 
-        // 阶段2: 创建所有节点对象
+        // 阶段2: 创建所有节点对象并建立父子关系（按顺序 + 层级栈）
+        Deque<MyNode> parentStack = new ArrayDeque<>();
+
         for (HeaderInfo header : allHeaders) {
             int level = header.getLevel();
             String title = header.getTitle();
@@ -167,47 +137,16 @@ public class MarkdownParser {
 
             nodesDict.put(newNode.getId(), newNode);
 
-            // 根据级别确定父子关系
-            if (level == 1) {
-                // 一级标题直接挂到根节点
-                newNode.setParentId(rootNode.getId());
-                rootNode.addChild(newNode.getId());
-            } else {
-                // 寻找合适的上一级标题作为父节点
-                boolean parentFound = false;
-                for (int i = allHeaders.size() - 1; i >= 0; i--) {
-                    HeaderInfo prevHeader = allHeaders.get(i);
-                    int prevLevel = prevHeader.getLevel();
-
-                    // 跳过当前标题及其后面的标题
-                    if (i >= allHeaders.indexOf(header)) {
-                        continue;
-                    }
-
-                    // 找到比当前标题级别刚好小1的标题作为父节点
-                    if (prevLevel == level - 1) {
-                        // 在已创建的节点中找到对应的节点作为父节点
-                        for (MyNode node : nodesDict.values()) {
-                            if (node.getLevel() == prevLevel &&
-                                    node.getTitle().equals(prevHeader.getTitle())) {
-                                newNode.setParentId(node.getId());
-                                node.addChild(newNode.getId());
-                                parentFound = true;
-                                break;
-                            }
-                        }
-                        if (parentFound) {
-                            break;
-                        }
-                    }
-                }
-
-                // 如果仍未找到父节点，则连接到根节点
-                if (!parentFound) {
-                    newNode.setParentId(rootNode.getId());
-                    rootNode.addChild(newNode.getId());
-                }
+            // 栈顶始终维护最近的更高层标题
+            while (!parentStack.isEmpty() && parentStack.peek().getLevel() >= level) {
+                parentStack.pop();
             }
+
+            MyNode parent = parentStack.isEmpty() ? rootNode : parentStack.peek();
+            newNode.setParentId(parent.getId());
+            parent.addChild(newNode.getId());
+
+            parentStack.push(newNode);
         }
 
         return new AbstractMap.SimpleEntry<>(rootNode, nodesDict);
@@ -235,10 +174,107 @@ public class MarkdownParser {
                     0,
                     documentTitle
             );
-            Map<String, MyNode> nodesDict = new HashMap<>();
+            Map<String, MyNode> nodesDict = new LinkedHashMap<>();
             nodesDict.put(rootNode.getId(), rootNode);
             return new AbstractMap.SimpleEntry<>(rootNode, nodesDict);
         }
+    }
+
+    private static void appendLineToCurrentContent(HeaderInfo currentHeader,
+                                                   List<String> currentContent,
+                                                   List<String> rootContent,
+                                                   String line) {
+        if (currentHeader != null) {
+            currentContent.add(line);
+        } else {
+            rootContent.add(line);
+        }
+    }
+
+    /**
+     * 解析 fenced code block 标记。
+     *
+     * 规则：最多 3 个前导空格，随后是 >=3 个连续的 ` 或 ~。
+     */
+    private static FenceMarker parseFenceMarker(String line) {
+        if (line == null || line.isEmpty()) {
+            return null;
+        }
+
+        int leadingSpaces = countLeadingSpaces(line);
+        if (leadingSpaces > 3 || leadingSpaces >= line.length()) {
+            return null;
+        }
+
+        char markerChar = line.charAt(leadingSpaces);
+        if (markerChar != '`' && markerChar != '~') {
+            return null;
+        }
+
+        int i = leadingSpaces;
+        while (i < line.length() && line.charAt(i) == markerChar) {
+            i++;
+        }
+
+        int markerLength = i - leadingSpaces;
+        if (markerLength < 3) {
+            return null;
+        }
+
+        String trailing = line.substring(i);
+        return new FenceMarker(markerChar, markerLength, trailing);
+    }
+
+    /**
+     * 仅解析 ATX 标题（# 风格），不解析 Setext 标题。
+     */
+    private static HeaderInfo parseAtxHeader(String line) {
+        if (line == null || line.isEmpty()) {
+            return null;
+        }
+
+        int leadingSpaces = countLeadingSpaces(line);
+        if (leadingSpaces > 3 || leadingSpaces >= line.length()) {
+            return null;
+        }
+
+        int i = leadingSpaces;
+        while (i < line.length() && line.charAt(i) == '#') {
+            i++;
+        }
+
+        int level = i - leadingSpaces;
+        if (level <= 0) {
+            return null;
+        }
+
+        // CommonMark: 超过 6 个 # 不作为标题
+        if (level > 6) {
+            return null;
+        }
+
+        // # 后必须是空白或行尾
+        if (i < line.length() && !Character.isWhitespace(line.charAt(i))) {
+            return null;
+        }
+
+        while (i < line.length() && Character.isWhitespace(line.charAt(i))) {
+            i++;
+        }
+
+        String title = i < line.length() ? line.substring(i).trim() : "";
+        // 移除可选的尾部 #（ATX closing sequence）
+        title = title.replaceFirst("\\s+#+\\s*$", "").trim();
+
+        return new HeaderInfo(level, title, "");
+    }
+
+    private static int countLeadingSpaces(String line) {
+        int count = 0;
+        while (count < line.length() && line.charAt(count) == ' ') {
+            count++;
+        }
+        return count;
     }
 
     /**
@@ -373,5 +409,12 @@ public class MarkdownParser {
             this.title = title;
             this.blockNumber = blockNumber;
         }
+    }
+
+    @Data
+    private static class FenceMarker {
+        private final char markerChar;
+        private final int markerLength;
+        private final String trailing;
     }
 }
