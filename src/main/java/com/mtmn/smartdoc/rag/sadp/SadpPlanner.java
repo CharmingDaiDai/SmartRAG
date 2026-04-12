@@ -334,8 +334,9 @@ public class SadpPlanner {
         log.info("Executing SADP subtask {} (type={}): query='{}' nodeId='{}'",
                 task.getId(), task.getType(), task.getQuery(), task.getNodeId());
 
+        TaskNode.TaskType type = task.getType() != null ? task.getType() : TaskNode.TaskType.Scoped_Retrieve;
+
         try {
-            TaskNode.TaskType type = task.getType() != null ? task.getType() : TaskNode.TaskType.Scoped_Retrieve;
             String result = switch (type) {
                 case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient);
                 case Get_Summary     -> executeGetSummary(task, kbId);
@@ -347,6 +348,13 @@ public class SadpPlanner {
         } catch (Exception e) {
             log.error("SADP subtask {} failed: {}", task.getId(), e.getMessage(), e);
             task.setStatus(TaskNode.TaskStatus.FAILED);
+            // Scoped_Retrieve 出现异常通常是向量化/检索基础设施失败，不应静默降级。
+            if (type == TaskNode.TaskType.Scoped_Retrieve) {
+                if (e instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw new RuntimeException("SADP 检索子任务失败", e);
+            }
             return "（子任务执行失败：" + e.getMessage() + "）";
         }
     }

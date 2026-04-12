@@ -7,6 +7,7 @@ import com.mtmn.smartdoc.model.client.TokenUsageLedger;
 import com.mtmn.smartdoc.model.config.ModelProperties;
 import com.mtmn.smartdoc.model.dto.ChatRequest;
 import com.mtmn.smartdoc.model.dto.ChatResponse;
+import com.mtmn.smartdoc.rag.support.RagStreamErrorMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -403,6 +404,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                     if (partialResponse != null && !partialResponse.isEmpty()) {
                         outputBuilder.append(partialResponse);
                         log.trace("Emitter LLM分片响应: {}", partialResponse);
+                        eventHandler.onPartialResponse(emitter, partialResponse);
                         SseEventBuilder.sendMessageEvent(emitter, partialResponse);
                     }
                 }
@@ -411,6 +413,8 @@ public abstract class AbstractLLMClient implements LLMClient {
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
                     log.info("流式聊天完成");
                     long durationMs = System.currentTimeMillis() - streamStartTime;
+                    String fullResponse = outputBuilder.toString();
+                    eventHandler.onCompleteResponse(emitter, fullResponse);
                     // token 用量回调（实测值优先，估算值兜底）
                     int inputTokens, outputTokens, totalTokens;
                     if (response.tokenUsage() != null) {
@@ -419,7 +423,7 @@ public abstract class AbstractLLMClient implements LLMClient {
                         totalTokens  = response.tokenUsage().totalTokenCount();
                     } else {
                         inputTokens  = estimateTokens(prompt);
-                        outputTokens = estimateTokens(outputBuilder.toString());
+                        outputTokens = estimateTokens(fullResponse);
                         totalTokens  = inputTokens + outputTokens;
                         log.debug("流式 Token 估算: input≈{}, output≈{}", inputTokens, outputTokens);
                     }
@@ -439,17 +443,8 @@ public abstract class AbstractLLMClient implements LLMClient {
                         return;
                     }
                     log.error("流式聊天失败: {}", error.getMessage(), error);
-                    try {
-                        String userMsg = isRateLimitError(error)
-                                ? "AI 服务请求频率超限，请稍后再试"
-                                : error.getMessage();
-                        emitter.send(SseEmitter.event()
-                                .name("error")
-                                .data("{\"error\":\"" + userMsg + "\"}"));
-                    } catch (Exception e) {
-                        // ignore
-                    }
-                    emitter.completeWithError(error);
+                    SseEventBuilder.sendErrorEvent(emitter, RagStreamErrorMapper.toUserMessage(error));
+                    emitter.complete();
                 }
             });
         } catch (Exception e) {
@@ -459,7 +454,8 @@ public abstract class AbstractLLMClient implements LLMClient {
                 return;
             }
             log.error("流式聊天启动失败: {}", e.getMessage(), e);
-            emitter.completeWithError(e);
+            SseEventBuilder.sendErrorEvent(emitter, RagStreamErrorMapper.toUserMessage(e));
+            emitter.complete();
         }
     }
 

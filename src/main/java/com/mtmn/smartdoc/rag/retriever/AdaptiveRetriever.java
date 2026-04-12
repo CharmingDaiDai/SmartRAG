@@ -92,6 +92,11 @@ public class AdaptiveRetriever {
                                     SseEmitter emitter,
                                     double beta, double gamma,
                                     double thetaMin, int kMin, int kMax) {
+                if (queries == null || queries.isEmpty()) {
+                        log.warn("Adaptive retrieval skipped: empty queries, kbId={}", kbId);
+                        return new RetrievalBundle(Collections.emptyList(), Collections.emptyList());
+                }
+
         log.debug("=== Adaptive retrieval start: kbId={}, queries={}, params[β={}, γ={}, θMin={}, kMin={}, kMax={}] ===",
                 kbId, queries.size(), beta, gamma, thetaMin, kMin, kMax);
 
@@ -99,6 +104,8 @@ public class AdaptiveRetriever {
 
         Map<String, RetrievalResult> uniqueResults = new LinkedHashMap<>();
         List<RetrievalTreeNode> allTreeRoots = new ArrayList<>();
+                int failureCount = 0;
+                Exception firstFailure = null;
 
         for (String query : queries) {
             try {
@@ -124,9 +131,23 @@ public class AdaptiveRetriever {
                 allTreeRoots.addAll(levelBundle.treeNodes());
 
             } catch (Exception e) {
+                                failureCount++;
+                                if (firstFailure == null) {
+                                        firstFailure = e;
+                                }
                 log.error("Adaptive retrieval failed for query '{}': {}", query, e.getMessage(), e);
             }
         }
+
+                if (failureCount == queries.size()) {
+                        if (firstFailure instanceof RuntimeException runtimeException) {
+                                throw runtimeException;
+                        }
+                        throw new RuntimeException("Adaptive retrieval failed for all queries", firstFailure);
+                }
+                if (failureCount > 0) {
+                        log.warn("Adaptive retrieval partially failed: failed={}/{}", failureCount, queries.size());
+                }
 
         List<RetrievalResult> finalResults = uniqueResults.values().stream()
                 .sorted(Comparator.comparingDouble(RetrievalResult::getScore).reversed())

@@ -81,6 +81,26 @@ public interface StreamEventHandler {
     }
 
     /**
+     * 每次流式分片返回时触发（仅 SseEmitter 路径）
+     *
+     * @param emitter         SSE 发射器
+     * @param partialResponse 本次分片文本
+     */
+    default void onPartialResponse(SseEmitter emitter, String partialResponse) {
+        // 默认不处理
+    }
+
+    /**
+     * 流式完成时触发，携带完整输出文本（仅 SseEmitter 路径）
+     *
+     * @param emitter      SSE 发射器
+     * @param fullResponse 完整回答文本
+     */
+    default void onCompleteResponse(SseEmitter emitter, String fullResponse) {
+        // 默认不处理
+    }
+
+    /**
      * 默认实现：不做任何处理（用于普通对话）
      */
     class NoOpHandler implements StreamEventHandler {

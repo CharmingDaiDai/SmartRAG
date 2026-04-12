@@ -250,4 +250,26 @@ public class SseEventBuilder {
             log.warn("发送 token_usage 事件失败: {}", e.getMessage());
         }
     }
+
+    /**
+     * 发送错误事件 (SseEmitter)
+     * event: "error"
+     * data: {"error":"..."}
+     */
+    public static void sendErrorEvent(SseEmitter emitter, String errorMessage) {
+        if (emitter == null) return;
+        try {
+            Map<String, String> data = new HashMap<>();
+            data.put("error", errorMessage == null || errorMessage.isBlank()
+                    ? "服务异常，请稍后重试。"
+                    : errorMessage);
+            String json = OBJECT_MAPPER.writeValueAsString(data);
+            emitter.send(SseEmitter.event()
+                    .name("error")
+                    .data(json)
+            );
+        } catch (Exception e) {
+            log.warn("发送错误事件失败: {}", e.getMessage());
+        }
+    }
 }
