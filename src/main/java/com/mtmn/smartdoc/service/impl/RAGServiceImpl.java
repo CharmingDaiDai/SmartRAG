@@ -693,7 +693,7 @@ public class RAGServiceImpl implements RAGService {
 
                     // DAG 并行执行，返回最后一个 Generate 算子的输出
                     String finalAnswer = sadpPlanner.executeDag(
-                            tasks, question, kbId, emitter, llmClient, embeddingClient, ledger);
+                            tasks, question, kbId, emitter, llmClient, embeddingClient, ledger, maxTopK);
 
                     SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
 

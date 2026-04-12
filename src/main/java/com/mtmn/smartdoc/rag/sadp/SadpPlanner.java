@@ -233,8 +233,9 @@ public class SadpPlanner {
      */
     public String executeDag(List<TaskNode> tasks, String originalQuery, Long kbId,
                               SseEmitter emitter, LLMClient llmClient, EmbeddingClient embeddingClient,
-                              TokenUsageLedger ledger) {
+                              TokenUsageLedger ledger, int perScopedTopK) {
         int totalTasks = tasks.size();
+        int scopedTopK = perScopedTopK > 0 ? perScopedTopK : 10;
 
         // 标记最终 Generate 任务：执行时直接返回 prompt，由 RAGServiceImpl 发起流式调用
         tasks.stream()
@@ -261,7 +262,7 @@ public class SadpPlanner {
                 // 无依赖：直接并行执行
                 taskFuture = CompletableFuture.supplyAsync(() ->
                         executeSubTask(task, Collections.emptyMap(), kbId,
-                                emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger));
+                        emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, scopedTopK));
             } else {
                 // 有依赖：等待所有前置任务完成后执行
                 CompletableFuture<Void> allDeps = CompletableFuture.allOf(
@@ -280,7 +281,7 @@ public class SadpPlanner {
                         }
                     }
                     return executeSubTask(task, priorResults, kbId,
-                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger);
+                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, scopedTopK);
                 });
             }
 
@@ -358,7 +359,7 @@ public class SadpPlanner {
                                    Long kbId, SseEmitter emitter,
                                    LLMClient llmClient, EmbeddingClient embeddingClient,
                                    Map<String, Integer> taskIndexMap, int totalTasks,
-                                   TokenUsageLedger ledger) {
+                                   TokenUsageLedger ledger, int scopedTopK) {
         task.setStatus(TaskNode.TaskStatus.RUNNING);
 
         int taskIndex = taskIndexMap.getOrDefault(task.getId(), 0);
@@ -374,7 +375,7 @@ public class SadpPlanner {
 
         try {
             String result = switch (type) {
-                case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient);
+                case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient, scopedTopK);
                 case Get_Summary     -> executeGetSummary(task, kbId);
                 case Generate        -> executeGenerate(task, priorResults, llmClient, ledger);
             };
@@ -400,7 +401,7 @@ public class SadpPlanner {
      * - 有 nodeId：从 LLM 选定节点的子层开始自适应分层检索（Milvus 原生 filter 逐层过滤）
      * - 无 nodeId：全知识库自适应分层检索（退化为标准路径）
      */
-    private String executeScopedRetrieve(TaskNode task, Long kbId, EmbeddingClient embeddingClient) {
+    private String executeScopedRetrieve(TaskNode task, Long kbId, EmbeddingClient embeddingClient, int scopedTopK) {
         String nodeId = task.getNodeId();
         AdaptiveRetriever.RetrievalBundle bundle;
 
@@ -414,17 +415,59 @@ public class SadpPlanner {
             bundle = adaptiveRetriever.retrieveFromScope(nodeId, task.getQuery(), kbId, embeddingClient, null);
         }
 
-        // 存储原始结果，供 executeDag 结束后发送 ref 事件
-        task.setRawResults(bundle.results());
+        // 每个 Scoped_Retrieve 子任务最多保留 scopedTopK 个结果。
+        // 先按 sourceId 去重（同 source 取高分），再按 score 降序截断。
+        List<RetrievalResult> limitedResults = limitScopedResults(bundle.results(), scopedTopK);
 
-        if (bundle.results().isEmpty()) {
+        // 存储子任务原始结果（已按 scopedTopK 限制），供 executeDag 结束后发送 ref 事件
+        task.setRawResults(limitedResults);
+
+        if (limitedResults.isEmpty()) {
             return "（未在指定范围内检索到相关内容）";
         }
 
-        return bundle.results().stream()
+        return limitedResults.stream()
                 .map(RetrievalResult::getContent)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining("\n\n"));
+    }
+
+    /**
+     * 限制 Scoped_Retrieve 的最终结果数量（按 sourceId 去重后截断）。
+     */
+    private List<RetrievalResult> limitScopedResults(List<RetrievalResult> results, int scopedTopK) {
+        if (results == null || results.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        int limit = scopedTopK > 0 ? scopedTopK : 10;
+        Map<String, RetrievalResult> dedup = new LinkedHashMap<>();
+
+        for (RetrievalResult result : results) {
+            if (result == null) {
+                continue;
+            }
+            String sourceId = result.getSourceId();
+            if (sourceId == null || sourceId.isBlank()) {
+                Object nodeId = result.getMetadata() != null ? result.getMetadata().get("node_id") : null;
+                sourceId = nodeId != null ? String.valueOf(nodeId) : UUID.randomUUID().toString();
+            }
+            RetrievalResult existing = dedup.get(sourceId);
+            if (existing == null || result.getScore() > existing.getScore()) {
+                dedup.put(sourceId, result);
+            }
+        }
+
+        List<RetrievalResult> ranked = dedup.values().stream()
+                .sorted(Comparator.comparingDouble(RetrievalResult::getScore).reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        if (dedup.size() > ranked.size()) {
+            log.debug("Scoped_Retrieve result capped: {} -> {} (perScopedTopK={})",
+                    dedup.size(), ranked.size(), limit);
+        }
+        return ranked;
     }
 
     /**
