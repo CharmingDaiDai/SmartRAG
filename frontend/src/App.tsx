@@ -13,6 +13,7 @@ import Register from './pages/auth/Register';
 import GitHubCallback from './pages/auth/callback/GitHubCallback';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAppStore } from './store/useAppStore';
+import './App.css';
 import {
   COLOR_THEMES,
   FONT_FAMILIES,
@@ -38,41 +39,41 @@ function hexToRgb(hex: string): string {
 }
 
 function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: FontSizeDef, us: UIStyleDef) {
-  const shadowMul = us.shadowScale;
+  const shadowMul = Math.max(0.85, us.shadowScale);
   const base = {
     colorPrimary: ct.primary,
-    colorSuccess: '#10b981',
-    colorWarning: '#f59e0b',
-    colorError: '#ef4444',
+    colorSuccess: '#16a34a',
+    colorWarning: '#d97706',
+    colorError: '#dc2626',
     colorInfo: ct.primary,
 
-    colorBgBase: '#ffffff',
+    colorBgBase: '#f4f6fb',
     colorBgContainer: '#ffffff',
     colorBgElevated: '#ffffff',
-    colorBgLayout: '#fafaf9',
-    colorBgSpotlight: '#f5f5f4',
-    colorBgMask: 'rgba(28,25,23,0.45)',
+    colorBgLayout: '#edf1f7',
+    colorBgSpotlight: '#e6edf9',
+    colorBgMask: 'rgba(15, 23, 42, 0.45)',
 
-    colorBorder: '#e7e5e4',
-    colorBorderSecondary: '#f5f5f4',
+    colorBorder: '#dce3ee',
+    colorBorderSecondary: '#e9eef6',
 
-    colorText: '#1c1917',
-    colorTextSecondary: '#57534e',
-    colorTextTertiary: '#a8a29e',
-    colorTextQuaternary: '#d6d3d1',
-    colorTextDescription: '#78716c',
-    colorTextDisabled: '#d6d3d1',
-    colorTextHeading: '#1c1917',
-    colorTextLabel: '#44403c',
-    colorTextPlaceholder: '#a8a29e',
+    colorText: '#0f172a',
+    colorTextSecondary: '#475569',
+    colorTextTertiary: '#94a3b8',
+    colorTextQuaternary: '#cbd5e1',
+    colorTextDescription: '#64748b',
+    colorTextDisabled: '#cbd5e1',
+    colorTextHeading: '#0b1220',
+    colorTextLabel: '#334155',
+    colorTextPlaceholder: '#94a3b8',
 
-    colorFill: '#f5f5f4',
-    colorFillSecondary: '#fafaf9',
-    colorFillTertiary: '#fafaf9',
-    colorFillAlter: '#fafaf9',
-    colorFillQuaternary: 'rgba(245,245,244,0.6)',
+    colorFill: '#eef3fa',
+    colorFillSecondary: '#f5f8fd',
+    colorFillTertiary: '#f8fafe',
+    colorFillAlter: '#f5f8fd',
+    colorFillQuaternary: 'rgba(226, 232, 240, 0.6)',
 
-    colorSplit: '#e7e5e4',
+    colorSplit: '#dde5f0',
 
     borderRadius: us.borderRadius,
     borderRadiusXS: us.borderRadiusXS,
@@ -92,9 +93,9 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     fontSizeHeading4: 16,
     fontSizeHeading5: 14,
 
-    lineHeight: 1.75,
+    lineHeight: 1.7,
     lineHeightSM: 1.5,
-    lineHeightLG: 1.8,
+    lineHeightLG: 1.75,
     lineHeightHeading1: 1.3,
     lineHeightHeading2: 1.35,
     lineHeightHeading3: 1.4,
@@ -119,9 +120,9 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     controlHeightSM: fs.controlHeightSM,
     controlHeightLG: fs.controlHeightLG,
 
-    boxShadow: `0 ${4 * shadowMul}px ${12 * shadowMul}px rgba(28,25,23,${(0.08 * shadowMul).toFixed(2)}), 0 ${2 * shadowMul}px ${4 * shadowMul}px rgba(28,25,23,${(0.04 * shadowMul).toFixed(2)})`,
-    boxShadowSecondary: `0 ${1 * shadowMul}px ${3 * shadowMul}px rgba(28,25,23,${(0.08 * shadowMul).toFixed(2)})`,
-    boxShadowTertiary: `0 ${8 * shadowMul}px ${24 * shadowMul}px rgba(28,25,23,${(0.10 * shadowMul).toFixed(2)})`,
+    boxShadow: `0 ${6 * shadowMul}px ${18 * shadowMul}px rgba(15,23,42,${(0.08 * shadowMul).toFixed(2)}), 0 ${2 * shadowMul}px ${6 * shadowMul}px rgba(15,23,42,${(0.05 * shadowMul).toFixed(2)})`,
+    boxShadowSecondary: `0 ${2 * shadowMul}px ${6 * shadowMul}px rgba(15,23,42,${(0.08 * shadowMul).toFixed(2)})`,
+    boxShadowTertiary: `0 ${10 * shadowMul}px ${30 * shadowMul}px rgba(15,23,42,${(0.12 * shadowMul).toFixed(2)})`,
 
     motionDurationFast: us.motionSpeed === 'fast' ? '0.1s' : '0.15s',
     motionDurationMid: us.motionSpeed === 'fast' ? '0.15s' : '0.25s',
@@ -129,61 +130,42 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     motionEaseInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
     motionEaseOut: 'cubic-bezier(0, 0, 0.2, 1)',
     motionEaseIn: 'cubic-bezier(0.4, 0, 1, 1)',
-    
-    // 科技主题特殊覆盖
-    ...(us.key === 'tech' ? {
-      colorBgBase: '#050505',
-      colorBgContainer: 'rgba(20, 20, 20, 0.6)',
-      colorBgElevated: 'rgba(30, 30, 30, 0.8)',
-      colorBgLayout: 'transparent',
-      colorBorder: ct.primaryBorder,
-      colorBorderSecondary: ct.primarySoft,
-      wireframe: true,
-    } : {}),
-    
-    // 花哨主题特殊覆盖
-    ...(us.key === 'playful' ? {
-      lineWidth: 2,
-      colorBgLayout: 'transparent',
-      colorBgContainer: 'rgba(255, 255, 255, 0.85)',
-      colorBgElevated: 'rgba(255, 255, 255, 0.95)',
-    } : {}),
   };
 
   if (isDark) {
     return {
       ...base,
-      colorBgBase: us.key === 'tech' ? '#050505' : '#141210',
-      colorBgContainer: us.key === 'tech' ? 'rgba(20, 20, 20, 0.6)' : '#1c1917',
-      colorBgElevated: us.key === 'tech' ? 'rgba(30, 30, 30, 0.8)' : '#292524',
-      colorBgLayout: us.key === 'tech' ? 'transparent' : '#141210',
-      colorBgSpotlight: '#292524',
-      colorBgMask: 'rgba(0,0,0,0.65)',
+      colorBgBase: '#0b1220',
+      colorBgContainer: '#111a2b',
+      colorBgElevated: '#162033',
+      colorBgLayout: '#090f1b',
+      colorBgSpotlight: '#1c2840',
+      colorBgMask: 'rgba(2, 6, 23, 0.75)',
 
-      colorBorder: 'rgba(255,255,255,0.08)',
-      colorBorderSecondary: 'rgba(255,255,255,0.04)',
+      colorBorder: 'rgba(148, 163, 184, 0.24)',
+      colorBorderSecondary: 'rgba(148, 163, 184, 0.14)',
 
-      colorText: '#f5f5f4',
-      colorTextSecondary: '#a8a29e',
-      colorTextTertiary: '#78716c',
-      colorTextQuaternary: '#57534e',
-      colorTextDescription: '#a8a29e',
-      colorTextDisabled: '#44403c',
-      colorTextHeading: '#fafaf9',
-      colorTextLabel: '#d6d3d1',
-      colorTextPlaceholder: '#78716c',
+      colorText: '#e2e8f0',
+      colorTextSecondary: '#94a3b8',
+      colorTextTertiary: '#64748b',
+      colorTextQuaternary: '#475569',
+      colorTextDescription: '#94a3b8',
+      colorTextDisabled: '#475569',
+      colorTextHeading: '#f8fafc',
+      colorTextLabel: '#cbd5e1',
+      colorTextPlaceholder: '#64748b',
 
-      colorFill: 'rgba(255,255,255,0.06)',
-      colorFillSecondary: 'rgba(255,255,255,0.04)',
-      colorFillTertiary: 'rgba(255,255,255,0.02)',
-      colorFillAlter: 'rgba(255,255,255,0.04)',
-      colorFillQuaternary: 'rgba(255,255,255,0.02)',
+      colorFill: 'rgba(148, 163, 184, 0.14)',
+      colorFillSecondary: 'rgba(148, 163, 184, 0.10)',
+      colorFillTertiary: 'rgba(148, 163, 184, 0.06)',
+      colorFillAlter: 'rgba(148, 163, 184, 0.12)',
+      colorFillQuaternary: 'rgba(148, 163, 184, 0.08)',
 
-      colorSplit: 'rgba(255,255,255,0.08)',
+      colorSplit: 'rgba(148, 163, 184, 0.2)',
 
-      boxShadow: `0 ${4 * shadowMul}px ${12 * shadowMul}px rgba(0,0,0,${(0.4 * shadowMul).toFixed(2)})`,
-      boxShadowSecondary: `0 ${1 * shadowMul}px ${3 * shadowMul}px rgba(0,0,0,${(0.3 * shadowMul).toFixed(2)})`,
-      boxShadowTertiary: `0 ${8 * shadowMul}px ${24 * shadowMul}px rgba(0,0,0,${(0.5 * shadowMul).toFixed(2)})`,
+      boxShadow: `0 ${8 * shadowMul}px ${24 * shadowMul}px rgba(2,6,23,${(0.45 * shadowMul).toFixed(2)})`,
+      boxShadowSecondary: `0 ${4 * shadowMul}px ${12 * shadowMul}px rgba(2,6,23,${(0.32 * shadowMul).toFixed(2)})`,
+      boxShadowTertiary: `0 ${12 * shadowMul}px ${36 * shadowMul}px rgba(2,6,23,${(0.55 * shadowMul).toFixed(2)})`,
     };
   }
 
@@ -197,29 +179,23 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
   return {
     Menu: {
       itemBorderRadius: us.borderRadius,
-      itemHeight: 40,
+      itemHeight: 42,
       itemSelectedBg: primarySoft,
       itemSelectedColor: primary,
-      itemHoverBg: isDark ? 'rgba(255,255,255,0.06)' : `${primary}0F`,
-      itemHoverColor: isDark ? '#f5f5f4' : '#1c1917',
-      itemActiveBg: isDark ? 'rgba(255,255,255,0.08)' : `${primary}1F`,
+      itemHoverBg: isDark ? 'rgba(148, 163, 184, 0.12)' : `${primary}14`,
+      itemHoverColor: isDark ? '#f8fafc' : '#0f172a',
+      itemActiveBg: isDark ? 'rgba(148, 163, 184, 0.18)' : `${primary}22`,
       iconSize: 16,
       iconMarginInlineEnd: 10,
       collapsedIconSize: 18,
       itemPaddingInline: 14,
-      ...(us.key === 'playful' ? {
-        itemBg: 'transparent',
-        subMenuItemBg: 'transparent',
-      } : {}),
-      ...(us.key === 'tech' ? {
-        itemBg: 'transparent',
-        subMenuItemBg: 'transparent',
-      } : {}),
+      itemBg: 'transparent',
+      subMenuItemBg: 'transparent',
     },
     Card: {
       borderRadius: us.cardRadius,
       borderRadiusLG: us.cardRadius + 4,
-      paddingLG: 20,
+      paddingLG: 22,
     },
     Button: {
       borderRadius: us.buttonRadius,
@@ -227,10 +203,10 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
       controlHeight: fs.controlHeight,
       controlHeightSM: fs.controlHeightSM,
       controlHeightLG: fs.controlHeightLG,
-      fontWeight: 500,
-      paddingInline: 16,
+      fontWeight: 600,
+      paddingInline: 18,
       paddingInlineSM: 12,
-      paddingInlineLG: 20,
+      paddingInlineLG: 22,
     },
     Input: {
       borderRadius: us.borderRadius,
@@ -306,29 +282,11 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
     Alert: {
       borderRadius: us.borderRadiusLG,
     },
-    ...(us.key === 'playful' ? {
-      Button: {
-        controlHeight: fs.controlHeight + 4,
-        borderRadius: us.buttonRadius,
-        fontWeight: 600,
-      },
-      Card: {
-        boxShadowTertiary: '0 8px 0 rgba(0,0,0,0.1)',
-      },
-      Layout: {
-        headerBg: 'rgba(255, 255, 255, 0.85)',
-        siderBg: 'rgba(255, 255, 255, 0.85)',
-      },
-    } : {}),
-    ...(us.key === 'tech' ? {
-      Button: {
-        defaultShadow: `0 0 10px ${primarySoft}`,
-      },
-      Layout: {
-        headerBg: 'rgba(20, 20, 20, 0.6)',
-        siderBg: 'rgba(20, 20, 20, 0.6)',
-      },
-    } : {})
+    Layout: {
+      headerBg: isDark ? '#111a2b' : '#ffffff',
+      siderBg: isDark ? '#111a2b' : '#ffffff',
+      bodyBg: isDark ? '#090f1b' : '#edf1f7',
+    },
   };
 }
 
@@ -358,7 +316,7 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   root.style.setProperty('--ui-card-border-width', `${us.cardBorderWidth}px`);
   root.style.setProperty('--ui-btn-letter-spacing', us.buttonLetterSpacing);
   root.style.setProperty('--ui-btn-text-transform', us.buttonTextTransform);
-  root.setAttribute('data-ui-style', us.key);
+  root.setAttribute('data-ui-style', 'minimal');
 }
 
 // ==================== App 组件 ====================
@@ -394,8 +352,7 @@ function App() {
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           ...tokenObj,
-          // 科技主题强制暗色，花哨主题强制亮色（可选，这里仅做动画控制）
-          motion: us.key === 'playful' ? false : true, // 花哨主题关闭原生动画，交由 CSS/Framer 处理
+          motion: true,
         },
         components: componentTokens,
       }}

@@ -637,6 +637,7 @@ const ChatPage: React.FC = () => {
                 <Button
                     type="dashed"
                     block
+                    aria-label="新建对话"
                     icon={<PlusOutlined />}
                     onClick={handleNewChat}
                     style={{
@@ -654,12 +655,16 @@ const ChatPage: React.FC = () => {
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
                 {historyLoading && (
                     <div style={{ padding: '12px 14px', fontSize: 12, color: token.colorTextSecondary }}>
+                        <LoadingOutlined style={{ marginRight: 6 }} />
                         加载历史会话中...
                     </div>
                 )}
                 {!historyLoading && historyList.length === 0 && (
                     <div style={{ padding: '12px 14px', fontSize: 12, color: token.colorTextSecondary }}>
-                        暂无历史会话
+                        <div style={{ marginBottom: 8 }}>暂无历史会话</div>
+                        <Button type="link" size="small" style={{ padding: 0 }} onClick={handleNewChat}>
+                            开始第一轮提问
+                        </Button>
                     </div>
                 )}
                 {Object.entries(groupedHistory).map(([group, items]) => (
@@ -679,6 +684,9 @@ const ChatPage: React.FC = () => {
                             <div
                                 key={item.sessionId}
                                 className="chat-history-item"
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`打开历史会话 ${item.title || item.lastQuestion || '新对话'}`}
                                 style={{
                                     padding: '8px 12px',
                                     margin: '1px 6px',
@@ -694,6 +702,12 @@ const ChatPage: React.FC = () => {
                                     position: 'relative',
                                 }}
                                 onClick={() => handleHistoryClick(item.sessionId)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handleHistoryClick(item.sessionId);
+                                    }
+                                }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden', flex: 1 }}>
@@ -738,7 +752,12 @@ const ChatPage: React.FC = () => {
                                             okText="确定"
                                             cancelText="取消"
                                         >
-                                            <DeleteOutlined style={{ fontSize: 12, color: token.colorTextTertiary }} />
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                aria-label="删除历史会话"
+                                                icon={<DeleteOutlined style={{ fontSize: 12 }} />}
+                                            />
                                         </Popconfirm>
                                     </div>
                                 </div>
@@ -796,6 +815,15 @@ const ChatPage: React.FC = () => {
                                         <div
                                             className="suggestion-card"
                                             onClick={() => handleRequest(q.text)}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`使用建议问题：${q.text}`}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleRequest(q.text);
+                                                }
+                                            }}
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -951,6 +979,7 @@ const ChatPage: React.FC = () => {
                         </div>
                         <Select
                             style={{ width: '100%' }}
+                            aria-label="选择当前知识库"
                             value={kbsLoaded && kbs.some(kb => kb.id === currentKbId) ? currentKbId : undefined}
                             onChange={setCurrentKbId}
                             options={kbs.map(kb => ({ label: kb.name, value: kb.id }))}
@@ -1161,7 +1190,7 @@ const ChatPage: React.FC = () => {
 
                 {/* 清空对话按钮 */}
                 <div style={{ padding: '12px 16px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Button block danger icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
+                    <Button block danger aria-label="清空当前对话消息" icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
                         清空对话
                     </Button>
                 </div>

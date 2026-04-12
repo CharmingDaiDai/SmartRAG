@@ -1,12 +1,15 @@
 package com.mtmn.smartdoc.rag.sadp;
 
 import com.mtmn.smartdoc.constants.AppConstants;
+import com.mtmn.smartdoc.enums.DocumentIndexStatus;
 import com.mtmn.smartdoc.model.client.EmbeddingClient;
 import com.mtmn.smartdoc.model.client.LLMClient;
 import com.mtmn.smartdoc.model.client.SseEventBuilder;
 import com.mtmn.smartdoc.model.client.TokenUsageLedger;
+import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.TreeNode;
 import com.mtmn.smartdoc.rag.retriever.AdaptiveRetriever;
+import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.TreeNodeRepository;
 import com.mtmn.smartdoc.utils.LlmJsonUtils;
 import com.mtmn.smartdoc.vo.RetrievalResult;
@@ -40,6 +43,7 @@ import java.util.stream.Collectors;
 public class SadpPlanner {
 
     private final AdaptiveRetriever adaptiveRetriever;
+    private final DocumentRepository documentRepository;
     private final TreeNodeRepository treeNodeRepository;
 
     /** 2 层骨架字数上限，超出则降级为 1 层 */
@@ -91,8 +95,40 @@ public class SadpPlanner {
      * @return 骨架文本（供 DAG 规划提示词使用）
      */
     public String buildSkeleton(Long kbId) {
-        List<TreeNode> level1 = treeNodeRepository.findByKbIdAndLevel(kbId, 1);
-        List<TreeNode> level2 = treeNodeRepository.findByKbIdAndLevel(kbId, 2);
+        List<DocumentPo> indexedDocuments = documentRepository
+            .findByKbIdAndIndexStatus(kbId, DocumentIndexStatus.INDEXED);
+        if (indexedDocuments.isEmpty()) {
+            log.warn("SADP skeleton: no indexed documents for kbId={}, returning empty", kbId);
+            return "";
+        }
+
+        Set<Long> activeDocIds = indexedDocuments.stream()
+            .map(DocumentPo::getId)
+            .collect(Collectors.toSet());
+
+        List<TreeNode> activeNodes = treeNodeRepository.findByKbId(kbId).stream()
+            .filter(n -> n.getDocumentId() != null && activeDocIds.contains(n.getDocumentId()))
+            .filter(n -> n.getLevel() != null && n.getLevel() > 0)
+            .sorted(Comparator.comparing(TreeNode::getTitlePath, Comparator.nullsLast(String::compareTo)))
+            .toList();
+
+        if (activeNodes.isEmpty()) {
+            log.warn("SADP skeleton: no active tree nodes for kbId={}, returning empty", kbId);
+            return "";
+        }
+
+        int rootLevel = activeNodes.stream()
+            .map(TreeNode::getLevel)
+            .filter(Objects::nonNull)
+            .min(Integer::compareTo)
+            .orElse(1);
+
+        List<TreeNode> level1 = activeNodes.stream()
+            .filter(n -> n.getLevel() == rootLevel)
+            .toList();
+        List<TreeNode> level2 = activeNodes.stream()
+            .filter(n -> n.getLevel() == rootLevel + 1)
+            .toList();
 
         // 建立 parentNodeId → children 映射
         Map<String, List<TreeNode>> childrenMap = level2.stream()
@@ -111,8 +147,8 @@ public class SadpPlanner {
             }
         }
         if (sb2.length() <= SKELETON_2LEVEL_MAX_CHARS) {
-            log.debug("SADP skeleton 2-level ({} L1, {} L2, {} chars)",
-                    level1.size(), level2.size(), sb2.length());
+            log.debug("SADP skeleton 2-level (rootLevel={}, {} L1, {} L2, {} chars)",
+                rootLevel, level1.size(), level2.size(), sb2.length());
             return sb2.toString();
         }
 
@@ -123,8 +159,8 @@ public class SadpPlanner {
                .append(l1.getTitlePath()).append("\n");
         }
         if (sb1.length() <= SKELETON_1LEVEL_MAX_CHARS) {
-            log.info("SADP skeleton: 2-level too long ({}), using 1-level ({} chars)",
-                    sb2.length(), sb1.length());
+            log.info("SADP skeleton: 2-level too long ({}), using 1-level at rootLevel={} ({} chars)",
+                sb2.length(), rootLevel, sb1.length());
             return sb1.toString();
         }
 

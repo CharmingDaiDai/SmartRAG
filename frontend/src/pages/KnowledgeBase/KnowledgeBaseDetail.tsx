@@ -1,4 +1,4 @@
-import { Button, Space, Popconfirm, Upload, Modal, Table, Input, Form, Alert, Typography, Tooltip, App, Breadcrumb, Statistic, theme } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Table, Input, Form, Alert, Typography, Tooltip, App, Breadcrumb, Statistic, Empty, theme } from 'antd';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, SyncOutlined, EyeOutlined, DeleteOutlined, ReloadOutlined, BuildOutlined, HomeOutlined, FileSearchOutlined, RobotOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -72,7 +72,7 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     ];
 
     return (
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {stats.map(stat => (
                 <div
                     key={stat.key}
@@ -105,7 +105,12 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
                     <div>
                         <div style={{ fontSize: 10, color: token.colorTextTertiary, lineHeight: 1.2 }}>{stat.title}</div>
                         {stat.isText ? (
-                            <div style={{ fontSize: 12, fontWeight: 600, color: token.colorText, lineHeight: 1.4 }}>{stat.value}</div>
+                            <Typography.Text
+                                ellipsis={{ tooltip: String(stat.value ?? '-') }}
+                                style={{ maxWidth: 140, display: 'block', fontSize: 12, fontWeight: 600, color: token.colorText, lineHeight: 1.4 }}
+                            >
+                                {String(stat.value ?? '-')}
+                            </Typography.Text>
                         ) : (
                             <Statistic
                                 value={stat.value as number}
@@ -229,7 +234,7 @@ export default function KnowledgeBaseDetail() {
               message.error(res.message || '获取文档列表失败');
           }
       } catch (error) {
-          // message.error('获取文档列表失败');
+          message.error('获取文档列表失败，请稍后重试');
       } finally {
           setLoading(false);
       }
@@ -251,7 +256,7 @@ export default function KnowledgeBaseDetail() {
           message.error(res.message || '删除失败');
       }
     } catch (error) {
-      // message.error('删除失败');
+            message.error('删除失败，请稍后重试');
     } finally {
       setDeletingDocIds(prev => {
           const next = { ...prev };
@@ -405,12 +410,17 @@ export default function KnowledgeBaseDetail() {
       title: '文档名称',
       dataIndex: 'filename',
       ellipsis: true,
-      render: (text, entity) => (
-        <Space>
-            {getFileIcon(text || entity.filename || entity.fileName, token.colorPrimary)}
-            {text || entity.filename || entity.fileName}
-        </Space>
-      ),
+            render: (text, entity) => {
+                const fileName = text || entity.filename || entity.fileName || '未命名文档';
+                return (
+                    <Space style={{ width: '100%', minWidth: 0 }}>
+                            {getFileIcon(fileName, token.colorPrimary)}
+                            <Typography.Text ellipsis={{ tooltip: fileName }} style={{ maxWidth: 320, minWidth: 0 }}>
+                                    {fileName}
+                            </Typography.Text>
+                    </Space>
+                );
+            },
     },
     {
       title: '大小',
@@ -461,6 +471,7 @@ export default function KnowledgeBaseDetail() {
             <Tooltip title="查看">
                 <Button
                     type="text"
+                    aria-label="查看切分块"
                     icon={<EyeOutlined />}
                     onClick={() => {
                         setSelectedDocument(record);
@@ -471,6 +482,7 @@ export default function KnowledgeBaseDetail() {
             <Tooltip title="重建索引">
                 <Button
                     type="text"
+                    aria-label="重建文档索引"
                     icon={<BuildOutlined />}
                     loading={!!rebuildingDocIds[record.id]}
                     onClick={() => handleRebuildDocIndex(record.id)}
@@ -481,7 +493,7 @@ export default function KnowledgeBaseDetail() {
                 onConfirm={() => handleDelete(record.id)}
             >
                 <Tooltip title="删除">
-                    <Button type="text" danger icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
+                    <Button type="text" danger aria-label="删除文档" icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
                 </Tooltip>
             </Popconfirm>
         </Space>
@@ -533,6 +545,8 @@ export default function KnowledgeBaseDetail() {
             <Input
                 placeholder="搜索文档"
                 prefix={<SearchOutlined />}
+                allowClear
+                aria-label="搜索知识库文档"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
                 style={{ width: 200 }}
@@ -599,7 +613,15 @@ export default function KnowledgeBaseDetail() {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
         }}
-        scroll={{ y: tableScrollY }}
+        scroll={{ x: 1000, y: tableScrollY }}
+        locale={{
+            emptyText: (
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={searchText ? '没有匹配的文档，请调整关键词' : '当前知识库暂无文档，请先上传文件'}
+                />
+            ),
+        }}
         pagination={{
             current: currentPage,
             pageSize: pageSize,
@@ -673,7 +695,7 @@ export default function KnowledgeBaseDetail() {
                                       <div style={{ fontSize: 14 }}>{file.name}</div>
                                       <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                   </div>
-                                  <Button type="text" icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
+                                  <Button type="text" aria-label={`移除文件 ${file.name}`} icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                               </div>
                           ))}
                       </div>

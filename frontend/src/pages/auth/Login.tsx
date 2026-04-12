@@ -132,13 +132,20 @@ const Login: React.FC = () => {
                     登录您的 SmartRAG 账户
                   </Text>
 
-                  <Form name="login" initialValues={{ remember: true }} onFinish={onFinish} layout="vertical">
+                  <Form name="login" initialValues={{ remember: true }} onFinish={onFinish} layout="vertical" requiredMark={false}>
                     <Form.Item
                       name="username"
                       label="用户名或邮箱"
                       rules={[{ required: true, message: '请输入用户名或邮箱' }]}
                     >
-                      <Input prefix={<UserOutlined />} placeholder="用户名或邮箱" size="large" />
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder="用户名或邮箱"
+                        size="large"
+                        autoComplete="username"
+                        spellCheck={false}
+                        aria-label="用户名或邮箱"
+                      />
                     </Form.Item>
 
                     <Form.Item
@@ -150,6 +157,9 @@ const Login: React.FC = () => {
                         prefix={<LockOutlined />}
                         placeholder="密码"
                         size="large"
+                        autoComplete="current-password"
+                        spellCheck={false}
+                        aria-label="密码"
                         iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                       />
                     </Form.Item>
@@ -181,7 +191,7 @@ const Login: React.FC = () => {
                     </Divider>
 
                     <div className="social-row">
-                      <Button icon={<GithubOutlined />} onClick={handleGithubLogin} style={{ minWidth: 160 }}>
+                      <Button aria-label="使用 GitHub 登录" icon={<GithubOutlined />} onClick={handleGithubLogin} style={{ minWidth: 160 }}>
                         使用 GitHub 登录
                       </Button>
                     </div>

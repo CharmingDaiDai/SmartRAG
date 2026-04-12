@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, message, theme } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Button, Card, Col, Empty, Row, Skeleton, Statistic, Typography, message, theme } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design/icons';
 import { Tiny, WordCloud } from '@ant-design/plots';
 import { dashboardService } from '../../services/dashboardService';
@@ -66,26 +66,34 @@ const Dashboard: React.FC = () => {
         wordCloud: []
     });
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const { token } = theme.useToken();
     const STAT_CARDS = getStatCards(token.colorPrimary);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            setLoading(true);
-            try {
-                const res: any = await dashboardService.getStatistics();
-                if (res.code === 200) {
-                    setData(res.data);
-                }
-            } catch (error) {
-                console.error(error);
-                message.error('获取统计数据失败');
-            } finally {
-                setLoading(false);
+    const fetchStats = useCallback(async () => {
+        setLoading(true);
+        setLoadError(null);
+        try {
+            const res: any = await dashboardService.getStatistics();
+            if (res.code === 200) {
+                setData(res.data);
+                return;
             }
-        };
-        fetchStats();
+
+            setLoadError(res.message || '获取统计数据失败');
+            message.error(res.message || '获取统计数据失败');
+        } catch (error) {
+            console.error(error);
+            setLoadError('获取统计数据失败，请稍后重试');
+            message.error('获取统计数据失败');
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
 
     const statValues: Record<string, number> = {
         knowledgeBases: data.knowledgeBases,
@@ -137,17 +145,36 @@ const Dashboard: React.FC = () => {
         color: ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#4338ca'],
     };
 
+    const hasTrendData = data.conversationStats.last7Days.length > 0;
+    const hasWordCloudData = data.wordCloud.length > 0;
+
     return (
         <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
             <SlideInUp>
-                <Title level={4} style={{ marginBottom: 24 }}>数据仪表盘</Title>
+                <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Title level={4} style={{ marginBottom: 0 }}>数据仪表盘</Title>
+                    <Button onClick={fetchStats} loading={loading}>刷新数据</Button>
+                </div>
             </SlideInUp>
+
+            {loadError && (
+                <SlideInUp transition={{ delay: 0.05 }}>
+                    <Alert
+                        showIcon
+                        type="warning"
+                        message="数据加载存在异常"
+                        description={loadError}
+                        action={<Button size="small" onClick={fetchStats}>重试</Button>}
+                        style={{ marginBottom: 16, borderRadius: 10 }}
+                    />
+                </SlideInUp>
+            )}
 
             <StaggerContainer>
                 {/* 顶部统计行 */}
                 <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
                     {STAT_CARDS.map((card) => (
-                        <Col span={8} key={card.key}>
+                        <Col xs={24} sm={12} xl={8} key={card.key}>
                             <StaggerItem>
                                 <HoverCard>
                                     <Card hoverable style={{ borderRadius: 12, overflow: 'hidden' }}>
@@ -198,7 +225,7 @@ const Dashboard: React.FC = () => {
 
                 {/* 图表行 */}
                 <Row gutter={[20, 20]}>
-                    <Col span={12}>
+                    <Col xs={24} xl={12}>
                         <StaggerItem>
                             <HoverCard>
                                 <Card
@@ -213,14 +240,20 @@ const Dashboard: React.FC = () => {
                                     }}
                                 >
                                     <div style={{ height: CHART_HEIGHT }}>
-                                        {/* @ts-ignore */}
-                                        <Tiny.Area {...areaConfig} />
+                                        {loading ? (
+                                            <Skeleton active paragraph={{ rows: 8 }} title={false} />
+                                        ) : hasTrendData ? (
+                                            // @ts-ignore
+                                            <Tiny.Area {...areaConfig} />
+                                        ) : (
+                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无趋势数据" />
+                                        )}
                                     </div>
                                 </Card>
                             </HoverCard>
                         </StaggerItem>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} xl={12}>
                         <StaggerItem>
                             <HoverCard>
                                 <Card
@@ -235,8 +268,14 @@ const Dashboard: React.FC = () => {
                                     }}
                                 >
                                     <div style={{ height: CHART_HEIGHT }}>
-                                        {/* @ts-ignore */}
-                                        <WordCloud {...wordCloudConfig} />
+                                        {loading ? (
+                                            <Skeleton active paragraph={{ rows: 8 }} title={false} />
+                                        ) : hasWordCloudData ? (
+                                            // @ts-ignore
+                                            <WordCloud {...wordCloudConfig} />
+                                        ) : (
+                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键词数据" />
+                                        )}
                                     </div>
                                 </Card>
                             </HoverCard>

@@ -43,6 +43,30 @@ interface AppState {
   setUIStyle: (style: UIStyle) => void;
 }
 
+const normalizePersonalization = (settings: PersonalizationSettings): PersonalizationSettings => {
+    const normalized = { ...settings };
+
+        // Lock style preset to keep a single visual language across the product.
+        if (normalized.uiStyle !== DEFAULT_PERSONALIZATION.uiStyle) {
+            normalized.uiStyle = DEFAULT_PERSONALIZATION.uiStyle;
+    }
+
+        // Keep one brand accent color for consistency.
+        if (normalized.colorTheme !== DEFAULT_PERSONALIZATION.colorTheme) {
+            normalized.colorTheme = DEFAULT_PERSONALIZATION.colorTheme;
+        }
+
+        // Lock typography to default family to avoid style fragmentation.
+        if (
+            normalized.fontFamily !== DEFAULT_PERSONALIZATION.fontFamily ||
+            FONT_FAMILIES[normalized.fontFamily]?.category === 'artistic'
+        ) {
+            normalized.fontFamily = DEFAULT_PERSONALIZATION.fontFamily;
+    }
+
+    return normalized;
+};
+
 const loadPersonalization = (): PersonalizationSettings => {
   try {
     const raw = localStorage.getItem('SmartRAG_personalization');
@@ -53,7 +77,7 @@ const loadPersonalization = (): PersonalizationSettings => {
       if (!(parsed.colorTheme in COLOR_THEMES)) parsed.colorTheme = DEFAULT_PERSONALIZATION.colorTheme;
       if (!(parsed.uiStyle in UI_STYLES)) parsed.uiStyle = DEFAULT_PERSONALIZATION.uiStyle;
       if (!(parsed.fontSize in FONT_SIZES)) parsed.fontSize = DEFAULT_PERSONALIZATION.fontSize;
-      return parsed;
+            return normalizePersonalization(parsed);
     }
   } catch { /* ignore */ }
   return DEFAULT_PERSONALIZATION;
@@ -148,13 +172,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setColorTheme: (colorTheme) => {
-      savePersonalization({ colorTheme });
-      set({ colorTheme });
+            const stableTheme = DEFAULT_PERSONALIZATION.colorTheme;
+            if (colorTheme !== stableTheme) {
+                savePersonalization({ colorTheme: stableTheme });
+                set({ colorTheme: stableTheme });
+                return;
+            }
+
+            savePersonalization({ colorTheme });
+            set({ colorTheme });
   },
 
   setFontFamily: (fontFamily) => {
-      savePersonalization({ fontFamily });
-      set({ fontFamily });
+            const stableFont = DEFAULT_PERSONALIZATION.fontFamily;
+            if (fontFamily !== stableFont) {
+                savePersonalization({ fontFamily: stableFont });
+                set({ fontFamily: stableFont });
+                return;
+            }
+
+            savePersonalization({ fontFamily });
+            set({ fontFamily });
   },
 
   setFontSize: (fontSize) => {
@@ -163,19 +201,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setUIStyle: (uiStyle) => {
-      const updates: Partial<PersonalizationSettings> = { uiStyle };
-      if (uiStyle === 'tech') {
-          updates.fontFamily = 'system';
-          updates.colorTheme = 'indigo';
-          localStorage.setItem('SmartRAG_theme', 'dark');
-          set({ themeMode: 'dark' });
-      } else if (uiStyle === 'playful') {
-          updates.fontFamily = 'lxgw';
-          updates.colorTheme = 'pink';
-          localStorage.setItem('SmartRAG_theme', 'light');
-          set({ themeMode: 'light' });
-      }
-      savePersonalization(updates);
-      set(updates);
+            const stableStyle = DEFAULT_PERSONALIZATION.uiStyle;
+            if (uiStyle !== stableStyle) {
+                savePersonalization({ uiStyle: stableStyle });
+                set({ uiStyle: stableStyle });
+                return;
+            }
+
+            savePersonalization({ uiStyle });
+            set({ uiStyle });
   },
 }));

@@ -14,7 +14,6 @@ import {
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { UI_STYLES } from '../config/themeConfig';
 import ThemePopover from '../components/ThemePopover';
 
 const { Header, Sider, Content } = Layout;
@@ -69,7 +68,7 @@ function SidebarContent({
       }}>
         <img
           src="/logo.png"
-          alt="logo"
+          alt="SmartRAG logo"
           style={{ height: 28, width: 28, flexShrink: 0, borderRadius: 6 }}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
@@ -114,8 +113,7 @@ function SidebarContent({
 export default function BasicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, logout, uiStyle } = useAppStore();
-  const us = UI_STYLES[uiStyle];
+  const { userInfo, logout } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const { token } = theme.useToken();
@@ -211,19 +209,20 @@ export default function BasicLayout() {
   const headerHeight = 56;
 
   return (
-    <Layout style={{ height: '100dvh', overflow: 'hidden' }}>
+    <Layout style={{ height: '100dvh', overflow: 'hidden', background: token.colorBgLayout }}>
       {/* ── Desktop Sider ── */}
       {!isMobile && (
         <Sider
           trigger={null}
           collapsible
           collapsed={collapsed}
-          width={220}
-          collapsedWidth={64}
+          width={232}
+          collapsedWidth={72}
           style={{
-            borderRight: us.sidebarBorderStyle === 'solid' ? `1px solid ${token.colorBorderSecondary}` : 'none',
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
             overflow: 'hidden',
             background: token.colorBgContainer,
+            boxShadow: `0 8px 28px rgba(15, 23, 42, ${location.pathname === '/chat' ? '0.08' : '0.05'})`,
           }}
         >
           <SidebarContent
@@ -266,7 +265,7 @@ export default function BasicLayout() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: us.headerBorderStyle === 'solid' ? `1px solid ${token.colorBorderSecondary}` : 'none',
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
           height: headerHeight,
           flexShrink: 0,
         }}>
@@ -274,6 +273,11 @@ export default function BasicLayout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
             <Button
               type="text"
+              aria-label={
+                isMobile
+                  ? '打开导航菜单'
+                  : (collapsed ? '展开侧边栏' : '收起侧边栏')
+              }
               icon={
                 isMobile
                   ? <MenuOutlined />
@@ -298,10 +302,10 @@ export default function BasicLayout() {
             />
             {currentPageName && (
               <Text style={{
-                fontSize: isMobile ? 13 : 14,
-                fontWeight: 500,
-                color: token.colorTextSecondary,
-                letterSpacing: '0.01em',
+                fontSize: isMobile ? 14 : 15,
+                fontWeight: 600,
+                color: token.colorText,
+                letterSpacing: '0.015em',
               }}>
                 {currentPageName}
               </Text>
@@ -316,6 +320,10 @@ export default function BasicLayout() {
             {/* 用户下拉菜单 */}
             <Dropdown menu={userMenu} placement="bottomRight" arrow>
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="打开用户菜单"
+                aria-haspopup="menu"
                 style={{
                   cursor: 'pointer',
                   display: 'flex',
@@ -330,6 +338,12 @@ export default function BasicLayout() {
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLElement).style.background = 'transparent';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLElement).click();
+                  }
                 }}
               >
                 <Avatar
@@ -362,7 +376,9 @@ export default function BasicLayout() {
             margin: isFullPage ? 0 : (isMobile ? '12px 8px' : `${token.marginLG}px ${token.margin}px`),
             padding: isFullPage ? 0 : (isMobile ? 12 : token.paddingLG),
             background: isFullPage ? token.colorBgLayout : token.colorBgContainer,
-            borderRadius: isFullPage ? 0 : (isMobile ? 8 : token.borderRadiusLG),
+            borderRadius: isFullPage ? 0 : (isMobile ? 10 : token.borderRadiusLG),
+            border: isFullPage ? 'none' : `1px solid ${token.colorBorderSecondary}`,
+            boxShadow: isFullPage ? 'none' : `0 10px 28px rgba(15, 23, 42, ${isMobile ? '0.06' : '0.05'})`,
             overflow: isFullPage ? 'hidden' : 'auto',
             height: isFullPage ? `calc(100dvh - ${headerHeight}px)` : undefined,
             flex: isFullPage ? 'none' : 1,

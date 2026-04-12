@@ -1,9 +1,117 @@
-/* ==================== 知识库卡片 ==================== */
+/* ==================== Ambient Layer ==================== */
+#root {
+  position: relative;
+  min-height: 100vh;
+}
+
+.app-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 520px at -12% -18%, rgba(var(--color-primary-rgb), 0.12), transparent 62%),
+    radial-gradient(760px 360px at 110% 8%, rgba(var(--color-primary-rgb), 0.08), transparent 64%),
+    linear-gradient(180deg, var(--color-bg-base) 0%, var(--color-bg-base) 100%);
+}
+
+.app-ambient-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at 50% -20%, black 20%, transparent 80%);
+  opacity: 0.2;
+}
+
+.app-ambient-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(40px);
+  opacity: 0.55;
+  transform: translate3d(0, 0, 0);
+  animation: ambient-float 18s ease-in-out infinite;
+}
+
+.app-ambient-orb-one {
+  width: 360px;
+  height: 360px;
+  left: -120px;
+  top: 18%;
+  background: radial-gradient(circle at 35% 35%, rgba(var(--color-primary-rgb), 0.26), rgba(var(--color-primary-rgb), 0.02) 72%);
+}
+
+.app-ambient-orb-two {
+  width: 320px;
+  height: 320px;
+  right: -80px;
+  top: 56%;
+  animation-delay: -8s;
+  background: radial-gradient(circle at 40% 40%, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.02) 70%);
+}
+
+.app-ambient-bg-reduced .app-ambient-orb {
+  animation: none;
+}
+
+.app-ambient-bg + * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .app-ambient-bg {
+  background:
+    radial-gradient(980px 460px at -18% -22%, rgba(var(--color-primary-rgb), 0.18), transparent 68%),
+    radial-gradient(700px 340px at 110% 0%, rgba(56, 189, 248, 0.12), transparent 66%),
+    linear-gradient(180deg, #090f1b 0%, #090f1b 100%);
+}
+
+[data-theme='dark'] .app-ambient-bg::before {
+  background-image: linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  opacity: 0.28;
+}
+
+@keyframes ambient-float {
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-18px) scale(1.04);
+  }
+}
+
+/* ==================== Surface & Card ==================== */
+.ant-layout,
+.ant-layout-content,
+.ant-layout-header,
+.ant-layout-sider {
+  background: transparent;
+}
+
+.ant-card {
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.ant-card:hover {
+  border-color: var(--color-primary-border);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme='dark'] .ant-card:hover {
+  box-shadow: 0 16px 30px rgba(2, 6, 23, 0.42);
+}
+
 .kb-card {
   border-radius: var(--ui-card-radius, 14px) !important;
   border: 1px solid var(--color-border) !important;
-  box-shadow: 0 2px 8px rgba(28, 25, 23, 0.06), 0 1px 3px rgba(28, 25, 23, 0.04);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
   overflow: hidden;
 }
 
@@ -12,134 +120,142 @@
   padding-bottom: 0;
 }
 
-[data-theme='dark'] .kb-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+.kb-card:hover {
+  border-color: var(--color-primary-border) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
 }
 
-/* KB 卡片悬停时显示操作区 */
+[data-theme='dark'] .kb-card {
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.28);
+}
+
+[data-theme='dark'] .kb-card:hover {
+  box-shadow: 0 18px 34px rgba(2, 6, 23, 0.44);
+}
+
 .kb-card .kb-card-cta {
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.kb-card:hover .kb-card-cta {
+.kb-card:hover .kb-card-cta,
+.kb-card:focus-within .kb-card-cta {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* ==================== 按钮样式 ==================== */
+/* ==================== Button ==================== */
 .ant-btn:not(:disabled) {
+  letter-spacing: var(--ui-btn-letter-spacing, 0.01em);
+  text-transform: var(--ui-btn-text-transform, none);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ant-btn-primary:not(:disabled) {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
   border-color: transparent;
-  box-shadow: 0 1px 3px var(--color-primary-soft);
+  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.22);
 }
 
 .ant-btn-primary:not(:disabled):hover {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
   border-color: transparent !important;
-  box-shadow: 0 4px 12px var(--color-primary-soft) !important;
-  filter: brightness(1.1);
+  box-shadow: 0 10px 22px rgba(var(--color-primary-rgb), 0.28) !important;
   transform: translateY(-1px);
 }
 
 .ant-btn-primary:not(:disabled):active {
   transform: translateY(0);
-  box-shadow: 0 1px 3px var(--color-primary-soft) !important;
-  filter: brightness(0.95);
+  box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.18) !important;
 }
 
-.ant-btn-default:not(:disabled):hover {
-  border-color: var(--color-primary) !important;
-  color: var(--color-primary) !important;
-}
-
-.ant-btn-text:not(:disabled):hover {
-  background: var(--color-primary-soft) !important;
-}
-
+.ant-btn-default:not(:disabled):hover,
 .ant-btn-dashed:not(:disabled):hover {
   border-color: var(--color-primary) !important;
   color: var(--color-primary) !important;
 }
 
-/* ==================== 表格行交互 ==================== */
-.ant-table-tbody > tr {
-  transition: background-color 0.15s ease;
+.ant-btn-text:not(:disabled):hover {
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
 }
 
-.ant-table-tbody > tr:hover > td {
-  background: var(--color-bg-muted) !important;
+/* ==================== Input & Select ==================== */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker,
+.ant-input-number {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-[data-theme='dark'] .ant-table-tbody > tr:hover > td {
-  background: rgba(255, 255, 255, 0.04) !important;
-}
-
-/* 表格 header 深色模式 */
-[data-theme='dark'] .ant-table-thead > tr > th {
-  background: #292524 !important;
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* ==================== 卡片动画 ==================== */
-.ant-card {
-  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.25s ease;
-}
-
-/* ==================== 输入框聚焦 ==================== */
 .ant-input:focus,
 .ant-input-focused,
 .ant-input-affix-wrapper:focus,
-.ant-input-affix-wrapper-focused {
-  box-shadow: 0 0 0 3px var(--color-primary-soft) !important;
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused,
+.ant-input-number-focused {
   border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15) !important;
 }
 
-.ant-select-focused .ant-select-selector {
-  box-shadow: 0 0 0 3px var(--color-primary-soft) !important;
-  border-color: var(--color-primary) !important;
+/* ==================== Table ==================== */
+.ant-table-tbody > tr {
+  transition: background-color 0.16s ease;
 }
 
-/* ==================== 标签样式 ==================== */
-.ant-tag {
-  transition: all 0.15s ease;
-  font-size: 12px;
-  font-weight: 500;
+.ant-table-tbody > tr:hover > td {
+  background: rgba(var(--color-primary-rgb), 0.06) !important;
 }
 
-/* ==================== 模态框 ==================== */
-.ant-modal-mask {
-  animation: fadeInOverlay 0.2s ease-out;
+[data-theme='dark'] .ant-table-thead > tr > th {
+  background: rgba(30, 41, 59, 0.72) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.16) !important;
 }
 
-@keyframes fadeInOverlay {
-  from { opacity: 0; }
-  to { opacity: 1; }
+[data-theme='dark'] .ant-table-tbody > tr:hover > td {
+  background: rgba(148, 163, 184, 0.12) !important;
 }
 
+/* ==================== Overlay ==================== */
 .ant-modal-content {
-  box-shadow: 0 20px 60px rgba(28, 25, 23, 0.15), 0 8px 20px rgba(28, 25, 23, 0.08) !important;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18), 0 10px 26px rgba(15, 23, 42, 0.1) !important;
 }
 
 [data-theme='dark'] .ant-modal-content {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 24px 62px rgba(2, 6, 23, 0.62), 0 12px 30px rgba(2, 6, 23, 0.35) !important;
 }
 
-/* ==================== 消息提示动画 ==================== */
+.ant-select-dropdown,
+.ant-dropdown-menu,
+.ant-popover-inner,
+.ant-picker-dropdown {
+  animation: surface-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .ant-message-notice {
-  animation: slideInDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: message-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slideInDown {
+.ant-modal-mask {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
   }
   to {
     opacity: 1;
@@ -147,13 +263,7 @@
   }
 }
 
-/* ==================== 下拉动画 ==================== */
-.ant-select-dropdown,
-.ant-dropdown-menu {
-  animation: slideInUp 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideInUp {
+@keyframes surface-in {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -164,7 +274,7 @@
   }
 }
 
-/* ==================== 侧边栏菜单 ==================== */
+/* ==================== Menu ==================== */
 .ant-menu-item {
   transition: background-color 0.15s ease, color 0.15s ease !important;
 }
@@ -181,65 +291,61 @@
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: var(--color-primary);
   border-radius: 0 3px 3px 0;
-  opacity: 0.9;
+  background: var(--color-primary);
+  opacity: 0.95;
 }
 
-/* ==================== 菜单分组标题 ==================== */
 .ant-menu-item-group-title {
   font-size: 10px !important;
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   padding: 16px 14px 4px !important;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
-/* ==================== 统计数字字体 ==================== */
+/* ==================== Utility ==================== */
 .ant-statistic-content-value {
   font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace !important;
   font-variant-numeric: tabular-nums;
-}
-
-/* ==================== Collapse 折叠面板 ==================== */
-.ant-collapse-header {
-  transition: background-color 0.15s ease !important;
-}
-
-.ant-collapse-header:hover {
-  background: var(--color-primary-soft) !important;
-}
-
-/* ==================== 加载状态 ==================== */
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
 }
 
 .loading-pulse {
   animation: pulse-soft 1.8s ease-in-out infinite;
 }
 
-/* 图标旋转 */
 .icon-spin {
   animation: icon-rotate 1s linear infinite;
 }
 
-@keyframes icon-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.theme-icon-enter {
+  animation: theme-icon-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ==================== 主题切换动画 ==================== */
-.theme-icon-enter {
-  animation: theme-icon-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes icon-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes theme-icon-in {
   from {
     opacity: 0;
-    transform: rotate(-45deg) scale(0.6);
+    transform: rotate(-38deg) scale(0.7);
   }
   to {
     opacity: 1;
@@ -247,10 +353,10 @@
   }
 }
 
-/* ==================== 历史对话项 ==================== */
+/* ==================== Chat ==================== */
 .chat-history-item {
   position: relative;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: background-color 0.15s ease;
 }
 
@@ -260,15 +366,20 @@
   transition: opacity 0.15s ease;
 }
 
-.chat-history-item:hover .chat-history-actions {
+.chat-history-item:hover .chat-history-actions,
+.chat-history-item:focus-within .chat-history-actions {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* ==================== 建议问题卡片 ==================== */
+.chat-history-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 .suggestion-card {
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 16px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -277,348 +388,66 @@
 
 .suggestion-card:hover {
   border-color: var(--color-primary);
-  background: var(--color-primary-soft);
+  background: rgba(var(--color-primary-rgb), 0.08);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px var(--color-primary-soft);
+  box-shadow: 0 10px 20px rgba(var(--color-primary-rgb), 0.14);
 }
 
-/* ==================== 暗色模式 Slider ==================== */
-[data-theme='dark'] .ant-slider-rail {
-  background: rgba(255, 255, 255, 0.12) !important;
+.suggestion-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-[data-theme='dark'] .ant-slider-track {
-  background: var(--color-primary) !important;
+.chat-input-bar {
+  flex-shrink: 0;
+  backdrop-filter: blur(10px);
 }
 
-[data-theme='dark'] .ant-slider-handle::after {
-  box-shadow: 0 0 0 2px var(--color-primary) !important;
+@media (max-width: 1024px) {
+  .chat-sidebar-right {
+    display: none !important;
+  }
 }
 
-/* ==================== 科技主题 (Tech) ==================== */
-/* 1. 科技感鼠标指针 */
-[data-ui-style="tech"],
-[data-ui-style="tech"] body {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>') 12 12, crosshair !important;
+@media (max-width: 768px) {
+  .chat-sidebar-left,
+  .chat-sidebar-right {
+    display: none !important;
+  }
+
+  .chat-main-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .chat-input-bar {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 10px 14px 18px !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+    border-top: 1px solid var(--color-border-subtle) !important;
+  }
+
+  .chat-messages-scroll {
+    padding-bottom: 96px !important;
+  }
 }
 
-[data-ui-style="tech"] a, 
-[data-ui-style="tech"] button, 
-[data-ui-style="tech"] .ant-btn,
-[data-ui-style="tech"] [role="button"],
-[data-ui-style="tech"] input,
-[data-ui-style="tech"] .ant-menu-item {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%234f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg>') 12 12, pointer !important;
+@media (prefers-reduced-motion: reduce) {
+  .app-ambient-orb,
+  .ant-select-dropdown,
+  .ant-dropdown-menu,
+  .ant-popover-inner,
+  .ant-picker-dropdown,
+  .ant-message-notice,
+  .ant-modal-mask,
+  .theme-icon-enter,
+  .icon-spin,
+  .loading-pulse {
+    animation: none !important;
+  }
 }
-
-/* 2. 赛博网格背景 (已移除，改用 tsparticles) */
-[data-ui-style="tech"] .ant-layout {
-  background: transparent !important;
-}
-
-/* 3. 科技感滚动条 */
-[data-ui-style="tech"] ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-[data-ui-style="tech"] ::-webkit-scrollbar-track {
-  background: var(--color-bg-base);
-}
-[data-ui-style="tech"] ::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
-  border-radius: 0;
-  box-shadow: 0 0 10px var(--color-primary);
-}
-
-/* 4. 按钮发光与微动效 */
-[data-ui-style="tech"] .ant-btn {
-  border-radius: var(--ui-button-radius) !important;
-  transition: all 0.2s ease-out !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-[data-ui-style="tech"] .ant-btn-primary:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover)) !important;
-  border: 1px solid var(--color-primary-border) !important;
-  box-shadow: 0 0 8px var(--color-primary-soft) inset, 0 0 4px var(--color-primary-soft) !important;
-}
-
-[data-ui-style="tech"] .ant-btn-primary:not(:disabled):hover {
-  box-shadow: 0 0 15px var(--color-primary) inset, 0 0 10px var(--color-primary) !important;
-  transform: scale(1.02) !important;
-  text-shadow: 0 0 5px rgba(255,255,255,0.8);
-}
-
-[data-ui-style="tech"] .ant-btn-primary:not(:disabled):active {
-  transform: scale(0.98) !important;
-  box-shadow: 0 0 20px var(--color-primary) inset !important;
-}
-
-[data-ui-style="tech"] .ant-btn-default:not(:disabled) {
-  background: rgba(255, 255, 255, 0.02) !important;
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--color-border) !important;
-}
-
-[data-ui-style="tech"] .ant-btn-default:not(:disabled):hover {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 10px var(--color-primary-soft), inset 0 0 5px var(--color-primary-soft) !important;
-  background: var(--color-primary-soft) !important;
-  color: var(--color-primary) !important;
-}
-
-[data-ui-style="tech"] .ant-btn-default:not(:disabled):active {
-  transform: scale(0.98) !important;
-}
-
-[data-ui-style="tech"] .ant-btn-icon-only:hover .anticon {
-  transform: rotate(15deg) scale(1.1);
-  transition: transform 0.2s ease;
-  filter: drop-shadow(0 0 5px var(--color-primary));
-}
-
-/* 5. 卡片全息扫描与发光 */
-[data-ui-style="tech"] .ant-card,
-[data-ui-style="tech"] .kb-card {
-  border: 1px solid var(--color-border) !important;
-  transition: all 0.3s ease !important;
-  position: relative;
-  overflow: hidden;
-  background: var(--color-bg-container) !important;
-}
-
-[data-ui-style="tech"] .ant-card::before,
-[data-ui-style="tech"] .kb-card::before {
-  content: '';
-  position: absolute;
-  top: -100%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--color-primary);
-  box-shadow: 0 0 10px var(--color-primary), 0 0 20px var(--color-primary);
-  transition: top 0s;
-  z-index: 10;
-  opacity: 0;
-  pointer-events: none;
-}
-
-[data-ui-style="tech"] .ant-card:hover::before,
-[data-ui-style="tech"] .kb-card:hover::before {
-  animation: tech-scan 2s linear infinite;
-  opacity: 1;
-}
-
-@keyframes tech-scan {
-  0% { top: -10%; }
-  100% { top: 110%; }
-}
-
-[data-ui-style="tech"] .ant-card:hover,
-[data-ui-style="tech"] .kb-card:hover {
-  transform: translateY(-2px) !important;
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 4px 20px var(--color-primary-soft), 0 0 10px var(--color-primary-soft) inset !important;
-}
-
-/* 6. 输入框脉冲发光 */
-[data-ui-style="tech"] .ant-input,
-[data-ui-style="tech"] .ant-input-affix-wrapper {
-  background: rgba(255, 255, 255, 0.02) !important;
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border) !important;
-  transition: all 0.2s ease !important;
-}
-
-[data-ui-style="tech"] .ant-input:focus,
-[data-ui-style="tech"] .ant-input-focused,
-[data-ui-style="tech"] .ant-input-affix-wrapper:focus,
-[data-ui-style="tech"] .ant-input-affix-wrapper-focused {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 1px var(--color-primary), 0 0 10px var(--color-primary-soft) !important;
-  animation: tech-pulse 2s infinite;
-}
-
-@keyframes tech-pulse {
-  0% { box-shadow: 0 0 0 1px var(--color-primary), 0 0 5px var(--color-primary-soft); }
-  50% { box-shadow: 0 0 0 1px var(--color-primary), 0 0 15px var(--color-primary-soft); }
-  100% { box-shadow: 0 0 0 1px var(--color-primary), 0 0 5px var(--color-primary-soft); }
-}
-
-/* 7. AI 对话气泡与打字机光标 */
-[data-ui-style="tech"] .ant-x-bubble-content {
-  border: 1px solid var(--color-border-subtle);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  background: linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg-base)) !important;
-}
-
-[data-ui-style="tech"] .ant-x-bubble-content-typing::after {
-  content: '▋';
-  display: inline-block;
-  animation: tech-blink 1s step-end infinite;
-  color: var(--color-primary);
-  margin-left: 4px;
-  text-shadow: 0 0 5px var(--color-primary);
-}
-
-@keyframes tech-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* 8. 标题文字发光 (Glitch/Glow) */
-[data-ui-style="tech"] h1, 
-[data-ui-style="tech"] h2, 
-[data-ui-style="tech"] h3, 
-[data-ui-style="tech"] .ant-typography strong {
-  text-shadow: 0 0 8px var(--color-primary-soft);
-  position: relative;
-}
-
-[data-ui-style="tech"] h1:hover, 
-[data-ui-style="tech"] h2:hover, 
-[data-ui-style="tech"] h3:hover {
-  animation: tech-glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
-  color: var(--color-primary);
-}
-
-@keyframes tech-glitch {
-  0% { transform: translate(0) }
-  20% { transform: translate(-2px, 2px) }
-  40% { transform: translate(-2px, -2px) }
-  60% { transform: translate(2px, 2px) }
-  80% { transform: translate(2px, -2px) }
-  100% { transform: translate(0) }
-}
-
-/* ==================== 花哨主题 (Playful) ==================== */
-/* 1. 趣味圆润鼠标指针 */
-[data-ui-style="playful"],
-[data-ui-style="playful"] body {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23ec4899" stroke="%23ffffff" stroke-width="2"><circle cx="12" cy="12" r="8"></circle></svg>') 12 12, auto !important;
-}
-
-[data-ui-style="playful"] a, 
-[data-ui-style="playful"] button, 
-[data-ui-style="playful"] .ant-btn,
-[data-ui-style="playful"] [role="button"],
-[data-ui-style="playful"] input,
-[data-ui-style="playful"] .ant-menu-item {
-  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23f472b6" stroke="%23ffffff" stroke-width="2"><path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"></path></svg>') 12 12, pointer !important;
-}
-
-/* 2. 波点背景 (已移除，改用 tsparticles) */
-[data-ui-style="playful"] .ant-layout {
-  background: transparent !important;
-}
-
-/* 3. 趣味滚动条 */
-[data-ui-style="playful"] ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
-}
-[data-ui-style="playful"] ::-webkit-scrollbar-track {
-  background: transparent;
-}
-[data-ui-style="playful"] ::-webkit-scrollbar-thumb {
-  background: var(--color-primary-soft);
-  border-radius: 10px;
-  border: 3px solid var(--color-bg-base);
-}
-[data-ui-style="playful"] ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
-}
-
-/* 4. 按钮果冻弹跳与贴纸阴影 */
-[data-ui-style="playful"] .ant-btn {
-  border-radius: var(--ui-button-radius) !important;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, box-shadow 0.2s !important;
-}
-
-[data-ui-style="playful"] .ant-btn-primary:not(:disabled) {
-  background: var(--color-primary) !important;
-  border: 2px solid var(--color-text) !important;
-  box-shadow: 2px 2px 0px var(--color-text) !important;
-  transform: translateY(-1px);
-}
-
-[data-ui-style="playful"] .ant-btn-primary:not(:disabled):hover {
-  transform: translate(-2px, -2px) scale(1.05) !important;
-  box-shadow: 4px 4px 0px var(--color-text) !important;
-}
-
-[data-ui-style="playful"] .ant-btn-primary:not(:disabled):active {
-  transform: translate(2px, 2px) scaleX(0.95) !important;
-  box-shadow: 0px 0px 0px var(--color-text) !important;
-}
-
-[data-ui-style="playful"] .ant-btn-default:not(:disabled) {
-  border: 2px solid var(--color-text) !important;
-  box-shadow: 2px 2px 0px var(--color-text) !important;
-  transform: translateY(-1px);
-}
-
-[data-ui-style="playful"] .ant-btn-default:not(:disabled):hover {
-  border-color: var(--color-primary) !important;
-  color: var(--color-primary) !important;
-  background: var(--color-primary-soft) !important;
-  box-shadow: 4px 4px 0px var(--color-primary) !important;
-  transform: translate(-2px, -2px) rotate(1deg) !important;
-}
-
-[data-ui-style="playful"] .ant-btn-default:not(:disabled):active {
-  transform: translate(2px, 2px) scaleX(0.95) !important;
-  box-shadow: 0px 0px 0px var(--color-primary) !important;
-}
-
-[data-ui-style="playful"] .ant-btn-icon-only:hover .anticon {
-  transform: rotate(360deg);
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-[data-ui-style="playful"] .ant-card,
-[data-ui-style="playful"] .kb-card {
-  border: 2px solid var(--color-text) !important;
-  border-radius: var(--ui-card-radius) !important;
-  box-shadow: 4px 4px 0px var(--color-text) !important;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease !important;
-}
-
-[data-ui-style="playful"] .ant-card:hover,
-[data-ui-style="playful"] .kb-card:hover {
-  transform: translate(-4px, -4px) rotate(-1deg) !important;
-  box-shadow: 8px 8px 0px var(--color-text), 0 0 0 4px var(--color-primary-soft) !important;
-}
-
-[data-ui-style="playful"] .ant-input,
-[data-ui-style="playful"] .ant-input-affix-wrapper {
-  border: 2px solid var(--color-text) !important;
-  border-radius: var(--ui-border-radius) !important;
-  box-shadow: 2px 2px 0px var(--color-text) !important;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-}
-
-[data-ui-style="playful"] .ant-input:focus,
-[data-ui-style="playful"] .ant-input-focused,
-[data-ui-style="playful"] .ant-input-affix-wrapper:focus,
-[data-ui-style="playful"] .ant-input-affix-wrapper-focused {
-  border-color: var(--color-primary) !important;
-  transform: translate(-2px, -2px) !important;
-  box-shadow: 4px 4px 0px var(--color-primary) !important;
-}
-
-[data-ui-style="playful"] .ant-x-bubble {
-  animation: playful-slide-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-@keyframes playful-slide-up {
-  0% { opacity: 0; transform: translateY(20px) scale(0.9); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-[data-ui-style="playful"] .ant-x-bubble-content {
-  border-radius: 20px !important;
-  border: 2px solid var(--color-border-subtle);
-}
-

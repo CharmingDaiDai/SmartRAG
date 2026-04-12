@@ -1,12 +1,10 @@
 import React from 'react';
 import { Popover, Segmented, theme, Typography, Tooltip, Button } from 'antd';
-import { SettingOutlined, CheckOutlined } from '@ant-design/icons';
+import { SettingOutlined } from '@ant-design/icons';
 import { useAppStore } from '../store/useAppStore';
 import {
-  COLOR_THEMES,
-  FONT_FAMILIES,
+  DEFAULT_PERSONALIZATION,
   FONT_SIZES,
-  UI_STYLES,
   type FontSize,
 } from '../config/themeConfig';
 
@@ -26,155 +24,18 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ColorSwatch({
-  color,
-  label,
-  active,
-  onClick,
-}: {
-  color: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const { token } = theme.useToken();
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 4,
-        cursor: 'pointer',
-      }}
-    >
-      <div
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: '50%',
-          background: color,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          outline: active ? `2px solid ${color}` : '2px solid transparent',
-          outlineOffset: 2,
-          transition: 'outline-color 0.2s ease',
-        }}
-      >
-        {active && <CheckOutlined style={{ color: '#fff', fontSize: 10, fontWeight: 700 }} />}
-      </div>
-      <Text style={{
-        fontSize: 10,
-        color: active ? token.colorText : token.colorTextTertiary,
-        fontWeight: active ? 600 : 400,
-        transition: 'color 0.15s ease',
-      }}>
-        {label}
-      </Text>
-    </div>
-  );
-}
-
-function FontOption({
-  label,
-  fontValue,
-  active,
-  onClick,
-}: {
-  label: string;
-  fontValue: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const { token } = theme.useToken();
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '6px 10px',
-        borderRadius: 8,
-        cursor: 'pointer',
-        border: active ? `1.5px solid ${token.colorPrimary}` : `1px solid ${token.colorBorderSecondary}`,
-        background: active ? `${token.colorPrimary}0A` : 'transparent',
-        transition: 'all 0.15s ease',
-        textAlign: 'center',
-      }}
-    >
-      <Text style={{
-        fontSize: 13,
-        fontFamily: fontValue,
-        color: active ? token.colorPrimary : token.colorText,
-        fontWeight: active ? 600 : 400,
-      }}>
-        {label}
-      </Text>
-    </div>
-  );
-}
-
-function StyleOption({
-  label,
-  description,
-  active,
-  onClick,
-}: {
-  label: string;
-  description: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const { token } = theme.useToken();
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: '8px 6px',
-        borderRadius: 10,
-        cursor: 'pointer',
-        border: active ? `1.5px solid ${token.colorPrimary}` : `1px solid ${token.colorBorderSecondary}`,
-        background: active ? `${token.colorPrimary}0A` : 'transparent',
-        transition: 'all 0.15s ease',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2,
-      }}
-    >
-      <Text style={{
-        fontSize: 13,
-        fontWeight: active ? 600 : 500,
-        color: active ? token.colorPrimary : token.colorText,
-      }}>
-        {label}
-      </Text>
-      <Text style={{
-        fontSize: 10,
-        color: token.colorTextTertiary,
-      }}>
-        {description}
-      </Text>
-    </div>
-  );
-}
-
 function PopoverContent() {
   const {
     themeMode, toggleTheme,
-    colorTheme, setColorTheme,
-    fontFamily, setFontFamily,
     fontSize, setFontSize,
-    uiStyle, setUIStyle,
+    setColorTheme,
+    setFontFamily,
+    setUIStyle,
   } = useAppStore();
-
-  const normalFonts = Object.values(FONT_FAMILIES).filter(f => f.category === 'normal');
-  const artisticFonts = Object.values(FONT_FAMILIES).filter(f => f.category === 'artistic');
+  const { token } = theme.useToken();
 
   return (
-    <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto' }}>
+    <div style={{ width: 260, display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 外观模式 */}
       <div>
         <SectionLabel>外观模式</SectionLabel>
@@ -191,68 +52,12 @@ function PopoverContent() {
         </div>
       </div>
 
-      {/* 主题色 */}
-      <div>
-        <SectionLabel>主题色</SectionLabel>
-        <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'flex-start', flexWrap: 'wrap', padding: '4px 4px' }}>
-          {Object.values(COLOR_THEMES).map((ct) => (
-            <ColorSwatch
-              key={ct.key}
-              color={ct.primary}
-              label={ct.label}
-              active={colorTheme === ct.key}
-              onClick={() => setColorTheme(ct.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* UI 风格 */}
+      {/* 视觉语言锁定说明 */}
       <div>
         <SectionLabel>界面风格</SectionLabel>
-        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-          {Object.values(UI_STYLES).map((s) => (
-            <StyleOption
-              key={s.key}
-              label={s.label}
-              description={s.description}
-              active={uiStyle === s.key}
-              onClick={() => setUIStyle(s.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* 字体 - 常规 */}
-      <div>
-        <SectionLabel>字体</SectionLabel>
-        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {normalFonts.map((f) => (
-            <FontOption
-              key={f.key}
-              label={f.label}
-              fontValue={f.value}
-              active={fontFamily === f.key}
-              onClick={() => setFontFamily(f.key)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* 字体 - 艺术 */}
-      <div>
-        <SectionLabel>艺术字体</SectionLabel>
-        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {artisticFonts.map((f) => (
-            <FontOption
-              key={f.key}
-              label={f.label}
-              fontValue={f.value}
-              active={fontFamily === f.key}
-              onClick={() => setFontFamily(f.key)}
-            />
-          ))}
-        </div>
+        <Text style={{ marginTop: 8, display: 'block', fontSize: 12, color: token.colorTextSecondary, lineHeight: 1.6 }}>
+          当前已统一为极简高级视觉体系，避免多风格混用造成观感割裂。
+        </Text>
       </div>
 
       {/* 字号 */}
@@ -269,6 +74,23 @@ function PopoverContent() {
             }))}
           />
         </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          onClick={() => {
+            if (themeMode !== 'light') {
+              toggleTheme();
+            }
+            setColorTheme(DEFAULT_PERSONALIZATION.colorTheme);
+            setFontFamily(DEFAULT_PERSONALIZATION.fontFamily);
+            setFontSize(DEFAULT_PERSONALIZATION.fontSize);
+            setUIStyle(DEFAULT_PERSONALIZATION.uiStyle);
+          }}
+        >
+          恢复默认设置
+        </Button>
       </div>
     </div>
   );
@@ -291,6 +113,7 @@ export default function ThemePopover() {
       <Tooltip title="个性化设置" mouseEnterDelay={0.5}>
         <Button
           type="text"
+          aria-label="打开个性化设置"
           style={{
             width: 36,
             height: 36,

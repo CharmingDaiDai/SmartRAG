@@ -14,6 +14,7 @@ import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.rag.factory.RAGStrategyFactory;
 import com.mtmn.smartdoc.repository.DocumentRepository;
+import com.mtmn.smartdoc.repository.IndexingTaskRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.service.KnowledgeBaseService;
 import com.mtmn.smartdoc.service.MinioService;
@@ -43,6 +44,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private final ObjectMapper objectMapper;
     private final RAGStrategyFactory ragStrategyFactory;
     private final MinioService minioService;
+    private final IndexingTaskRepository indexingTaskRepository;
 
     @Override
     @Transactional
@@ -189,7 +191,10 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
             documentRepository.deleteByKbId(kbId);
         }
 
-        // 6. 删除知识库记录
+        // 6. 删除知识库关联的索引任务记录（避免历史孤儿任务）
+        indexingTaskRepository.deleteByKbId(kbId);
+
+        // 7. 删除知识库记录
         knowledgeBaseRepository.delete(kb);
 
         log.info("Knowledge base deleted successfully: id={}, cleaned {} documents", kbId, documents.size());

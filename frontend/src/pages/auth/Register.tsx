@@ -138,6 +138,7 @@ const Register: React.FC = () => {
                     onFinish={onFinish}
                     layout="vertical"
                     size="large"
+                    requiredMark={false}
                     scrollToFirstError
                   >
                     <Form.Item
@@ -148,7 +149,13 @@ const Register: React.FC = () => {
                         { min: 3, message: '用户名至少3个字符' }
                       ]}
                     >
-                      <Input prefix={<UserOutlined />} placeholder="用户名（至少3个字符）" />
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder="用户名（至少3个字符）"
+                        autoComplete="username"
+                        spellCheck={false}
+                        aria-label="用户名"
+                      />
                     </Form.Item>
 
                     <Form.Item
@@ -159,7 +166,13 @@ const Register: React.FC = () => {
                         { required: true, message: '请输入邮箱!' },
                       ]}
                     >
-                      <Input prefix={<MailOutlined />} placeholder="邮箱地址" />
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder="邮箱地址"
+                        autoComplete="email"
+                        spellCheck={false}
+                        aria-label="邮箱"
+                      />
                     </Form.Item>
 
                     <Form.Item
@@ -174,6 +187,9 @@ const Register: React.FC = () => {
                       <Input.Password
                         prefix={<LockOutlined />}
                         placeholder="设置密码"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        aria-label="设置密码"
                         iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                         onChange={(e) => setPassword(e.target.value)}
                       />
@@ -198,7 +214,13 @@ const Register: React.FC = () => {
                         }),
                       ]}
                     >
-                      <Input.Password prefix={<LockOutlined />} placeholder="再次输入密码" />
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="再次输入密码"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        aria-label="确认密码"
+                      />
                     </Form.Item>
 
                     <Form.Item>

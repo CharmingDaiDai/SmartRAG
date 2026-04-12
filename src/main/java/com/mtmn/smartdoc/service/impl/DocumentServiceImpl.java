@@ -17,6 +17,7 @@ import com.mtmn.smartdoc.po.IndexingTask;
 import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.repository.ChunkRepository;
 import com.mtmn.smartdoc.repository.DocumentRepository;
+import com.mtmn.smartdoc.repository.TreeNodeRepository;
 import com.mtmn.smartdoc.service.DocumentService;
 import com.mtmn.smartdoc.service.IndexingService;
 import com.mtmn.smartdoc.service.IndexingTaskService;
@@ -70,6 +71,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final IndexingTaskService indexingTaskService;
     private final MilvusService milvusService;
     private final ChunkRepository chunkRepository;
+    private final TreeNodeRepository treeNodeRepository;
     private final ObjectMapper objectMapper;
     // 【新增】引入事务模板，用于精细控制事务范围，替代方法级别的 @Transactional
     private final TransactionTemplate transactionTemplate;
@@ -272,6 +274,8 @@ public class DocumentServiceImpl implements DocumentService {
         transactionTemplate.execute(status -> {
             // 先删除关联的 Chunks
             chunkRepository.deleteByDocumentId(documentId);
+            // 删除 HiSem 树节点（即使非 HiSem 文档也安全）
+            treeNodeRepository.deleteByDocumentId(documentId);
             // 再删除 Document
             documentRepository.delete(document);
             return null;
@@ -326,6 +330,7 @@ public class DocumentServiceImpl implements DocumentService {
             // 批量删除 Chunks
             for (Long docId : documentIds) {
                 chunkRepository.deleteByDocumentId(docId);
+                treeNodeRepository.deleteByDocumentId(docId);
             }
             documentRepository.deleteAllInBatch(documents);
             return null;

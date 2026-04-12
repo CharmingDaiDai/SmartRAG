@@ -1,4 +1,4 @@
-import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App, theme } from 'antd';
+import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App, Empty, theme } from 'antd';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { documentService } from '../../services/documentService';
@@ -136,7 +136,7 @@ export default function DocumentsPage() {
               message.error(res.message || '获取文档列表失败');
           }
       } catch (error) {
-          // message.error('获取文档列表失败');
+          message.error('获取文档列表失败，请稍后重试');
       } finally {
           setLoading(false);
       }
@@ -233,12 +233,17 @@ export default function DocumentsPage() {
       title: '文档名称',
       dataIndex: 'filename', // Changed from title to filename based on OpenAPI
       ellipsis: true,
-      render: (text, entity) => (
-        <Space>
-            {getFileIcon(text || entity.filename || entity.fileName, token.colorPrimary)}
-            {text || entity.filename || entity.fileName}
-        </Space>
-      ),
+            render: (text, entity) => {
+                const fileName = text || entity.filename || entity.fileName || '未命名文档';
+                return (
+                    <Space style={{ width: '100%', minWidth: 0 }}>
+                            {getFileIcon(fileName, token.colorPrimary)}
+                            <Typography.Text ellipsis={{ tooltip: fileName }} style={{ maxWidth: 320, minWidth: 0 }}>
+                                    {fileName}
+                            </Typography.Text>
+                    </Space>
+                );
+            },
     },
     {
       title: '所属知识库',
@@ -315,6 +320,7 @@ export default function DocumentsPage() {
             <Tooltip title="查看">
                 <Button
                     type="text"
+                    aria-label="查看文档"
                     icon={<EyeOutlined />}
                     onClick={() => {
                         setViewingDocument(record);
@@ -327,7 +333,7 @@ export default function DocumentsPage() {
                 onConfirm={() => handleDelete(record.id)}
             >
                 <Tooltip title="删除">
-                    <Button type="text" danger icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
+                    <Button type="text" danger aria-label="删除文档" icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
                 </Tooltip>
             </Popconfirm>
         </Space>
@@ -348,6 +354,8 @@ export default function DocumentsPage() {
                     <Input
                         placeholder="搜索文档"
                         prefix={<SearchOutlined />}
+                        allowClear
+                        aria-label="搜索文档"
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}
                         style={{ width: 200 }}
@@ -355,6 +363,7 @@ export default function DocumentsPage() {
                     <Select
                         style={{ width: 200 }}
                         placeholder="筛选知识库"
+                        aria-label="筛选知识库"
                         allowClear
                         value={filterKbId}
                         onChange={(val) => setFilterKbId(val)}
@@ -397,7 +406,15 @@ export default function DocumentsPage() {
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
-                scroll={{ y: tableScrollY }}
+                scroll={{ x: 1000, y: tableScrollY }}
+                locale={{
+                    emptyText: (
+                        <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description={searchText ? '没有匹配的文档，请调整关键词' : '暂无文档，先上传一批文件吧'}
+                        />
+                    ),
+                }}
                 pagination={{
                     current: currentPage,
                     pageSize: pageSize,
@@ -478,7 +495,7 @@ export default function DocumentsPage() {
                                         <div style={{ fontSize: 14 }}>{file.name}</div>
                                         <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                     </div>
-                                    <Button type="text" icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
+                                    <Button type="text" aria-label={`移除文件 ${file.name}`} icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                                 </div>
                             ))}
                         </div>

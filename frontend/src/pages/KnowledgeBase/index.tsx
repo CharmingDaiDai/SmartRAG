@@ -223,9 +223,15 @@ export default function KnowledgeBasePage() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SlideInUp>
         <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>知识库管理</Typography.Title>
+            <div>
+                <Typography.Title level={4} style={{ margin: 0 }}>知识库管理</Typography.Title>
+                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                    统一管理知识空间、索引策略与问答入口
+                </Typography.Text>
+            </div>
             <Button
                 icon={<PlusOutlined />}
+                aria-label="新建知识库"
                 onClick={() => setCreateModalOpen(true)}
                 type="primary"
             >
@@ -297,7 +303,7 @@ export default function KnowledgeBasePage() {
                         ];
 
                         return (
-                            <Col span={8} key={item.id}>
+                            <Col xs={24} md={12} xl={8} key={item.id}>
                                 <StaggerItem>
                                     <HoverCard style={{ height: '100%' }}>
                                         <Card
@@ -362,6 +368,7 @@ export default function KnowledgeBasePage() {
                                                     <Button
                                                         type="text"
                                                         icon={<EllipsisOutlined />}
+                                                        aria-label={`打开知识库 ${item.name} 的更多操作`}
                                                         size="small"
                                                         onClick={(e) => e.stopPropagation()}
                                                         style={{ color: token.colorTextTertiary, flexShrink: 0 }}

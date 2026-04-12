@@ -133,13 +133,13 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) =>
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={[
-                    <Button key="prev" icon={<LeftOutlined />} onClick={handlePrev} disabled={references.length <= 1}>
+                    <Button key="prev" aria-label="查看上一条引用" icon={<LeftOutlined />} onClick={handlePrev} disabled={references.length <= 1}>
                         上一篇
                     </Button>,
                     <span key="indicator" style={{ margin: '0 16px', color: token.colorTextSecondary, fontSize: 13 }}>
                         {currentIndex + 1} / {references.length}
                     </span>,
-                    <Button key="next" icon={<RightOutlined />} onClick={handleNext} disabled={references.length <= 1}>
+                    <Button key="next" aria-label="查看下一条引用" icon={<RightOutlined />} onClick={handleNext} disabled={references.length <= 1}>
                         下一篇
                     </Button>,
                 ]}
