@@ -25,7 +25,7 @@ public class DashboardController {
     private final DashboardService dashboardService;
 
     @GetMapping("/statistics")
-    @Operation(summary = "获取仪表盘统计数据", description = "返回用户的知识库数量、文档总数以及对话统计（Mock 数据）")
+    @Operation(summary = "获取仪表盘统计数据", description = "返回用户的知识库数量、文档总数以及对话统计")
     public ApiResponse<DashboardStatisticsDto> getStatistics(Authentication authentication) {
         DashboardStatisticsDto statistics = dashboardService.getUserStatistics(authentication);
         return ApiResponse.success(statistics);

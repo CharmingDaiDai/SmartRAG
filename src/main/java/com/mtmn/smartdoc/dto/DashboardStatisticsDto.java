@@ -27,7 +27,7 @@ public class DashboardStatisticsDto {
     @Schema(description = "对话统计信息")
     private ConversationStats conversationStats;
 
-    @Schema(description = "热门查询词云（Mock 数据）")
+    @Schema(description = "热门查询词云")
     private List<WordCloudItem> wordCloud;
 
     @Data
@@ -37,10 +37,10 @@ public class DashboardStatisticsDto {
     @Schema(description = "对话统计")
     public static class ConversationStats {
 
-        @Schema(description = "对话总次数（Mock 数据）")
+        @Schema(description = "对话总次数")
         private long total;
 
-        @Schema(description = "最近7天每天的对话次数（Mock 数据）")
+        @Schema(description = "最近7天每天的对话次数")
         private List<DailyConversationCount> last7Days;
     }
 

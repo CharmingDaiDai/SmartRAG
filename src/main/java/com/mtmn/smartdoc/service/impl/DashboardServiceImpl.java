@@ -3,6 +3,7 @@ package com.mtmn.smartdoc.service.impl;
 import com.mtmn.smartdoc.dto.DashboardStatisticsDto;
 import com.mtmn.smartdoc.po.User;
 import com.mtmn.smartdoc.po.UserActivity;
+import com.mtmn.smartdoc.repository.ConversationRepository;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.repository.KnowledgeBaseRepository;
 import com.mtmn.smartdoc.repository.UserActivityRepository;
@@ -14,9 +15,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 仪表盘服务实现
@@ -30,6 +33,7 @@ import java.util.List;
 public class DashboardServiceImpl implements DashboardService {
 
     private final UserActivityRepository userActivityRepository;
+    private final ConversationRepository conversationRepository;
     private final DocumentRepository documentRepository;
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final UserRepository userRepository;
@@ -62,14 +66,13 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public DashboardStatisticsDto getUserStatistics(Authentication authentication) {
         User user = getUserFromAuthentication(authentication);
-        DashboardStatisticsDto.ConversationStats conversationStats = buildMockConversationStats(user == null ? null : user.getId());
         List<DashboardStatisticsDto.WordCloudItem> wordCloud = buildMockWordCloud();
 
         if (user == null) {
             return DashboardStatisticsDto.builder()
                     .knowledgeBases(0L)
                     .documents(0L)
-                    .conversationStats(conversationStats)
+                    .conversationStats(buildConversationStats(0L))
                     .wordCloud(wordCloud)
                     .build();
         }
@@ -78,6 +81,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         long kbCount = knowledgeBaseRepository.countByUserId(userId);
         long totalDocuments = documentRepository.countByUserId(userId);
+        DashboardStatisticsDto.ConversationStats conversationStats = buildConversationStats(userId);
 
         return DashboardStatisticsDto.builder()
                 .knowledgeBases(kbCount)
@@ -113,24 +117,47 @@ public class DashboardServiceImpl implements DashboardService {
         return userRepository.findByUsername(username).orElse(null);
     }
 
-    /**
-     * 构造对话次数的 Mock 数据，直到真实统计功能上线
-     */
-    private DashboardStatisticsDto.ConversationStats buildMockConversationStats(Long userId) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
+    private DashboardStatisticsDto.ConversationStats buildConversationStats(Long userId) {
         LocalDate today = LocalDate.now();
         List<DashboardStatisticsDto.DailyConversationCount> daily = new ArrayList<>();
 
+        if (userId == null || userId <= 0) {
+            for (int i = 6; i >= 0; i--) {
+                LocalDate date = today.minusDays(i);
+                daily.add(DashboardStatisticsDto.DailyConversationCount.builder()
+                        .date(date.toString())
+                        .count(0)
+                        .build());
+            }
+
+            return DashboardStatisticsDto.ConversationStats.builder()
+                    .total(0)
+                    .last7Days(daily)
+                    .build();
+        }
+
+        LocalDateTime start = today.minusDays(6).atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        List<Map<String, Object>> rows = conversationRepository.countDailyByUserIdBetween(userId, start, end);
+        Map<String, Long> dailyMap = rows.stream().collect(Collectors.toMap(
+                row -> String.valueOf(row.get("day")),
+                row -> {
+                    Object count = row.get("count");
+                    return count instanceof Number ? ((Number) count).longValue() : 0L;
+                }
+        ));
+
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            long count = random.nextLong(5, 25); // 5~24 次之间
+            long count = dailyMap.getOrDefault(date.toString(), 0L);
             daily.add(DashboardStatisticsDto.DailyConversationCount.builder()
                     .date(date.toString())
                     .count(count)
                     .build());
         }
 
-        long total = daily.stream().mapToLong(DashboardStatisticsDto.DailyConversationCount::getCount).sum();
+        long total = conversationRepository.countByUserId(userId);
         return DashboardStatisticsDto.ConversationStats.builder()
                 .total(total)
                 .last7Days(daily)
