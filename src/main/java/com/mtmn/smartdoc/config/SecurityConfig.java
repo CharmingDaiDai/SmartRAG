@@ -2,6 +2,7 @@ package com.mtmn.smartdoc.config;
 
 import com.mtmn.smartdoc.repository.UserRepository;
 import com.mtmn.smartdoc.service.JwtService;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                    // SseEmitter 完成后会触发 ASYNC/ERROR 分发，避免再次鉴权导致响应已提交异常
+                    .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         // 不需要认证的路径
                         .requestMatchers("/api/auth/**").permitAll()
                         // Knife4j 和 Swagger 文档路径（完整配置）
