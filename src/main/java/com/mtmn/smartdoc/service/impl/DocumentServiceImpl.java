@@ -1,7 +1,11 @@
 package com.mtmn.smartdoc.service.impl;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mtmn.smartdoc.dto.DocumentPreviewMetaResponse;
+import com.mtmn.smartdoc.dto.DocumentPreviewTextResponse;
 import com.mtmn.smartdoc.dto.DocumentResponse;
 import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.enums.DocumentIndexStatus;
@@ -10,6 +14,7 @@ import com.mtmn.smartdoc.exception.ResourceNotFoundException;
 import com.mtmn.smartdoc.exception.UnauthorizedAccessException;
 import com.mtmn.smartdoc.po.DocumentPo;
 import com.mtmn.smartdoc.po.IndexingTask;
+import com.mtmn.smartdoc.po.KnowledgeBase;
 import com.mtmn.smartdoc.repository.ChunkRepository;
 import com.mtmn.smartdoc.repository.DocumentRepository;
 import com.mtmn.smartdoc.service.DocumentService;
@@ -18,14 +23,23 @@ import com.mtmn.smartdoc.service.IndexingTaskService;
 import com.mtmn.smartdoc.service.KnowledgeBaseService;
 import com.mtmn.smartdoc.service.MilvusService;
 import com.mtmn.smartdoc.service.MinioService;
+import com.mtmn.smartdoc.utils.DocumentParseUtils;
+import io.minio.StatObjectResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,6 +56,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
+    private static final int PREVIEW_SEGMENT_CHARS = 4000;
+    private static final int PREVIEW_MAX_PAGE_SIZE = 20;
+    private static final Set<String> RAW_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp", "svg");
+    private static final Set<String> WORD_EXTENSIONS = Set.of("doc", "docx");
+    private static final Set<String> MARKDOWN_EXTENSIONS = Set.of("md", "markdown");
+    private static final Set<String> TEXT_EXTENSIONS = Set.of("txt", "log", "json", "xml", "yaml", "yml", "csv");
+
     private final DocumentRepository documentRepository;
     private final KnowledgeBaseService knowledgeBaseService;
     private final MinioService minioService;
@@ -52,6 +73,10 @@ public class DocumentServiceImpl implements DocumentService {
     private final ObjectMapper objectMapper;
     // 【新增】引入事务模板，用于精细控制事务范围，替代方法级别的 @Transactional
     private final TransactionTemplate transactionTemplate;
+    private final Cache<String, String> previewTextCache = Caffeine.newBuilder()
+            .maximumSize(128)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .build();
 
     @Override
     // 【修复】移除 @Transactional，防止 MinIO 网络 IO 阻塞数据库连接
@@ -429,6 +454,187 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentPreviewMetaResponse getPreviewMeta(Long documentId, Long userId) {
+        DocumentPo document = getDocumentEntity(documentId, userId);
+        KnowledgeBase kb = knowledgeBaseService.getKnowledgeBaseEntity(document.getKbId(), userId);
+        PreviewMode previewMode = resolvePreviewMode(document);
+
+        return DocumentPreviewMetaResponse.builder()
+                .documentId(document.getId())
+                .kbId(document.getKbId())
+                .filename(document.getFilename())
+                .fileType(document.getFileType())
+                .fileSize(document.getFileSize())
+                .indexStatus(document.getIndexStatus() != null ? document.getIndexStatus().name() : null)
+                .indexStrategyType(kb.getIndexStrategyType() != null ? kb.getIndexStrategyType().name() : null)
+                .previewType(previewMode.name())
+                .supportsRawPreview(previewMode == PreviewMode.RAW)
+                .supportsTextPreview(previewMode == PreviewMode.TEXT || previewMode == PreviewMode.MARKDOWN)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentPreviewTextResponse previewText(Long documentId, Long userId, int page, int size) {
+        DocumentPo document = getDocumentEntity(documentId, userId);
+        PreviewMode previewMode = resolvePreviewMode(document);
+        if (previewMode != PreviewMode.TEXT && previewMode != PreviewMode.MARKDOWN) {
+            throw new IllegalArgumentException("当前文档类型不支持文本预览");
+        }
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), PREVIEW_MAX_PAGE_SIZE);
+        String content = loadPreviewTextContent(document, previewMode);
+        List<String> segments = splitText(content, PREVIEW_SEGMENT_CHARS);
+
+        int from = safePage * safeSize;
+        if (from >= segments.size()) {
+            return DocumentPreviewTextResponse.builder()
+                    .documentId(document.getId())
+                    .page(safePage)
+                    .size(safeSize)
+                    .totalChars(content.length())
+                    .totalSegments(segments.size())
+                    .hasMore(false)
+                    .segments(List.of())
+                    .build();
+        }
+
+        int to = Math.min(from + safeSize, segments.size());
+        List<String> pageSegments = segments.subList(from, to);
+
+        return DocumentPreviewTextResponse.builder()
+                .documentId(document.getId())
+                .page(safePage)
+                .size(safeSize)
+                .totalChars(content.length())
+                .totalSegments(segments.size())
+                .hasMore(to < segments.size())
+                .segments(pageSegments)
+                .build();
+    }
+
+    @Override
+    public void previewRaw(Long documentId, Long userId, HttpServletResponse response) {
+        DocumentPo document = getDocumentEntity(documentId, userId);
+        PreviewMode previewMode = resolvePreviewMode(document);
+        if (previewMode != PreviewMode.RAW) {
+            throw new IllegalArgumentException("当前文档类型不支持原样预览");
+        }
+
+        String filePath = document.getFilePath();
+        StatObjectResponse metadata = minioService.getFileMetadata(filePath);
+        String contentType = StringUtils.defaultIfBlank(metadata.contentType(), "application/octet-stream");
+
+        response.setContentType(contentType);
+        if (metadata.size() > 0) {
+            response.setHeader("Content-Length", String.valueOf(metadata.size()));
+        }
+
+        try {
+            String displayName = StringUtils.defaultIfBlank(document.getFilename(), FilenameUtils.getName(filePath));
+            String encodedFilename = URLEncoder.encode(displayName, StandardCharsets.UTF_8).replace("+", "%20");
+            response.setHeader("Content-Disposition", "inline; filename=\"" + encodedFilename + "\"");
+        } catch (Exception ex) {
+            log.warn("Failed to encode preview filename for document {}", documentId, ex);
+        }
+
+        try (InputStream inputStream = minioService.getFileStream(filePath);
+             OutputStream outputStream = response.getOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            outputStream.flush();
+        } catch (Exception e) {
+            log.error("Raw preview failed for document {}", documentId, e);
+            throw new RuntimeException("文档预览失败", e);
+        }
+    }
+
+    private String loadPreviewTextContent(DocumentPo document, PreviewMode previewMode) {
+        String cacheKey = document.getId() + ":" + previewMode + ":" + (document.getUploadTime() != null ? document.getUploadTime() : "0");
+        return previewTextCache.get(cacheKey, key -> parsePreviewTextContent(document, previewMode));
+    }
+
+    private String parsePreviewTextContent(DocumentPo document, PreviewMode previewMode) {
+        String filePath = document.getFilePath();
+        String filename = document.getFilename();
+        String contentType = minioService.getFileMetadata(filePath).contentType();
+
+        try (InputStream inputStream = minioService.getFileStream(filePath)) {
+            if (previewMode == PreviewMode.MARKDOWN || isPlainText(contentType, filename)) {
+                return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+            return DocumentParseUtils.parse(inputStream, filename, contentType);
+        } catch (Exception e) {
+            log.error("Failed to parse preview text content for document {}", document.getId(), e);
+            throw new RuntimeException("文档文本预览失败", e);
+        }
+    }
+
+    private List<String> splitText(String content, int segmentChars) {
+        if (StringUtils.isBlank(content)) {
+            return List.of();
+        }
+
+        List<String> segments = new ArrayList<>();
+        int len = content.length();
+        for (int start = 0; start < len; start += segmentChars) {
+            int end = Math.min(start + segmentChars, len);
+            segments.add(content.substring(start, end));
+        }
+        return segments;
+    }
+
+    private PreviewMode resolvePreviewMode(DocumentPo document) {
+        String fileType = StringUtils.defaultString(document.getFileType()).toLowerCase(Locale.ROOT);
+        String extension = FilenameUtils.getExtension(StringUtils.defaultString(document.getFilename())).toLowerCase(Locale.ROOT);
+
+        if ("application/pdf".equals(fileType) || "pdf".equals(extension)) {
+            return PreviewMode.RAW;
+        }
+        if (fileType.startsWith("image/") || RAW_IMAGE_EXTENSIONS.contains(extension)) {
+            return PreviewMode.RAW;
+        }
+        if (WORD_EXTENSIONS.contains(extension)
+                || "application/msword".equals(fileType)
+                || "application/vnd.openxmlformats-officedocument.wordprocessingml.document".equals(fileType)) {
+            return PreviewMode.TEXT;
+        }
+        if (MARKDOWN_EXTENSIONS.contains(extension)
+                || "text/markdown".equals(fileType)
+                || "text/x-markdown".equals(fileType)) {
+            return PreviewMode.MARKDOWN;
+        }
+        if (fileType.startsWith("text/") || TEXT_EXTENSIONS.contains(extension)) {
+            return PreviewMode.TEXT;
+        }
+
+        return PreviewMode.UNSUPPORTED;
+    }
+
+    private boolean isPlainText(String fileType, String filename) {
+        String lowerFileType = StringUtils.defaultString(fileType).toLowerCase(Locale.ROOT);
+        String extension = FilenameUtils.getExtension(StringUtils.defaultString(filename)).toLowerCase(Locale.ROOT);
+        return MARKDOWN_EXTENSIONS.contains(extension)
+                || TEXT_EXTENSIONS.contains(extension)
+                || lowerFileType.startsWith("text/")
+                || "application/json".equals(lowerFileType)
+                || "application/xml".equals(lowerFileType)
+                || "text/xml".equals(lowerFileType);
+    }
+
+    private enum PreviewMode {
+        RAW,
+        MARKDOWN,
+        TEXT,
+        UNSUPPORTED
     }
 
     private IndexingTaskResponse convertToTaskResponse(IndexingTask task, boolean isNew) {

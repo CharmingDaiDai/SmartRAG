@@ -8,6 +8,7 @@ import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
+import DocumentViewer from '../../components/DocumentViewer';
 
 const formatDateTime = (val: string | undefined | null): string => {
     if (!val) return '—';
@@ -68,6 +69,8 @@ export default function DocumentsPage() {
         const [uploading, setUploading] = useState(false);
         const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
         const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+        const [viewerOpen, setViewerOpen] = useState(false);
+        const [viewingDocument, setViewingDocument] = useState<DocumentItem | null>(null);
 
   // 动态计算表格滚动高度
   const tableWrapperRef = useRef<HTMLDivElement>(null);
@@ -313,7 +316,10 @@ export default function DocumentsPage() {
                 <Button
                     type="text"
                     icon={<EyeOutlined />}
-                    onClick={() => message.info('查看详情: ' + (record.filename || record.fileName))}
+                    onClick={() => {
+                        setViewingDocument(record);
+                        setViewerOpen(true);
+                    }}
                 />
             </Tooltip>
             <Popconfirm
@@ -487,6 +493,14 @@ export default function DocumentsPage() {
                 </Space>
             </Form>
         </Modal>
+        <DocumentViewer
+            open={viewerOpen}
+            onClose={() => {
+                setViewerOpen(false);
+                setViewingDocument(null);
+            }}
+            document={viewingDocument}
+        />
     </FadeIn>
   );
 }

@@ -1,6 +1,8 @@
 package com.mtmn.smartdoc.controller;
 
 import com.mtmn.smartdoc.common.ApiResponse;
+import com.mtmn.smartdoc.dto.DocumentPreviewMetaResponse;
+import com.mtmn.smartdoc.dto.DocumentPreviewTextResponse;
 import com.mtmn.smartdoc.dto.DocumentResponse;
 import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.User;
@@ -10,6 +12,7 @@ import com.mtmn.smartdoc.vo.IndexingTaskProgressVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -120,6 +123,50 @@ public class DocumentController {
         DocumentResponse response = documentService.getDocument(documentId, user.getId());
 
         return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取文档预览元信息
+     */
+    @GetMapping("/{documentId}/preview/meta")
+    @Operation(summary = "获取文档预览元信息", description = "返回文档预览类型与能力信息")
+    public ApiResponse<DocumentPreviewMetaResponse> getPreviewMeta(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Getting preview meta for document: {}", documentId);
+        DocumentPreviewMetaResponse response = documentService.getPreviewMeta(documentId, user.getId());
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取文档文本预览（分页）
+     */
+    @GetMapping("/{documentId}/preview/text")
+    @Operation(summary = "获取文档文本预览", description = "分页返回文档文本片段")
+    public ApiResponse<DocumentPreviewTextResponse> previewText(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "页码（0-based）") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "每页段数") @RequestParam(defaultValue = "4") int size,
+            @AuthenticationPrincipal User user) {
+
+        log.debug("Preview text for document: {}, page={}, size={}", documentId, page, size);
+        DocumentPreviewTextResponse response = documentService.previewText(documentId, user.getId(), page, size);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 原样预览文档（流式）
+     */
+    @GetMapping("/{documentId}/preview/raw")
+    @Operation(summary = "原样预览文档", description = "以流式方式返回原始文件内容（inline）")
+    public void previewRaw(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal User user,
+            HttpServletResponse response) {
+
+        log.debug("Preview raw file for document: {}", documentId);
+        documentService.previewRaw(documentId, user.getId(), response);
     }
 
     /**

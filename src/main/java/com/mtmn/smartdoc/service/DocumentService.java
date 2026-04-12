@@ -1,8 +1,11 @@
 package com.mtmn.smartdoc.service;
 
 import com.mtmn.smartdoc.dto.DocumentResponse;
+import com.mtmn.smartdoc.dto.DocumentPreviewMetaResponse;
+import com.mtmn.smartdoc.dto.DocumentPreviewTextResponse;
 import com.mtmn.smartdoc.dto.IndexingTaskResponse;
 import com.mtmn.smartdoc.po.DocumentPo;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -137,4 +140,33 @@ public interface DocumentService {
      * @return 任务响应
      */
     IndexingTaskResponse batchRebuildIndex(List<Long> documentIds, Long userId);
+
+    /**
+     * 获取文档预览元信息
+     *
+     * @param documentId 文档 ID
+     * @param userId     用户 ID
+     * @return 预览元信息
+     */
+    DocumentPreviewMetaResponse getPreviewMeta(Long documentId, Long userId);
+
+    /**
+     * 获取文档文本预览（分页）
+     *
+     * @param documentId 文档 ID
+     * @param userId     用户 ID
+     * @param page       页码（0-based）
+     * @param size       每页段数
+     * @return 文本预览分页结果
+     */
+    DocumentPreviewTextResponse previewText(Long documentId, Long userId, int page, int size);
+
+    /**
+     * 原样预览文档流
+     *
+     * @param documentId 文档 ID
+     * @param userId     用户 ID
+     * @param response   HTTP 响应
+     */
+    void previewRaw(Long documentId, Long userId, HttpServletResponse response);
 }

@@ -1,4 +1,5 @@
 import request from './api';
+import { DocumentPreviewMeta, DocumentPreviewTextPage } from '../types/preview';
 
 const multipartHeaders = { headers: { 'Content-Type': 'multipart/form-data' } };
 
@@ -29,7 +30,7 @@ export const documentService = {
   list: (params: any) => request.get('/documents', { params }),
   listAll: (params: any) => request.get('/documents', { params }),
   listByKb: (kbId: string, params: any) => request.get(`/documents/${kbId}`, { params }),
-  get: (id: string) => request.get(`/documents/${id}`),
+  get: (id: string) => request.get(`/documents/detail/${id}`),
   upload: (kbId: string, file: File, title?: string) => {
     const formData = new FormData();
     formData.append('kbId', kbId);
@@ -61,4 +62,15 @@ export const documentService = {
     const token = localStorage.getItem('token');
     return new EventSource(`/api/documents/index-progress/${kbId}?token=${token}`);
   },
+
+  getPreviewMeta: (documentId: string | number) =>
+    request.get<any, { data: DocumentPreviewMeta }>(`/documents/${documentId}/preview/meta`),
+
+  previewText: (documentId: string | number, page: number, size: number) =>
+    request.get<any, { data: DocumentPreviewTextPage }>(`/documents/${documentId}/preview/text`, {
+      params: { page, size },
+    }),
+
+  previewRawBlob: (documentId: string | number) =>
+    request.get<any, Blob>(`/documents/${documentId}/preview/raw`, { responseType: 'blob' }),
 };
