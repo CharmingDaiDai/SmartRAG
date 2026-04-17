@@ -142,7 +142,7 @@ const Dashboard: React.FC = () => {
         layout: { spiral: 'rectangular' },
         colorField: 'text',
         autoFit: true,
-        color: ['#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#4338ca'],
+        color: ['#60a5fa', '#38bdf8', '#22d3ee', '#2dd4bf', '#84cc16', '#3b82f6'],
     };
 
     const hasTrendData = data.conversationStats.last7Days.length > 0;

@@ -602,7 +602,7 @@ const ChatPage: React.FC = () => {
             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
             config={MD_CONFIG}
             components={MD_COMPONENTS}
-            debug={import.meta.env.DEV}
+            // debug={import.meta.env.DEV}
             streaming={{
               hasNextChunk: status === 'updating' || status === 'loading',
               enableAnimation: true,
@@ -778,9 +778,9 @@ const ChatPage: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minHeight: '60%',
-                        gap: 24,
-                        paddingTop: 40,
+                        minHeight: '68%',
+                        gap: 28,
+                        paddingTop: 16,
                     }}>
                         {/* Logo + 欢迎语 */}
                         <div style={{ textAlign: 'center' }}>
@@ -797,17 +797,17 @@ const ChatPage: React.FC = () => {
                             }}>
                                 <RobotOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
                             </div>
-                            <Title level={4} style={{ margin: 0, fontWeight: 600 }}>
+                            <Title level={3} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.01em' }}>
                                 你好，我是 SmartRAG
                             </Title>
-                            <Text style={{ color: token.colorTextSecondary, fontSize: 14, marginTop: 6, display: 'block' }}>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 15, marginTop: 8, display: 'block' }}>
                                 {currentKb ? `正在使用「${currentKb.name}」知识库` : '请在右侧选择一个知识库开始对话'}
                             </Text>
                         </div>
 
                         {/* 建议问题卡片 */}
                         {currentKb && (
-                            <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 480 }}>
+                            <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 620 }}>
                                 {SUGGESTION_QUESTIONS.map((q, i) => (
                                     <StaggerItem key={i}>
                                         <div
@@ -826,15 +826,15 @@ const ChatPage: React.FC = () => {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 12,
-                                                padding: '12px 16px',
+                                                padding: '14px 18px',
                                                 cursor: 'pointer',
-                                                fontSize: 14,
+                                                fontSize: 15,
                                                 color: token.colorText,
                                             }}
                                         >
                                             <span style={{
-                                                width: 28,
-                                                height: 28,
+                                                width: 30,
+                                                height: 30,
                                                 borderRadius: 7,
                                                 background: `${token.colorPrimary}14`,
                                                 display: 'flex',
@@ -898,7 +898,7 @@ const ChatPage: React.FC = () => {
                                             className={themeMode === 'dark' ? 'x-markdown-dark' : 'x-markdown-light'}
                                             config={MD_CONFIG}
                                             components={MD_COMPONENTS}
-                                            debug={import.meta.env.DEV}
+                                            // debug={import.meta.env.DEV}
                                             streaming={{
                                                 hasNextChunk: streamingMessage.status === 'updating' || streamingMessage.status === 'loading',
                                                 enableAnimation: true,
@@ -934,6 +934,7 @@ const ChatPage: React.FC = () => {
             {/* 输入框区域 */}
             <div className="chat-input-bar" style={{ padding: '12px 20px 16px', flexShrink: 0 }}>
                 <Sender
+                    className="chat-sender-root"
                     value={input}
                     onChange={setInput}
                     loading={isRequesting}
@@ -960,11 +961,11 @@ const ChatPage: React.FC = () => {
                     {/* 知识库选择 */}
                     <div style={{ marginBottom: 20 }}>
                         <div style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            letterSpacing: '0.08em',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: '0.06em',
                             textTransform: 'uppercase',
-                            color: token.colorTextQuaternary,
+                            color: token.colorTextSecondary,
                             marginBottom: 8,
                         }}>
                             当前知识库
@@ -1002,11 +1003,11 @@ const ChatPage: React.FC = () => {
                                     key: 'model',
                                     label: (
                                         <span style={{
-                                            fontSize: 10,
-                                            fontWeight: 600,
-                                            letterSpacing: '0.08em',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            letterSpacing: '0.06em',
                                             textTransform: 'uppercase',
-                                            color: token.colorTextQuaternary,
+                                            color: token.colorTextSecondary,
                                         }}>
                                             模型配置
                                         </span>
@@ -1061,11 +1062,11 @@ const ChatPage: React.FC = () => {
                                     key: 'search',
                                     label: (
                                         <span style={{
-                                            fontSize: 10,
-                                            fontWeight: 600,
-                                            letterSpacing: '0.08em',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            letterSpacing: '0.06em',
                                             textTransform: 'uppercase',
-                                            color: token.colorTextQuaternary,
+                                            color: token.colorTextSecondary,
                                         }}>
                                             检索配置
                                         </span>
@@ -1131,11 +1132,11 @@ const ChatPage: React.FC = () => {
                                     key: 'advanced',
                                     label: (
                                         <span style={{
-                                            fontSize: 10,
-                                            fontWeight: 600,
-                                            letterSpacing: '0.08em',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            letterSpacing: '0.06em',
                                             textTransform: 'uppercase',
-                                            color: token.colorTextQuaternary,
+                                            color: token.colorTextSecondary,
                                         }}>
                                             高级配置
                                         </span>

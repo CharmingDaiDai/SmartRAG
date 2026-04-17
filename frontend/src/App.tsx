@@ -316,18 +316,22 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const primaryRgb = hexToRgb(primary);
   const primaryHoverRgb = hexToRgb(primaryHover);
 
-  const glassBg = isDark ? 'rgba(15, 23, 42, 0.6)' : 'rgba(255, 255, 255, 0.74)';
-  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.8)' : 'rgba(255, 255, 255, 0.92)';
-  const glassBorder = isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(160, 180, 210, 0.68)';
-  const glassHighlight = isDark ? 'rgba(191, 219, 254, 0.22)' : 'rgba(255, 255, 255, 0.82)';
-  const glassTint = isDark ? `rgba(${primaryRgb}, 0.22)` : `rgba(${primaryRgb}, 0.18)`;
-  const glassFilmOpacity = isDark ? '0.66' : '0.68';
-  const glassCausticOpacity = isDark ? '0.2' : '0.24';
-  const glassEdgeStrong = isDark ? 'rgba(226, 232, 240, 0.58)' : 'rgba(255, 255, 255, 0.96)';
-  const glassEdgeSoft = isDark ? 'rgba(148, 163, 184, 0.42)' : 'rgba(177, 191, 214, 0.64)';
-  const glassBorderWidth = isDark ? '1.3px' : '1.6px';
-  const glassEdgeWidth = isDark ? '1.2px' : '1.4px';
-  const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.22)';
+  const glassBg = isDark ? 'rgba(15, 23, 42, 0.62)' : 'rgba(255, 255, 255, 0.82)';
+  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.82)' : 'rgba(255, 255, 255, 0.96)';
+  const glassBorder = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(136, 160, 195, 0.7)';
+  const glassHighlight = isDark ? 'rgba(255, 242, 209, 0.22)' : 'rgba(255, 255, 255, 0.9)';
+  const glassTint = isDark ? 'rgba(236, 188, 110, 0.2)' : 'rgba(246, 208, 132, 0.2)';
+  const glassWarmRgb = isDark ? '236, 188, 110' : '246, 208, 132';
+  const glassPrismA = isDark ? 'rgba(255, 246, 224, 0.24)' : 'rgba(255, 255, 255, 0.58)';
+  const glassPrismB = isDark ? 'rgba(236, 190, 118, 0.3)' : 'rgba(255, 236, 190, 0.28)';
+  const glassPrismC = isDark ? 'rgba(225, 165, 78, 0.24)' : 'rgba(246, 200, 118, 0.22)';
+  const glassFilmOpacity = isDark ? '0.6' : '0.62';
+  const glassCausticOpacity = isDark ? '0.18' : '0.2';
+  const glassEdgeStrong = isDark ? 'rgba(226, 232, 240, 0.54)' : 'rgba(255, 255, 255, 0.96)';
+  const glassEdgeSoft = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(177, 191, 214, 0.56)';
+  const glassBorderWidth = isDark ? '1.25px' : '1.5px';
+  const glassEdgeWidth = isDark ? '1.05px' : '1.2px';
+  const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.16)';
   const glassShadow = 'none';
   const glassShadowHover = 'none';
 
@@ -343,6 +347,10 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   root.style.setProperty('--glass-border', glassBorder);
   root.style.setProperty('--glass-highlight', glassHighlight);
   root.style.setProperty('--glass-tint', glassTint);
+  root.style.setProperty('--glass-warm-rgb', glassWarmRgb);
+  root.style.setProperty('--glass-prism-a', glassPrismA);
+  root.style.setProperty('--glass-prism-b', glassPrismB);
+  root.style.setProperty('--glass-prism-c', glassPrismC);
   root.style.setProperty('--glass-shadow', glassShadow);
   root.style.setProperty('--glass-shadow-hover', glassShadowHover);
   root.style.setProperty('--glass-blur', isDark ? '16px' : '14px');

@@ -164,9 +164,9 @@ rag:
       gamma: 0.95
       theta_min: 0.3
       k_min: 1
-      k_max: 20
+      k_max: 10
 
-  # 完整版
+  # HiSem-SADP 完整版
   hisem-sadp:
     name: HiSem-SADP-RAG
     description: 完整的 HiSem-SADP-RAG 方法
@@ -176,11 +176,11 @@ rag:
     search:
       maxRes: 10
     threshold:
-      beta: 0.9
-      gamma: 0.9
-      theta_min: 0.3
+      beta: 0.98
+      gamma: 0.95
+      theta_min: 0.5
       k_min: 1
-      k_max: 20
+      k_max: 10
 
 # Milvus配置
 milvus:

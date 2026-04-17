@@ -11,22 +11,22 @@
   pointer-events: none;
   overflow: hidden;
   background:
-    radial-gradient(1240px 560px at -14% -22%, rgba(var(--color-primary-rgb), 0.2), transparent 62%),
-    radial-gradient(860px 420px at 110% 6%, rgba(56, 189, 248, 0.14), transparent 66%),
-    radial-gradient(820px 460px at 54% 122%, rgba(var(--color-primary-rgb), 0.1), transparent 72%),
-    conic-gradient(from 210deg at 46% 36%, rgba(255, 255, 255, 0.08), transparent 48%, rgba(148, 163, 184, 0.08) 72%, transparent 100%),
-    linear-gradient(180deg, var(--color-bg-base) 0%, color-mix(in srgb, var(--color-bg-base) 86%, rgba(var(--color-primary-rgb), 0.12)) 100%);
+    radial-gradient(1240px 560px at -14% -22%, rgba(var(--glass-warm-rgb), 0.24), transparent 62%),
+    radial-gradient(860px 420px at 110% 6%, rgba(255, 246, 219, 0.34), transparent 66%),
+    radial-gradient(820px 460px at 54% 122%, rgba(var(--glass-warm-rgb), 0.12), transparent 72%),
+    conic-gradient(from 210deg at 46% 36%, rgba(255, 255, 255, 0.08), transparent 48%, rgba(246, 208, 132, 0.08) 72%, transparent 100%),
+    linear-gradient(180deg, var(--color-bg-base) 0%, color-mix(in srgb, var(--color-bg-base) 88%, rgba(var(--glass-warm-rgb), 0.12)) 100%);
 }
 
 .app-ambient-bg::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.4px, transparent 1.4px),
-                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.22)) 1.4px, transparent 1.4px);
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.16)) 1.2px, transparent 1.2px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.16)) 1.2px, transparent 1.2px);
   background-size: 64px 64px;
   mask-image: radial-gradient(circle at 50% -20%, black 20%, transparent 80%);
-  opacity: 0.28;
+  opacity: 0.2;
 }
 
 .app-ambient-bg::after {
@@ -35,11 +35,11 @@
   inset: 0;
   pointer-events: none;
   background:
-    repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0 1.5px, transparent 1.5px 16px),
-    repeating-linear-gradient(35deg, rgba(148, 163, 184, 0.06) 0 1.5px, transparent 1.5px 20px),
-    conic-gradient(from 180deg at 40% 35%, transparent 0 24%, rgba(255, 255, 255, 0.12) 34%, transparent 44%, rgba(var(--color-primary-rgb), 0.12) 64%, transparent 80%);
+    repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.045) 0 1.2px, transparent 1.2px 16px),
+    repeating-linear-gradient(35deg, rgba(148, 163, 184, 0.045) 0 1.2px, transparent 1.2px 20px),
+    conic-gradient(from 180deg at 40% 35%, transparent 0 24%, rgba(255, 255, 255, 0.12) 34%, transparent 44%, rgba(var(--glass-warm-rgb), 0.14) 64%, transparent 80%);
   mix-blend-mode: soft-light;
-  opacity: calc(var(--glass-noise-opacity, 0.03) + 0.01);
+  opacity: calc(var(--glass-noise-opacity, 0.03) + 0.004);
   transform-origin: 48% 42%;
   animation: ambient-prism-drift 30s linear infinite;
 }
@@ -65,8 +65,8 @@
 .app-ambient-caustic {
   inset: -4%;
   background:
-    radial-gradient(42% 28% at 18% 24%, rgba(var(--color-primary-rgb), 0.16), transparent 72%),
-    radial-gradient(36% 24% at 84% 16%, rgba(56, 189, 248, 0.14), transparent 70%),
+    radial-gradient(42% 28% at 18% 24%, rgba(var(--glass-warm-rgb), 0.2), transparent 72%),
+    radial-gradient(36% 24% at 84% 16%, rgba(255, 236, 188, 0.2), transparent 70%),
     linear-gradient(118deg, transparent 0%, rgba(255, 255, 255, 0.12) 32%, transparent 64%);
   mix-blend-mode: soft-light;
   opacity: var(--glass-caustic-opacity, 0.2);
@@ -90,7 +90,7 @@
   height: 360px;
   left: -120px;
   top: 18%;
-  background: radial-gradient(circle at 35% 35%, rgba(var(--color-primary-rgb), 0.26), rgba(var(--color-primary-rgb), 0.02) 72%);
+  background: radial-gradient(circle at 35% 35%, rgba(var(--glass-warm-rgb), 0.34), rgba(var(--glass-warm-rgb), 0.04) 72%);
 }
 
 .app-ambient-orb-two {
@@ -99,7 +99,7 @@
   right: -80px;
   top: 56%;
   animation-delay: -8s;
-  background: radial-gradient(circle at 40% 40%, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.02) 70%);
+  background: radial-gradient(circle at 40% 40%, rgba(255, 236, 187, 0.26), rgba(255, 236, 187, 0.03) 70%);
 }
 
 .app-ambient-orb-three {
@@ -108,7 +108,7 @@
   left: 34%;
   top: -180px;
   animation-delay: -4s;
-  background: radial-gradient(circle at 50% 50%, rgba(var(--color-primary-rgb), 0.12), rgba(var(--color-primary-rgb), 0.01) 74%);
+  background: radial-gradient(circle at 50% 50%, rgba(var(--glass-warm-rgb), 0.18), rgba(var(--glass-warm-rgb), 0.02) 74%);
 }
 
 .app-ambient-bg-reduced .app-ambient-orb {
@@ -128,16 +128,16 @@
 
 [data-theme='dark'] .app-ambient-bg {
   background:
-    radial-gradient(1040px 480px at -20% -24%, rgba(var(--color-primary-rgb), 0.28), transparent 68%),
-    radial-gradient(760px 360px at 110% 2%, rgba(56, 189, 248, 0.2), transparent 66%),
-    radial-gradient(760px 400px at 48% 118%, rgba(var(--color-primary-rgb), 0.16), transparent 74%),
-    conic-gradient(from 220deg at 50% 34%, rgba(191, 219, 254, 0.1), transparent 46%, rgba(56, 189, 248, 0.1) 74%, transparent 100%),
+    radial-gradient(1040px 480px at -20% -24%, rgba(var(--glass-warm-rgb), 0.3), transparent 68%),
+    radial-gradient(760px 360px at 110% 2%, rgba(255, 229, 173, 0.2), transparent 66%),
+    radial-gradient(760px 400px at 48% 118%, rgba(var(--glass-warm-rgb), 0.18), transparent 74%),
+    conic-gradient(from 220deg at 50% 34%, rgba(255, 241, 205, 0.1), transparent 46%, rgba(var(--glass-warm-rgb), 0.12) 74%, transparent 100%),
     linear-gradient(180deg, #090f1b 0%, #090f1b 100%);
 }
 
 [data-theme='dark'] .app-ambient-bg::before {
-  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.3px, transparent 1.3px),
-                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.18)) 1.3px, transparent 1.3px);
+  background-image: linear-gradient(var(--glass-ambient-line, rgba(148, 163, 184, 0.15)) 1.1px, transparent 1.1px),
+                    linear-gradient(90deg, var(--glass-ambient-line, rgba(148, 163, 184, 0.15)) 1.1px, transparent 1.1px);
   opacity: 0.24;
 }
 
@@ -248,11 +248,9 @@
   background: linear-gradient(
     145deg,
     var(--glass-bg-strong) 0%,
-    color-mix(in srgb, var(--glass-bg) 74%, rgba(var(--color-primary-rgb), 0.16)) 100%
+    color-mix(in srgb, var(--glass-bg) 82%, rgba(var(--glass-warm-rgb), 0.12)) 100%
   ) !important;
   border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
-  outline: 1px solid color-mix(in srgb, var(--glass-edge-soft) 42%, transparent);
-  outline-offset: -1px;
   backdrop-filter: blur(var(--glass-blur)) saturate(165%);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(165%);
   transition: border-color var(--ui-transition-mid, 0.22s) ease,
@@ -314,13 +312,13 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 80%, transparent);
+  border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 72%, transparent);
   border-top-color: var(--glass-edge-strong);
   border-left-color: color-mix(in srgb, var(--glass-edge-strong) 78%, transparent);
   border-right-color: color-mix(in srgb, var(--glass-edge-soft) 64%, transparent);
   border-bottom-color: color-mix(in srgb, var(--glass-edge-soft) 76%, transparent);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 34%, transparent 66%, rgba(var(--color-primary-rgb), 0.1));
-  opacity: 0.92;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 34%, transparent 66%, rgba(var(--glass-warm-rgb), 0.12));
+  opacity: 0.78;
 }
 
 :where(
@@ -347,7 +345,7 @@
 
 .ant-card:hover {
   border-color: color-mix(in srgb, var(--color-primary-border) 78%, var(--glass-border));
-  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.16)) !important;
+  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.16)) !important;
   transform: translateY(var(--ui-hover-lift-md, -2px));
 }
 
@@ -374,7 +372,7 @@
 
 .kb-card:hover {
   border-color: color-mix(in srgb, var(--color-primary-border) 78%, var(--glass-border)) !important;
-  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.16)) !important;
+  background: linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.16)) !important;
   transform: translateY(var(--ui-hover-lift-md, -2px));
 }
 
@@ -409,7 +407,7 @@
 .ant-btn-dashed:not(:disabled) {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.2)),
-    linear-gradient(118deg, rgba(var(--color-primary-rgb), 0.1), transparent 56%);
+    linear-gradient(118deg, rgba(var(--glass-warm-rgb), 0.14), transparent 56%);
   border: var(--glass-border-width, 1px) solid var(--glass-border);
   backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
@@ -419,7 +417,7 @@
 [data-theme='dark'] .ant-btn-dashed:not(:disabled) {
   background:
     linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.45)),
-    linear-gradient(118deg, rgba(var(--color-primary-rgb), 0.16), transparent 56%);
+    linear-gradient(118deg, rgba(var(--glass-warm-rgb), 0.2), transparent 56%);
 }
 
 .ant-btn-primary:not(:disabled) {
@@ -491,7 +489,7 @@
   border-color: color-mix(in srgb, var(--color-primary) 72%, var(--glass-border)) !important;
   color: var(--color-primary) !important;
   background:
-    linear-gradient(145deg, rgba(var(--color-primary-rgb), 0.13), rgba(255, 255, 255, 0.16)),
+    linear-gradient(145deg, rgba(var(--glass-warm-rgb), 0.18), rgba(255, 255, 255, 0.16)),
     linear-gradient(118deg, rgba(255, 255, 255, 0.2), transparent 62%);
   transform: translateY(var(--ui-hover-lift-sm, -1px));
 }
@@ -500,12 +498,12 @@
 .ant-btn-dashed:not(:disabled):active {
   transform: translateY(0);
   background:
-    linear-gradient(145deg, rgba(var(--color-primary-rgb), 0.1), rgba(255, 255, 255, 0.14)),
+    linear-gradient(145deg, rgba(var(--glass-warm-rgb), 0.14), rgba(255, 255, 255, 0.14)),
     linear-gradient(118deg, rgba(255, 255, 255, 0.12), transparent 62%);
 }
 
 .ant-btn-text:not(:disabled):hover {
-  background: rgba(var(--color-primary-rgb), 0.12) !important;
+  background: rgba(var(--glass-warm-rgb), 0.16) !important;
 }
 
 /* ==================== Input & Select ==================== */
@@ -516,7 +514,7 @@
 .ant-input-number {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.2)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%) !important;
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%) !important;
   border-color: var(--glass-border) !important;
   border-width: var(--glass-border-width, 1px) !important;
   backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
@@ -531,7 +529,7 @@
 [data-theme='dark'] .ant-input-number {
   background:
     linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.42)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.14), transparent 58%) !important;
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.16), transparent 58%) !important;
 }
 
 .ant-input:hover,
@@ -552,8 +550,8 @@
   border-color: var(--color-primary) !important;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.22)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.16), transparent 58%) !important;
-  outline: 2px solid rgba(var(--color-primary-rgb), 0.26);
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.18), transparent 58%) !important;
+  outline: 1.5px solid rgba(var(--glass-warm-rgb), 0.26);
   outline-offset: 1px;
 }
 
@@ -566,7 +564,7 @@
 [data-theme='dark'] .ant-input-number-focused {
   background:
     linear-gradient(145deg, rgba(15, 23, 42, 0.74), rgba(15, 23, 42, 0.44)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.2), transparent 58%) !important;
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.2), transparent 58%) !important;
 }
 
 /* ==================== Table ==================== */
@@ -588,7 +586,7 @@
 }
 
 .ant-table-tbody > tr:hover > td {
-  background: rgba(var(--color-primary-rgb), 0.08) !important;
+  background: rgba(var(--glass-warm-rgb), 0.12) !important;
 }
 
 [data-theme='dark'] .ant-table-thead > tr > th {
@@ -617,7 +615,7 @@
 }
 
 .ant-modal-mask {
-  background: radial-gradient(circle at 40% -20%, rgba(var(--color-primary-rgb), 0.12), transparent 46%),
+  background: radial-gradient(circle at 40% -20%, rgba(var(--glass-warm-rgb), 0.14), transparent 46%),
               var(--color-bg-mask, rgba(15, 23, 42, 0.36)) !important;
   animation: fade-in 0.2s ease-out;
 }
@@ -665,12 +663,24 @@
 @keyframes chat-liquid-glide {
   0%,
   100% {
-    transform: translateY(0) scale(1);
-    background-position: 0% 0%, 0% 0%;
+    transform: translate3d(0, 0, 0) scale(1);
+    background-position: 0% 0%, 100% 100%, 42% 52%;
   }
   50% {
-    transform: translateY(-2px) scale(1.02);
-    background-position: 6% -4%, 8% 4%;
+    transform: translate3d(0, -2px, 0) scale(1.015);
+    background-position: 4% -3%, 96% 104%, 58% 44%;
+  }
+}
+
+@keyframes sender-specular-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.44;
+  }
+  50% {
+    transform: translate3d(1.2%, -2.4%, 0) scale(1.06);
+    opacity: 0.58;
   }
 }
 
@@ -682,7 +692,7 @@
 }
 
 .ant-menu-item:hover {
-  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  background: rgba(var(--glass-warm-rgb), 0.14) !important;
   transform: translateX(1px);
 }
 
@@ -713,7 +723,8 @@
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   padding: 16px 14px 4px !important;
-  opacity: 0.55;
+  color: var(--color-text-secondary) !important;
+  opacity: 0.74;
 }
 
 /* ==================== Utility ==================== */
@@ -793,8 +804,8 @@
 
 .chat-history-item:hover,
 .chat-history-item:focus-within {
-  background: rgba(var(--color-primary-rgb), 0.08);
-  border-color: rgba(var(--color-primary-rgb), 0.24);
+  background: rgba(var(--glass-warm-rgb), 0.12);
+  border-color: rgba(var(--glass-warm-rgb), 0.28);
   transform: translateY(var(--ui-hover-lift-sm, -1px));
 }
 
@@ -814,7 +825,7 @@
               transform var(--ui-transition-mid, 0.22s) ease;
   background:
     linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%);
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%);
   backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
 }
@@ -827,7 +838,7 @@
   background:
     linear-gradient(155deg, rgba(255, 255, 255, 0.32), transparent 50%),
     conic-gradient(from 210deg at 16% 16%, var(--glass-prism-a), transparent 42%, var(--glass-prism-b) 66%, transparent 84%);
-  opacity: 0.52;
+  opacity: 0.46;
   transition: opacity 0.24s ease, transform 0.24s ease;
   z-index: 0;
 }
@@ -840,7 +851,7 @@
 .suggestion-card:hover {
   border-color: color-mix(in srgb, var(--color-primary) 72%, var(--glass-border));
   background:
-    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.12)),
+    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.16)),
     linear-gradient(120deg, rgba(255, 255, 255, 0.18), transparent 62%);
   transform: translateY(var(--ui-hover-lift-sm, -1px));
 }
@@ -866,10 +877,11 @@
   overflow: hidden;
   flex-shrink: 0;
   background:
-    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
-    linear-gradient(124deg, rgba(var(--color-primary-rgb), 0.1), transparent 58%);
+    radial-gradient(145% 178% at 8% -24%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.34) 46%, transparent 78%),
+    radial-gradient(132% 170% at 108% 118%, rgba(var(--glass-warm-rgb), 0.24), rgba(var(--glass-warm-rgb), 0.1) 42%, transparent 84%),
+    linear-gradient(154deg, color-mix(in srgb, var(--glass-bg-strong) 90%, rgba(255, 255, 255, 0.1)), color-mix(in srgb, var(--glass-bg) 90%, rgba(var(--glass-warm-rgb), 0.1)));
   border: var(--glass-border-width, 1px) solid var(--glass-border);
-  border-radius: 14px;
+  border-radius: 18px;
   backdrop-filter: blur(var(--glass-blur-strong)) saturate(162%);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(162%);
 }
@@ -877,15 +889,17 @@
 .chat-input-bar::before {
   content: '';
   position: absolute;
-  inset: -24% -8% 28%;
+  inset: -30% -14% 18%;
   pointer-events: none;
   background:
-    radial-gradient(62% 52% at 16% 32%, rgba(255, 255, 255, 0.34), transparent 72%),
-    conic-gradient(from 220deg at 72% 58%, transparent 0%, var(--glass-prism-b) 34%, transparent 70%, var(--glass-prism-c) 86%, transparent 100%);
+    radial-gradient(72% 64% at 14% 30%, rgba(255, 255, 255, 0.42), transparent 72%),
+    radial-gradient(68% 72% at 84% 78%, rgba(var(--glass-warm-rgb), 0.24), transparent 74%),
+    conic-gradient(from 236deg at 62% 52%, transparent 0%, var(--glass-prism-b) 26%, transparent 58%, var(--glass-prism-c) 78%, transparent 100%);
   mix-blend-mode: screen;
-  opacity: 0.68;
+  filter: blur(1px);
+  opacity: 0.6;
   transform: translateY(0);
-  animation: chat-liquid-glide 14s ease-in-out infinite;
+  animation: chat-liquid-glide 15s ease-in-out infinite;
 }
 
 .chat-input-bar::after {
@@ -896,7 +910,8 @@
   border: var(--glass-edge-width, 1px) solid color-mix(in srgb, var(--glass-edge-soft) 82%, transparent);
   border-top-color: var(--glass-edge-strong);
   border-left-color: color-mix(in srgb, var(--glass-edge-strong) 74%, transparent);
-  opacity: 0.9;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.26), transparent 36%, rgba(var(--glass-warm-rgb), 0.12) 74%, transparent 100%);
+  opacity: 0.82;
 }
 
 .chat-input-bar > * {
@@ -905,8 +920,159 @@
 }
 
 .chat-input-bar:is(:hover, :focus-within)::before {
-  opacity: 0.84;
+  opacity: 0.78;
   transform: translateY(-2px);
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px !important;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 76%, rgba(var(--glass-warm-rgb), 0.3)) !important;
+  background:
+    radial-gradient(150% 188% at -4% -28%, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.48) 44%, transparent 78%),
+    radial-gradient(122% 168% at 104% 116%, rgba(var(--glass-warm-rgb), 0.24), rgba(var(--glass-warm-rgb), 0.12) 42%, transparent 82%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.54), color-mix(in srgb, var(--glass-bg) 92%, rgba(var(--glass-warm-rgb), 0.1))) !important;
+  backdrop-filter: blur(calc(var(--glass-blur-strong) - 1px)) saturate(175%);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur-strong) - 1px)) saturate(175%);
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              background-color var(--ui-transition-mid, 0.22s) ease,
+              transform var(--ui-transition-fast, 0.16s) ease;
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.5), transparent 34%, rgba(var(--glass-warm-rgb), 0.18) 72%, transparent 100%),
+    radial-gradient(86% 120% at 92% 100%, rgba(var(--glass-warm-rgb), 0.2), transparent 72%);
+  opacity: 0.74;
+  z-index: 0;
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main::after {
+  content: '';
+  position: absolute;
+  inset: -26% -22%;
+  pointer-events: none;
+  background:
+    radial-gradient(36% 46% at 18% 22%, rgba(255, 255, 255, 0.44), transparent 72%),
+    radial-gradient(34% 44% at 78% 76%, rgba(var(--glass-warm-rgb), 0.28), transparent 74%);
+  mix-blend-mode: screen;
+  filter: blur(14px);
+  opacity: 0.44;
+  z-index: 0;
+  animation: sender-specular-drift 11s ease-in-out infinite;
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main:is(:hover, :focus-within) {
+  border-color: color-mix(in srgb, var(--color-primary) 52%, rgba(255, 255, 255, 0.78)) !important;
+  background:
+    radial-gradient(148% 184% at -4% -26%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5) 42%, transparent 78%),
+    radial-gradient(122% 166% at 104% 116%, rgba(var(--glass-warm-rgb), 0.28), rgba(var(--glass-warm-rgb), 0.14) 44%, transparent 82%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.58), color-mix(in srgb, var(--glass-bg) 90%, rgba(var(--glass-warm-rgb), 0.12))) !important;
+  transform: translateY(-1px);
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-content {
+  gap: 10px;
+  padding: 10px 10px 10px 14px !important;
+  align-items: flex-end;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-input.ant-input,
+.chat-input-bar .chat-sender-root .ant-sender-input.ant-input:where(textarea) {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--color-text) !important;
+  border-radius: 0 !important;
+  min-height: 24px;
+  line-height: 1.65;
+  font-size: 14px;
+  padding: 6px 0 !important;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-input::placeholder {
+  color: color-mix(in srgb, var(--color-text-secondary) 86%, transparent) !important;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-input:focus,
+.chat-input-bar .chat-sender-root .ant-sender-input.ant-input-focused,
+.chat-input-bar .chat-sender-root .ant-sender-input.ant-input:focus-within {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-actions-list {
+  align-items: center;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-actions-list .ant-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 74%, rgba(var(--glass-warm-rgb), 0.28));
+  background:
+    radial-gradient(132% 128% at 22% 18%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.3) 58%, transparent 100%),
+    linear-gradient(140deg, rgba(var(--glass-warm-rgb), 0.18), rgba(var(--glass-warm-rgb), 0.08));
+  color: color-mix(in srgb, var(--color-text-secondary) 68%, var(--color-primary));
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-actions-list .ant-btn:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--glass-border));
+  color: var(--color-primary);
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-actions-list .ant-btn-primary {
+  border-color: transparent !important;
+  background: linear-gradient(136deg, var(--color-primary), var(--color-primary-hover)) !important;
+  color: #fff !important;
+}
+
+.chat-input-bar .chat-sender-root .ant-sender-actions-list .ant-btn-primary:hover {
+  filter: saturate(1.06) brightness(1.03);
+}
+
+[data-theme='dark'] .chat-input-bar {
+  background:
+    radial-gradient(142% 178% at 8% -24%, rgba(255, 239, 199, 0.16), rgba(15, 23, 42, 0.22) 44%, transparent 76%),
+    radial-gradient(130% 170% at 108% 118%, rgba(var(--glass-warm-rgb), 0.3), rgba(var(--glass-warm-rgb), 0.14) 44%, transparent 84%),
+    linear-gradient(154deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.62));
+}
+
+[data-theme='dark'] .chat-input-bar::before {
+  opacity: 0.64;
+}
+
+[data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background:
+    radial-gradient(148% 184% at -4% -26%, rgba(255, 239, 199, 0.16), rgba(15, 23, 42, 0.44) 42%, transparent 78%),
+    radial-gradient(122% 166% at 104% 116%, rgba(var(--glass-warm-rgb), 0.32), rgba(var(--glass-warm-rgb), 0.16) 44%, transparent 82%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.56)) !important;
+}
+
+[data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:is(:hover, :focus-within) {
+  border-color: color-mix(in srgb, var(--color-primary-border) 68%, rgba(148, 163, 184, 0.4)) !important;
+}
+
+[data-theme='dark'] .chat-input-bar .chat-sender-root .ant-sender-actions-list .ant-btn {
+  border-color: rgba(148, 163, 184, 0.3);
+  background:
+    radial-gradient(132% 128% at 22% 18%, rgba(148, 163, 184, 0.26), rgba(30, 41, 59, 0.44) 58%, transparent 100%),
+    linear-gradient(140deg, rgba(var(--glass-warm-rgb), 0.24), rgba(var(--glass-warm-rgb), 0.1));
+  color: color-mix(in srgb, var(--color-text-secondary) 76%, #cbd5e1);
 }
 
 /* ==================== Page Rhythm ==================== */
@@ -917,7 +1083,7 @@
   border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
   background:
     linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
-    linear-gradient(120deg, rgba(var(--color-primary-rgb), 0.08), transparent 58%) !important;
+    linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%) !important;
   transition: border-color var(--ui-transition-mid, 0.22s) ease,
               transform var(--ui-transition-mid, 0.22s) ease,
               background-color var(--ui-transition-mid, 0.22s) ease !important;
@@ -928,7 +1094,7 @@
 .kb-grid-card.ant-card:hover {
   border-color: color-mix(in srgb, var(--color-primary-border) 76%, var(--glass-border)) !important;
   background:
-    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.18)),
+    linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.2)),
     linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 62%) !important;
   transform: translateY(var(--ui-hover-lift-md, -2px));
 }
@@ -962,10 +1128,8 @@
 .chat-side-panel.ant-layout-sider {
   background:
     linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
-    linear-gradient(124deg, rgba(var(--color-primary-rgb), 0.08), transparent 60%) !important;
+    linear-gradient(124deg, rgba(var(--glass-warm-rgb), 0.12), transparent 60%) !important;
   border: var(--glass-border-width, 1px) solid var(--glass-border);
-  outline: 1px solid color-mix(in srgb, var(--glass-edge-soft) 40%, transparent);
-  outline-offset: -1px;
   backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
 }
@@ -984,7 +1148,7 @@
   border-radius: 14px;
   padding: 16px;
   background:
-    linear-gradient(155deg, var(--glass-bg-strong), rgba(var(--color-primary-rgb), 0.08)),
+    linear-gradient(155deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.12)),
     linear-gradient(118deg, rgba(255, 255, 255, 0.18), transparent 64%);
   backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
@@ -1034,6 +1198,11 @@ html[data-performance='lite'] .ant-btn-primary:not(:disabled)::after {
 html[data-performance='lite'] .chat-input-bar::before {
   animation: none;
   opacity: 0.4;
+}
+
+html[data-performance='lite'] .chat-input-bar .chat-sender-root.ant-sender-main::after {
+  animation: none;
+  opacity: 0.26;
 }
 
 html[data-performance='lite'] .suggestion-card::before {
@@ -1090,6 +1259,7 @@ html[data-performance='lite'] :where(
   .app-ambient-veil,
   .app-ambient-caustic,
   .chat-input-bar::before,
+  .chat-input-bar .chat-sender-root.ant-sender-main::after,
   .suggestion-card::before {
     animation: none !important;
     opacity: 0.3;
@@ -1142,6 +1312,7 @@ html[data-performance='lite'] :where(
   .ant-message-notice,
   .ant-modal-mask,
   .chat-input-bar::before,
+  .chat-input-bar .chat-sender-root.ant-sender-main::after,
   .ant-btn-primary:not(:disabled)::after,
   .ant-btn-primary:not(:disabled)::before,
   .theme-icon-enter,
