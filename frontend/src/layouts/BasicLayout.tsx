@@ -219,11 +219,11 @@ export default function BasicLayout() {
           width={232}
           collapsedWidth={72}
           style={{
-            borderRight: '1px solid var(--glass-border)',
+            borderRight: '1px solid var(--color-border)',
             overflow: 'hidden',
-            background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
-            backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
-            WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+            background: 'var(--glass-surface-nav)',
+            backdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
+            WebkitBackdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
           }}
         >
           <SidebarContent
@@ -248,9 +248,9 @@ export default function BasicLayout() {
               padding: 0,
               display: 'flex',
               flexDirection: 'column',
-              background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
-              backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
-              WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+              background: 'var(--glass-surface-nav)',
+              backdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
+              WebkitBackdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
             },
             header: { display: 'none' },
           }}
@@ -269,13 +269,13 @@ export default function BasicLayout() {
         {/* ── 顶部栏 ── */}
         <Header style={{
           padding: isMobile ? '0 12px' : '0 20px',
-          background: 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
-          backdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
-          WebkitBackdropFilter: 'blur(var(--glass-blur-strong)) saturate(160%)',
+          background: 'var(--glass-surface-nav)',
+          backdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
+          WebkitBackdropFilter: 'blur(var(--glass-blur-nav)) saturate(135%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid var(--glass-border)',
+          borderBottom: '1px solid var(--color-border)',
           height: headerHeight,
           flexShrink: 0,
         }}>
@@ -383,13 +383,13 @@ export default function BasicLayout() {
         {/* ── 内容区 ── */}
         <Content
           style={{
-            margin: isFullPage ? 0 : (isMobile ? '12px 8px' : `${token.marginLG}px ${token.margin}px`),
-            padding: isFullPage ? 0 : (isMobile ? 12 : token.paddingLG),
-            background: isFullPage ? token.colorBgLayout : 'linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg))',
-            backdropFilter: isFullPage ? 'none' : 'blur(var(--glass-blur-strong)) saturate(155%)',
-            WebkitBackdropFilter: isFullPage ? 'none' : 'blur(var(--glass-blur-strong)) saturate(155%)',
-            borderRadius: isFullPage ? 0 : (isMobile ? 10 : token.borderRadiusLG),
-            border: isFullPage ? 'none' : '1px solid var(--glass-border)',
+            margin: isFullPage ? 0 : (isMobile ? '16px 12px' : '24px 32px'),
+            padding: 0,
+            background: isFullPage ? token.colorBgLayout : 'transparent',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            borderRadius: 0,
+            border: 'none',
             overflow: isFullPage ? 'hidden' : 'auto',
             height: isFullPage ? `calc(100dvh - ${headerHeight}px)` : undefined,
             flex: isFullPage ? 'none' : 1,

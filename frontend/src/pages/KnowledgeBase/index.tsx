@@ -39,16 +39,9 @@ const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
 
 // RAG 策略的颜色点
 const STRATEGY_COLORS: Record<string, string> = {
-    NAIVE_RAG: '#6366f1',
-    HISEM_RAG_FAST: '#0ea5e9',
-    HISEM_RAG: '#8b5cf6',
-};
-
-// RAG 策略的 Tag 颜色
-const STRATEGY_TAG_COLORS: Record<string, string> = {
-    NAIVE_RAG: 'geekblue',
-    HISEM_RAG_FAST: 'cyan',
-    HISEM_RAG: 'purple',
+    NAIVE_RAG: '#86909c',
+    HISEM_RAG_FAST: '#13c2c2',
+    HISEM_RAG: '#722ed1',
 };
 
 const toCamelCase = (key: string) => key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
@@ -60,24 +53,24 @@ const RAG_METHOD_CARDS = [
         label: 'Naive RAG',
         desc: '基础检索增强，按固定文本块切分和向量检索',
         scene: '适合：快速上手、小规模文档、低配置环境',
-        color: '#6366f1',
-        bg: 'rgba(99,102,241,0.06)',
+        color: '#86909c',
+        bg: 'rgba(134,144,156,0.08)',
     },
     {
         value: RAG_METHODS.HISEM_FAST,
         label: 'HiSem RAG Fast',
         desc: '语义感知切分，保留上下文结构，速度优先',
         scene: '适合：中大规模文档、对速度有要求',
-        color: '#0ea5e9',
-        bg: 'rgba(14,165,233,0.06)',
+        color: '#13c2c2',
+        bg: 'rgba(19,194,194,0.08)',
     },
     {
         value: RAG_METHODS.HISEM,
         label: 'HiSem-SADP',
         desc: '全语义增强，可选摘要压缩，检索精度最高',
         scene: '适合：高质量问答、允许较长建库时间',
-        color: '#8b5cf6',
-        bg: 'rgba(139,92,246,0.06)',
+        color: '#722ed1',
+        bg: 'rgba(114,46,209,0.08)',
     },
 ];
 
@@ -220,7 +213,7 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="knowledge-base-page" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <SlideInUp>
         <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div>
@@ -259,11 +252,10 @@ export default function KnowledgeBasePage() {
                     style={{ marginTop: 80 }}
                 />
             ) : (
-                <Row gutter={[16, 16]} style={{ margin: 0 }}>
+                <Row gutter={[24, 24]} style={{ margin: 0 }}>
                     {data.map((item) => {
                         const strategyType = item.indexStrategyType || 'NAIVE_RAG';
-                        const accentColor = STRATEGY_COLORS[strategyType] || '#6366f1';
-                        const tagColor = STRATEGY_TAG_COLORS[strategyType] || 'geekblue';
+                        const accentColor = STRATEGY_COLORS[strategyType] || '#86909c';
 
                         const cardMenuItems = [
                             {
@@ -336,16 +328,6 @@ export default function KnowledgeBasePage() {
                                                     <Spin tip="删除中..." />
                                                 </div>
                                             )}
-                                            {/* 顶部彩色强调条 */}
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: 0,
-                                                left: 0,
-                                                right: 0,
-                                                height: 3,
-                                                background: accentColor,
-                                                opacity: 0.8,
-                                            }} />
 
                                             {/* 卡片头部：标题 + 操作菜单 */}
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4 }}>
@@ -379,15 +361,25 @@ export default function KnowledgeBasePage() {
 
                                             {/* 标签区 */}
                                             <Space size={4} wrap>
-                                                <Tag color={tagColor} style={{ fontSize: 11 }}>
+                                                <Tag
+                                                    className="kb-tag-pill kb-tag-pill--strategy"
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: '#ffffff',
+                                                        background: accentColor,
+                                                        borderColor: accentColor,
+                                                    }}
+                                                >
                                                     {INDEX_STRATEGY_LABEL_MAP[strategyType] || strategyType}
                                                 </Tag>
                                                 {item.embeddingModelId && (
-                                                    <Tag style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+                                                    <Tag className="kb-tag-pill kb-tag-pill--outline" style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
                                                         {item.embeddingModelId}
                                                     </Tag>
                                                 )}
-                                                <Tag style={{ fontSize: 11 }}>{`${item.documentCount || 0} 篇`}</Tag>
+                                                <Tag className="kb-tag-pill kb-tag-pill--outline kb-tag-pill--neutral" style={{ fontSize: 11 }}>
+                                                    {`${item.documentCount || 0} 篇`}
+                                                </Tag>
                                             </Space>
 
                                             {/* 描述 */}
@@ -406,7 +398,7 @@ export default function KnowledgeBasePage() {
                                                 </Typography.Text>
                                                 {/* 悬停 CTA */}
                                                 <div className="kb-card-cta">
-                                                    <Typography.Text style={{ fontSize: 12, color: accentColor }}>
+                                                    <Typography.Text className="kb-enter-link" style={{ fontSize: 12 }}>
                                                         进入知识库 →
                                                     </Typography.Text>
                                                 </div>

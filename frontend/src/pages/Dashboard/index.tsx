@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Row, Skeleton, Statistic, Typography, message, theme } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design/icons';
-import { Tiny, WordCloud } from '@ant-design/plots';
+import { Line, WordCloud } from '@ant-design/plots';
 import { dashboardService } from '../../services/dashboardService';
 import { StaggerContainer, StaggerItem, SlideInUp, HoverCard } from '../../components/common/Motion';
 
@@ -43,15 +43,15 @@ const getStatCards = (primaryColor: string) => [
         title: '文档总数',
         key: 'documents' as const,
         icon: <FileTextOutlined />,
-        accentColor: '#10b981',
-        bgColor: 'rgba(16, 185, 129, 0.08)',
+        accentColor: '#00b42a',
+        bgColor: 'rgba(0, 180, 42, 0.1)',
     },
     {
         title: '对话总次数',
         key: 'conversationStats.total' as const,
         icon: <MessageOutlined />,
-        accentColor: '#f59e0b',
-        bgColor: 'rgba(245, 158, 11, 0.08)',
+        accentColor: '#ff7d00',
+        bgColor: 'rgba(255, 125, 0, 0.1)',
     },
 ];
 
@@ -101,22 +101,68 @@ const Dashboard: React.FC = () => {
         'conversationStats.total': data.conversationStats.total,
     };
 
-    const areaConfig = {
-        data: data.conversationStats.last7Days.map((item, index) => ({
+    const averageValue = data.conversationStats.last7Days.reduce((acc, cur) => acc + cur.count, 0) / (data.conversationStats.last7Days.length || 1);
+
+    const trendConfig = {
+        data: data.conversationStats.last7Days.map((item) => ({
             value: item.count,
-            index: index,
-            date: item.date
+            date: item.date,
         })),
         autoFit: true,
-        padding: 8,
-        shapeField: 'smooth',
-        xField: 'index',
+        padding: [10, 16, 18, 10] as [number, number, number, number],
+        xField: 'date',
         yField: 'value',
+        smooth: true,
+        color: '#1677ff',
+        point: {
+            size: 3,
+            shape: 'circle',
+            style: {
+                fill: '#ffffff',
+                lineWidth: 1,
+            },
+        },
         style: {
-            fill: `linear-gradient(-90deg, ${token.colorPrimary}05 0%, ${token.colorPrimary}40 100%)`,
-            fillOpacity: 1,
-            stroke: token.colorPrimary,
             lineWidth: 2,
+        },
+        area: {
+            style: {
+                fill: 'l(270) 0:#1677ff22 1:#1677ff02',
+            },
+        },
+        xAxis: {
+            line: {
+                style: {
+                    stroke: '#e2e8f0',
+                },
+            },
+            tickLine: {
+                style: {
+                    stroke: '#e2e8f0',
+                },
+            },
+            label: {
+                style: {
+                    fill: '#64748b',
+                    fontSize: 12,
+                },
+            },
+        },
+        yAxis: {
+            grid: {
+                line: {
+                    style: {
+                        stroke: '#e2e8f0',
+                        lineDash: [3, 3],
+                    },
+                },
+            },
+            label: {
+                style: {
+                    fill: '#64748b',
+                    fontSize: 12,
+                },
+            },
         },
         tooltip: {
             title: (d: any) => d.date,
@@ -125,14 +171,14 @@ const Dashboard: React.FC = () => {
         annotations: [
             {
                 type: 'lineY',
-                data: [data.conversationStats.last7Days.reduce((acc, cur) => acc + cur.count, 0) / (data.conversationStats.last7Days.length || 1)],
+                data: [averageValue],
                 label: {
                     text: '平均值',
                     position: 'left',
                     dx: -10,
-                    style: { textBaseline: 'bottom', fill: token.colorTextTertiary },
+                    style: { textBaseline: 'bottom', fill: '#64748b' },
                 },
-                style: { stroke: token.colorTextTertiary, lineDash: [4, 4] },
+                style: { stroke: '#94a3b8', lineDash: [4, 4] },
             },
         ],
     };
@@ -142,18 +188,18 @@ const Dashboard: React.FC = () => {
         layout: { spiral: 'rectangular' },
         colorField: 'text',
         autoFit: true,
-        color: ['#60a5fa', '#38bdf8', '#22d3ee', '#2dd4bf', '#84cc16', '#3b82f6'],
+        color: ['#1677ff', '#13c2c2', '#722ed1', '#ff7d00', '#00b42a', '#86909c'],
     };
 
     const hasTrendData = data.conversationStats.last7Days.length > 0;
     const hasWordCloudData = data.wordCloud.length > 0;
 
     return (
-        <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+        <div className="dashboard-page" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
             <SlideInUp>
                 <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={4} style={{ marginBottom: 0 }}>数据仪表盘</Title>
-                    <Button onClick={fetchStats} loading={loading}>刷新数据</Button>
+                    <Button type="primary" onClick={fetchStats} loading={loading}>刷新数据</Button>
                 </div>
             </SlideInUp>
 
@@ -172,45 +218,46 @@ const Dashboard: React.FC = () => {
 
             <StaggerContainer>
                 {/* 顶部统计行 */}
-                <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+                <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
                     {STAT_CARDS.map((card) => (
                         <Col xs={24} sm={12} xl={8} key={card.key}>
                             <StaggerItem>
                                 <HoverCard>
-                                    <Card className="dashboard-stat-card" hoverable style={{ borderRadius: 12, overflow: 'hidden' }}>
-                                        {/* 顶部彩色强调条 */}
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            height: 3,
-                                            background: card.accentColor,
-                                            borderRadius: '12px 12px 0 0',
-                                        }} />
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    <Card
+                                        className="dashboard-stat-card"
+                                        hoverable
+                                        style={{ borderRadius: 8, overflow: 'hidden' }}
+                                        styles={{ body: { padding: 20 } }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                             <div style={{
-                                                width: 44,
-                                                height: 44,
-                                                borderRadius: 10,
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: 8,
                                                 background: card.bgColor,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                fontSize: 20,
+                                                fontSize: 18,
                                                 color: card.accentColor,
                                                 flexShrink: 0,
                                             }}>
                                                 {card.icon}
                                             </div>
                                             <Statistic
-                                                title={card.title}
+                                                title={(
+                                                    <span className="dashboard-stat-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: card.accentColor, display: 'inline-block' }} />
+                                                        <span>{card.title}</span>
+                                                    </span>
+                                                )}
                                                 value={statValues[card.key]}
                                                 loading={loading}
+                                                styles={{ title: { fontSize: 12, fontWeight: 400, color: '#64748b' } }}
                                                 valueStyle={{
                                                     fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
                                                     fontVariantNumeric: 'tabular-nums',
-                                                    fontSize: 28,
+                                                    fontSize: 16,
                                                     fontWeight: 600,
                                                     color: token.colorText,
                                                 }}
@@ -224,7 +271,7 @@ const Dashboard: React.FC = () => {
                 </Row>
 
                 {/* 图表行 */}
-                <Row gutter={[20, 20]}>
+                <Row gutter={[24, 24]}>
                     <Col xs={24} xl={12}>
                         <StaggerItem>
                             <HoverCard>
@@ -232,9 +279,13 @@ const Dashboard: React.FC = () => {
                                     className="dashboard-chart-card"
                                     title="近 7 天对话趋势"
                                     hoverable
+                                    style={{ borderRadius: 8 }}
                                     styles={{
+                                        body: {
+                                            padding: 20,
+                                        },
                                         header: {
-                                            fontSize: 14,
+                                            fontSize: 13,
                                             fontWeight: 600,
                                             borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                         }
@@ -245,7 +296,7 @@ const Dashboard: React.FC = () => {
                                             <Skeleton active paragraph={{ rows: 8 }} title={false} />
                                         ) : hasTrendData ? (
                                             // @ts-ignore
-                                            <Tiny.Area {...areaConfig} />
+                                            <Line {...trendConfig} />
                                         ) : (
                                             <div className="ui-empty-panel" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无趋势数据" />
@@ -263,9 +314,13 @@ const Dashboard: React.FC = () => {
                                     className="dashboard-chart-card"
                                     title="热门关键词"
                                     hoverable
+                                    style={{ borderRadius: 8 }}
                                     styles={{
+                                        body: {
+                                            padding: 20,
+                                        },
                                         header: {
-                                            fontSize: 14,
+                                            fontSize: 13,
                                             fontWeight: 600,
                                             borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                         }

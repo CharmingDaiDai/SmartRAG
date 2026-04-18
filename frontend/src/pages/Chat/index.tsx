@@ -619,12 +619,12 @@ const ChatPage: React.FC = () => {
 
   return (
     <XProvider theme={{ token: { colorPrimary: token.colorPrimary } }}>
-        <Layout style={{ height: '100%', background: token.colorBgContainer }}>
+                <Layout className="chat-page-layout" style={{ height: '100%', background: token.colorBgContainer }}>
 
         {/* ==================== 左侧边栏：历史对话列表 ==================== */}
         <Sider
             width={240}
-            className="chat-sidebar-left chat-side-panel"
+            className="chat-sidebar-left chat-side-panel chat-side-panel--history"
             style={{
                 height: '100%',
                 display: 'flex',
@@ -634,14 +634,13 @@ const ChatPage: React.FC = () => {
             {/* 新建对话按钮（顶部） */}
             <div style={{ padding: '12px 12px 8px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                 <Button
-                    type="dashed"
+                    type="primary"
                     block
+                    className="chat-new-conversation-btn"
                     aria-label="新建聊天会话"
                     icon={<PlusOutlined />}
                     onClick={handleNewChat}
                     style={{
-                        borderColor: token.colorBorderSecondary,
-                        color: token.colorTextSecondary,
                         height: 36,
                         borderRadius: 8,
                     }}
@@ -692,12 +691,12 @@ const ChatPage: React.FC = () => {
                                     borderRadius: 8,
                                     cursor: 'pointer',
                                     background: activeHistoryId === item.sessionId
-                                        ? `${token.colorPrimary}14`
+                                        ? '#f0f7ff'
                                         : 'transparent',
                                     borderLeft: activeHistoryId === item.sessionId
                                         ? `2px solid ${token.colorPrimary}`
                                         : '2px solid transparent',
-                                    transition: 'background-color 0.15s ease, border-left-color 0.15s ease',
+                                    transition: 'background-color 0.2s ease, border-left-color 0.2s ease',
                                     position: 'relative',
                                 }}
                                 onClick={() => handleHistoryClick(item.sessionId)}
@@ -768,7 +767,7 @@ const ChatPage: React.FC = () => {
         </Sider>
 
         {/* ==================== 中间内容区：对话消息列表 + 输入框 ==================== */}
-        <Content style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
+        <Content className="chat-main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: '#ffffff' }}>
             <FadeIn style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
             {/* 消息滚动区域 */}
             <div ref={scrollRef} className="chat-messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24, minHeight: 0, overscrollBehavior: 'contain' }}>
@@ -945,7 +944,7 @@ const ChatPage: React.FC = () => {
         {/* ==================== 右侧边栏：知识库选择 + 参数配置 ==================== */}
         <Sider
             width={300}
-            className="chat-sidebar-right chat-side-panel"
+            className="chat-sidebar-right chat-side-panel chat-side-panel--config"
             style={{
                 height: '100%'
             }}
@@ -1179,7 +1178,7 @@ const ChatPage: React.FC = () => {
 
                 {/* 清空对话按钮 */}
                 <div style={{ padding: '12px 16px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Button block danger aria-label="清空当前对话消息" icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
+                    <Button block type="default" danger className="chat-clear-btn" aria-label="清空当前对话消息" icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
                         清空对话
                     </Button>
                 </div>

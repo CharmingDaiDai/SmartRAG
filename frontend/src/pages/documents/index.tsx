@@ -255,7 +255,7 @@ export default function DocumentsPage() {
           return (
               <Tooltip title={kb.name}>
                   <Tag
-                      color="blue"
+                      className="docs-kb-tag"
                       style={{
                           maxWidth: 140,
                           display: 'inline-block',
@@ -292,10 +292,17 @@ export default function DocumentsPage() {
               SAVING: { text: '保存中', color: '#f97316' },
               EMBEDDING: { text: '向量化中', color: '#8b5cf6' },
               STORING: { text: '存储向量', color: '#f97316' },
-              INDEXED: { text: '已索引', color: '#10b981' },
+              INDEXED: { text: '已索引', color: '#00b42a' },
               ERROR: { text: '错误', color: '#ef4444' },
           };
           const s = statusMap[status] || { text: status, color: '#a8a29e' };
+          if (status === 'INDEXED') {
+              return (
+                  <Tag className="docs-status-pill docs-status-pill--success" style={{ margin: 0 }}>
+                      {s.text}
+                  </Tag>
+              );
+          }
           return (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
@@ -320,6 +327,7 @@ export default function DocumentsPage() {
             <Tooltip title="查看">
                 <Button
                     type="text"
+                    className="docs-action-btn docs-action-btn--view"
                     aria-label="查看文档"
                     icon={<EyeOutlined />}
                     onClick={() => {
@@ -333,7 +341,14 @@ export default function DocumentsPage() {
                 onConfirm={() => handleDelete(record.id)}
             >
                 <Tooltip title="删除">
-                    <Button type="text" danger aria-label="删除文档" icon={<DeleteOutlined />} loading={!!deletingDocIds[record.id]} />
+                    <Button
+                        type="text"
+                        danger
+                        className="docs-action-btn docs-action-btn--delete"
+                        aria-label="删除文档"
+                        icon={<DeleteOutlined />}
+                        loading={!!deletingDocIds[record.id]}
+                    />
                 </Tooltip>
             </Popconfirm>
         </Space>
@@ -397,8 +412,9 @@ export default function DocumentsPage() {
 
         {/* 表格区域 — 占满剩余空间，内部滚动 */}
         <SlideInUp transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.1 }} style={{ flex: 1, minHeight: 0 }}>
-            <div ref={tableWrapperRef} style={{ height: '100%' }}>
+            <div ref={tableWrapperRef} className="documents-table-shell" style={{ height: '100%' }}>
             <Table
+                className="documents-table"
                 columns={columns}
                 dataSource={filteredData}
                 rowKey="id"

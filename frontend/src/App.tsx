@@ -57,23 +57,23 @@ function detectLitePerformance(): boolean {
 function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: FontSizeDef, us: UIStyleDef) {
   const base = {
     colorPrimary: ct.primary,
-    colorSuccess: '#16a34a',
-    colorWarning: '#d97706',
+    colorSuccess: '#00b42a',
+    colorWarning: '#ff7d00',
     colorError: '#dc2626',
     colorInfo: ct.primary,
 
-    colorBgBase: '#f4f6fb',
+    colorBgBase: '#f8fafc',
     colorBgContainer: '#ffffff',
     colorBgElevated: '#ffffff',
-    colorBgLayout: '#edf1f7',
-    colorBgSpotlight: '#e6edf9',
+    colorBgLayout: '#f8fafc',
+    colorBgSpotlight: '#f1f5f9',
     colorBgMask: 'rgba(15, 23, 42, 0.45)',
 
-    colorBorder: '#dce3ee',
-    colorBorderSecondary: '#e9eef6',
+    colorBorder: '#e2e8f0',
+    colorBorderSecondary: '#e2e8f0',
 
-    colorText: '#0f172a',
-    colorTextSecondary: '#475569',
+    colorText: '#1e293b',
+    colorTextSecondary: '#64748b',
     colorTextTertiary: '#94a3b8',
     colorTextQuaternary: '#cbd5e1',
     colorTextDescription: '#64748b',
@@ -209,8 +209,8 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
     },
     Card: {
       borderRadius: us.cardRadius,
-      borderRadiusLG: us.cardRadius + 4,
-      paddingLG: 22,
+      borderRadiusLG: us.cardRadius,
+      paddingLG: 20,
     },
     Button: {
       borderRadius: us.buttonRadius,
@@ -227,7 +227,7 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
       borderRadius: us.borderRadius,
       controlHeight: fs.controlHeight,
       paddingInline: 12,
-      activeShadow: `0 0 0 3px ${primarySoft}`,
+      activeShadow: 'none',
     },
     Select: {
       borderRadius: us.borderRadius,
@@ -247,7 +247,7 @@ function buildComponentTokens(isDark: boolean, ct: ColorThemeDef, ff: FontFamily
       titleFontSize: 16,
     },
     Tag: {
-      borderRadius: us.borderRadiusSM,
+      borderRadius: us.borderRadius,
       paddingInline: 8,
     },
     Slider: {
@@ -317,15 +317,15 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const primaryRgb = hexToRgb(primary);
   const primaryHoverRgb = hexToRgb(primaryHover);
 
-  const glassBg = isDark ? 'rgba(15, 23, 42, 0.74)' : 'rgba(255, 255, 255, 0.9)';
-  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.82)' : 'rgba(255, 255, 255, 0.94)';
-  const glassBorder = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(136, 160, 195, 0.7)';
+  const glassBg = isDark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.85)';
+  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.86)' : 'rgba(255, 255, 255, 0.9)';
+  const glassBorder = isDark ? 'rgba(148, 163, 184, 0.28)' : 'rgba(226, 232, 240, 1)';
   const glassHighlight = isDark ? 'rgba(226, 232, 240, 0.22)' : 'rgba(255, 255, 255, 0.88)';
   const glassTint = 'rgba(226, 232, 240, 0.2)';
   const glassWarmRgb = '226, 232, 240';
-  const glassSurfaceCard = isDark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.85)';
-  const glassSurfaceNav = isDark ? 'rgba(15, 23, 42, 0.84)' : 'rgba(255, 255, 255, 0.9)';
-  const glassSurfaceModal = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+  const glassSurfaceCard = isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.85)';
+  const glassSurfaceNav = isDark ? 'rgba(15, 23, 42, 0.86)' : 'rgba(248, 250, 252, 0.9)';
+  const glassSurfaceModal = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)';
   const glassPrismA = isDark ? 'rgba(241, 245, 249, 0.24)' : 'rgba(255, 255, 255, 0.58)';
   const glassPrismB = isDark ? 'rgba(203, 213, 225, 0.3)' : 'rgba(226, 232, 240, 0.28)';
   const glassPrismC = isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(203, 213, 225, 0.22)';
@@ -333,13 +333,13 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const glassCausticOpacity = isDark ? '0.18' : '0.2';
   const glassEdgeStrong = isDark ? 'rgba(226, 232, 240, 0.54)' : 'rgba(255, 255, 255, 0.96)';
   const glassEdgeSoft = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(177, 191, 214, 0.56)';
-  const glassBorderWidth = isDark ? '1.25px' : '1.5px';
-  const glassEdgeWidth = isDark ? '1.05px' : '1.2px';
+  const glassBorderWidth = '1px';
+  const glassEdgeWidth = '1px';
   const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.16)';
-  const glassBlurBg = isLite ? '1px' : '3px';
-  const glassBlurCard = isLite ? '2px' : '6px';
-  const glassBlurNav = isLite ? '3px' : '8px';
-  const glassBlurModal = isLite ? '4px' : '10px';
+  const glassBlurBg = isLite ? '1px' : '2px';
+  const glassBlurCard = isLite ? '3px' : '6px';
+  const glassBlurNav = isLite ? '2px' : '4px';
+  const glassBlurModal = isLite ? '4px' : '8px';
   const glassBlur = glassBlurCard;
   const glassBlurStrong = glassBlurNav;
   const glassShadow = 'none';
@@ -432,10 +432,33 @@ function App() {
   }, []);
 
   const isDark = themeMode === 'dark';
-  const ct = COLOR_THEMES[colorTheme];
+  const themeColor = COLOR_THEMES[colorTheme];
+  const ct: ColorThemeDef = {
+    ...themeColor,
+    primary: '#1677ff',
+    primaryHover: '#0958d9',
+    primarySoft: 'rgba(22,119,255,0.1)',
+    primaryBorder: 'rgba(22,119,255,0.24)',
+    primaryLight: '#4096ff',
+    primaryLightHover: '#1677ff',
+    primaryLightSoft: 'rgba(64,150,255,0.16)',
+    primaryLightBorder: 'rgba(64,150,255,0.3)',
+  };
   const ff = FONT_FAMILIES[fontFamily];
   const fs = FONT_SIZES[fontSize];
-  const us = UI_STYLES[uiStyle];
+  const styleDef = UI_STYLES[uiStyle];
+  const us: UIStyleDef = {
+    ...styleDef,
+    borderRadius: 8,
+    borderRadiusXS: 8,
+    borderRadiusSM: 8,
+    borderRadiusLG: 8,
+    borderRadiusOuter: 8,
+    cardRadius: 8,
+    buttonRadius: 8,
+    modalRadius: 8,
+    cardBorderWidth: 1,
+  };
 
   // Sync CSS custom properties for App.css / login.css / index.css
   useEffect(() => {
