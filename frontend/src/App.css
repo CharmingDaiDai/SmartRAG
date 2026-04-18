@@ -10,6 +10,9 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  filter: blur(var(--glass-blur-bg, 3px));
+  transform: scale(1.02);
+  will-change: filter, transform;
   background:
     radial-gradient(1240px 560px at -14% -22%, rgba(var(--glass-warm-rgb), 0.24), transparent 62%),
     radial-gradient(860px 420px at 110% 6%, rgba(241, 245, 249, 0.3), transparent 66%),
@@ -245,14 +248,12 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: linear-gradient(
-    145deg,
-    var(--glass-bg-strong) 0%,
-    color-mix(in srgb, var(--glass-bg) 82%, rgba(var(--glass-warm-rgb), 0.12)) 100%
-  ) !important;
+  background:
+    linear-gradient(158deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08) 44%, transparent 100%),
+    var(--glass-surface-card, rgba(255, 255, 255, 0.85)) !important;
   border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
-  backdrop-filter: blur(var(--glass-blur)) saturate(165%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(165%);
+  backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(138%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(138%);
   transition: border-color var(--ui-transition-mid, 0.22s) ease,
               background-color var(--ui-transition-mid, 0.22s) ease,
               transform var(--ui-transition-mid, 0.22s) ease;
@@ -284,15 +285,14 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(160deg, var(--glass-highlight) 0%, transparent 48%),
-    radial-gradient(132% 92% at 88% 118%, var(--glass-tint), transparent 66%),
-    conic-gradient(from 225deg at 18% 16%, var(--glass-prism-a), var(--glass-prism-b), var(--glass-prism-c), transparent 70%);
-  background-size: 145% 145%, 150% 150%, 175% 175%;
-  background-position: 2% 0%, 98% 102%, 32% 14%;
+    linear-gradient(160deg, rgba(255, 255, 255, 0.34), transparent 56%),
+    radial-gradient(120% 90% at 90% 110%, rgba(255, 255, 255, 0.14), transparent 68%);
+  background-size: 150% 150%, 140% 140%;
+  background-position: 0% 0%, 100% 100%;
   mix-blend-mode: screen;
-  opacity: var(--glass-film-opacity, 0.56);
+  opacity: 0.34;
   transform: translateY(0);
-  transition: opacity 0.24s ease, transform 0.24s ease, background-position 0.36s ease;
+  transition: opacity 0.24s ease, transform 0.24s ease, background-position 0.3s ease;
 }
 
 :where(
@@ -302,9 +302,9 @@
   .chat-input-bar,
   .auth-card
 ):is(:hover, :focus-within)::before {
-  opacity: calc(var(--glass-film-opacity, 0.56) + 0.16);
-  transform: translateY(-2px) scale(1.01);
-  background-position: 0% 2%, 100% 98%, 40% 20%;
+  opacity: 0.52;
+  transform: translateY(-1px);
+  background-position: 2% 2%, 98% 98%;
 }
 
 :where(
@@ -327,7 +327,7 @@
   border-left-color: color-mix(in srgb, var(--glass-edge-strong) 78%, transparent);
   border-right-color: color-mix(in srgb, var(--glass-edge-soft) 64%, transparent);
   border-bottom-color: color-mix(in srgb, var(--glass-edge-soft) 76%, transparent);
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 34%, transparent 66%, rgba(var(--glass-warm-rgb), 0.12));
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.16), transparent 42%, rgba(255, 255, 255, 0.08) 78%, transparent);
   opacity: 0.78;
 }
 
@@ -338,6 +338,21 @@
 ) > * {
   position: relative;
   z-index: 1;
+}
+
+.ant-modal .ant-modal-content,
+.ant-drawer .ant-drawer-content {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.12) 44%, transparent 100%),
+    var(--glass-surface-modal, rgba(255, 255, 255, 0.95)) !important;
+  backdrop-filter: blur(var(--glass-blur-modal, 10px)) saturate(142%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-modal, 10px)) saturate(142%);
+}
+
+.ant-modal-mask,
+.ant-drawer-mask {
+  backdrop-filter: blur(var(--glass-blur-bg, 3px));
+  -webkit-backdrop-filter: blur(var(--glass-blur-bg, 3px));
 }
 
 .ant-card {
@@ -413,8 +428,8 @@
     linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.2)),
     linear-gradient(118deg, rgba(var(--glass-warm-rgb), 0.14), transparent 56%);
   border: var(--glass-border-width, 1px) solid var(--glass-border);
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
 }
 
 [data-theme='dark'] .ant-btn-default:not(:disabled),
@@ -495,6 +510,8 @@
   background:
     linear-gradient(145deg, rgba(var(--glass-warm-rgb), 0.18), rgba(255, 255, 255, 0.16)),
     linear-gradient(118deg, rgba(255, 255, 255, 0.2), transparent 62%);
+  backdrop-filter: blur(2px) saturate(136%);
+  -webkit-backdrop-filter: blur(2px) saturate(136%);
   transform: translateY(var(--ui-hover-lift-sm, -1px));
 }
 
@@ -508,6 +525,23 @@
 
 .ant-btn-text:not(:disabled):hover {
   background: rgba(var(--glass-warm-rgb), 0.16) !important;
+}
+
+.ant-tag {
+  border: 1px solid color-mix(in srgb, var(--glass-border) 82%, transparent) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.12)),
+    var(--glass-surface-card, rgba(255, 255, 255, 0.85)) !important;
+  backdrop-filter: blur(2px) saturate(136%);
+  -webkit-backdrop-filter: blur(2px) saturate(136%);
+  transition: border-color var(--ui-transition-fast, 0.16s) ease,
+              background-color var(--ui-transition-fast, 0.16s) ease,
+              transform var(--ui-transition-fast, 0.16s) ease;
+}
+
+.ant-tag:hover {
+  border-color: color-mix(in srgb, var(--glass-border) 72%, rgba(148, 163, 184, 0.48)) !important;
+  transform: translateY(-1px);
 }
 
 .documents-toolbar-btn.ant-btn:focus,
@@ -537,8 +571,8 @@
     linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%) !important;
   border-color: var(--glass-border) !important;
   border-width: var(--glass-border-width, 1px) !important;
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
   transition: border-color 0.18s ease, outline-color 0.18s ease;
 }
 
@@ -597,8 +631,8 @@
 .ant-table-thead > tr > th {
   background: linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)) !important;
   border-bottom: var(--glass-edge-width, 1px) solid var(--color-border-subtle) !important;
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
 }
 
 .ant-table-tbody > tr {
@@ -632,8 +666,8 @@
     linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
     linear-gradient(120deg, rgba(148, 163, 184, 0.14), transparent 58%) !important;
   border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(145%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(145%);
 }
 
 .ant-alert,
@@ -942,8 +976,8 @@
   background:
     linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
     linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%);
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(140%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(140%);
 }
 
 .suggestion-card::before {
@@ -1102,8 +1136,8 @@
     radial-gradient(150% 188% at -4% -28%, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.48) 44%, transparent 78%),
     radial-gradient(122% 168% at 104% 116%, rgba(var(--glass-warm-rgb), 0.24), rgba(var(--glass-warm-rgb), 0.12) 42%, transparent 82%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.54), color-mix(in srgb, var(--glass-bg) 92%, rgba(var(--glass-warm-rgb), 0.1))) !important;
-  backdrop-filter: blur(calc(var(--glass-blur-strong) - 1px)) saturate(175%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur-strong) - 1px)) saturate(175%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-nav, 8px) - 1px))) saturate(175%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-nav, 8px) - 1px))) saturate(175%);
   transition: border-color var(--ui-transition-mid, 0.22s) ease,
               background-color var(--ui-transition-mid, 0.22s) ease,
               transform var(--ui-transition-fast, 0.16s) ease;
@@ -1296,11 +1330,16 @@
 
 .chat-side-panel.ant-layout-sider {
   background:
-    linear-gradient(165deg, var(--glass-bg-strong), var(--glass-bg)),
-    linear-gradient(124deg, rgba(var(--glass-warm-rgb), 0.12), transparent 60%) !important;
+    linear-gradient(165deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08) 46%, transparent 100%),
+    var(--glass-surface-nav, rgba(255, 255, 255, 0.9)) !important;
   border: var(--glass-border-width, 1px) solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur-nav, 8px)) saturate(146%);
+  -webkit-backdrop-filter: blur(var(--glass-blur-nav, 8px)) saturate(146%);
+}
+
+.ant-layout-header {
+  backdrop-filter: blur(var(--glass-blur-nav, 8px)) saturate(146%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-nav, 8px)) saturate(146%) !important;
 }
 
 .chat-side-panel .ant-collapse-item {
@@ -1319,8 +1358,8 @@
   background:
     linear-gradient(155deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.12)),
     linear-gradient(118deg, rgba(255, 255, 255, 0.18), transparent 64%);
-  backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) - 4px)) saturate(140%);
+  backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(140%);
+  -webkit-backdrop-filter: blur(max(0px, calc(var(--glass-blur-card, 6px) - 4px))) saturate(140%);
 }
 
 html[data-performance='lite'] :where(

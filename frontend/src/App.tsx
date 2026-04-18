@@ -317,12 +317,15 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const primaryRgb = hexToRgb(primary);
   const primaryHoverRgb = hexToRgb(primaryHover);
 
-  const glassBg = isDark ? 'rgba(15, 23, 42, 0.62)' : 'rgba(255, 255, 255, 0.82)';
-  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.82)' : 'rgba(255, 255, 255, 0.96)';
+  const glassBg = isDark ? 'rgba(15, 23, 42, 0.74)' : 'rgba(255, 255, 255, 0.9)';
+  const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.82)' : 'rgba(255, 255, 255, 0.94)';
   const glassBorder = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(136, 160, 195, 0.7)';
-  const glassHighlight = isDark ? 'rgba(226, 232, 240, 0.22)' : 'rgba(255, 255, 255, 0.9)';
+  const glassHighlight = isDark ? 'rgba(226, 232, 240, 0.22)' : 'rgba(255, 255, 255, 0.88)';
   const glassTint = 'rgba(226, 232, 240, 0.2)';
   const glassWarmRgb = '226, 232, 240';
+  const glassSurfaceCard = isDark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.85)';
+  const glassSurfaceNav = isDark ? 'rgba(15, 23, 42, 0.84)' : 'rgba(255, 255, 255, 0.9)';
+  const glassSurfaceModal = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)';
   const glassPrismA = isDark ? 'rgba(241, 245, 249, 0.24)' : 'rgba(255, 255, 255, 0.58)';
   const glassPrismB = isDark ? 'rgba(203, 213, 225, 0.3)' : 'rgba(226, 232, 240, 0.28)';
   const glassPrismC = isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(203, 213, 225, 0.22)';
@@ -333,8 +336,12 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const glassBorderWidth = isDark ? '1.25px' : '1.5px';
   const glassEdgeWidth = isDark ? '1.05px' : '1.2px';
   const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.16)';
-  const glassBlur = isLite ? (isDark ? '12px' : '10px') : (isDark ? '20px' : '18px');
-  const glassBlurStrong = isLite ? (isDark ? '18px' : '16px') : (isDark ? '30px' : '28px');
+  const glassBlurBg = isLite ? '1px' : '3px';
+  const glassBlurCard = isLite ? '2px' : '6px';
+  const glassBlurNav = isLite ? '3px' : '8px';
+  const glassBlurModal = isLite ? '4px' : '10px';
+  const glassBlur = glassBlurCard;
+  const glassBlurStrong = glassBlurNav;
   const glassShadow = 'none';
   const glassShadowHover = 'none';
 
@@ -351,11 +358,18 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   root.style.setProperty('--glass-highlight', glassHighlight);
   root.style.setProperty('--glass-tint', glassTint);
   root.style.setProperty('--glass-warm-rgb', glassWarmRgb);
+  root.style.setProperty('--glass-surface-card', glassSurfaceCard);
+  root.style.setProperty('--glass-surface-nav', glassSurfaceNav);
+  root.style.setProperty('--glass-surface-modal', glassSurfaceModal);
   root.style.setProperty('--glass-prism-a', glassPrismA);
   root.style.setProperty('--glass-prism-b', glassPrismB);
   root.style.setProperty('--glass-prism-c', glassPrismC);
   root.style.setProperty('--glass-shadow', glassShadow);
   root.style.setProperty('--glass-shadow-hover', glassShadowHover);
+  root.style.setProperty('--glass-blur-bg', glassBlurBg);
+  root.style.setProperty('--glass-blur-card', glassBlurCard);
+  root.style.setProperty('--glass-blur-nav', glassBlurNav);
+  root.style.setProperty('--glass-blur-modal', glassBlurModal);
   root.style.setProperty('--glass-blur', glassBlur);
   root.style.setProperty('--glass-blur-strong', glassBlurStrong);
   root.style.setProperty('--glass-noise-opacity', isDark ? '0.05' : '0.035');

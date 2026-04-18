@@ -31,16 +31,23 @@
   --ref-item-hover-bg: #f5f8fd;
   --ref-item-hover-border: rgba(245, 158, 11, 0.24);
 
-  --glass-bg: rgba(255, 255, 255, 0.82);
-  --glass-bg-strong: rgba(255, 255, 255, 0.96);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-bg-strong: rgba(255, 255, 255, 0.94);
   --glass-border: rgba(136, 160, 195, 0.7);
-  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-highlight: rgba(255, 255, 255, 0.88);
   --glass-warm-rgb: 226, 232, 240;
   --glass-tint: rgba(226, 232, 240, 0.2);
+  --glass-surface-card: rgba(255, 255, 255, 0.85);
+  --glass-surface-nav: rgba(255, 255, 255, 0.9);
+  --glass-surface-modal: rgba(255, 255, 255, 0.95);
   --glass-shadow: none;
   --glass-shadow-hover: none;
-  --glass-blur: 18px;
-  --glass-blur-strong: 28px;
+  --glass-blur: 6px;
+  --glass-blur-strong: 8px;
+  --glass-blur-bg: 3px;
+  --glass-blur-card: 6px;
+  --glass-blur-nav: 8px;
+  --glass-blur-modal: 10px;
   --glass-noise-opacity: 0.035;
   --glass-prism-a: rgba(255, 255, 255, 0.58);
   --glass-prism-b: rgba(226, 232, 240, 0.28);
@@ -88,16 +95,23 @@
   --ref-item-hover-bg: #162033;
   --ref-item-hover-border: rgba(251, 191, 36, 0.3);
 
-  --glass-bg: rgba(15, 23, 42, 0.62);
+  --glass-bg: rgba(15, 23, 42, 0.74);
   --glass-bg-strong: rgba(17, 26, 43, 0.82);
   --glass-border: rgba(148, 163, 184, 0.38);
   --glass-highlight: rgba(226, 232, 240, 0.22);
   --glass-warm-rgb: 226, 232, 240;
   --glass-tint: rgba(226, 232, 240, 0.2);
+  --glass-surface-card: rgba(15, 23, 42, 0.78);
+  --glass-surface-nav: rgba(15, 23, 42, 0.84);
+  --glass-surface-modal: rgba(15, 23, 42, 0.9);
   --glass-shadow: none;
   --glass-shadow-hover: none;
-  --glass-blur: 20px;
-  --glass-blur-strong: 30px;
+  --glass-blur: 6px;
+  --glass-blur-strong: 8px;
+  --glass-blur-bg: 3px;
+  --glass-blur-card: 6px;
+  --glass-blur-nav: 8px;
+  --glass-blur-modal: 10px;
   --glass-noise-opacity: 0.05;
   --glass-prism-a: rgba(241, 245, 249, 0.24);
   --glass-prism-b: rgba(203, 213, 225, 0.3);
@@ -119,8 +133,12 @@
 }
 
 html[data-performance='lite'] {
-  --glass-blur: 8px;
-  --glass-blur-strong: 12px;
+  --glass-blur: 2px;
+  --glass-blur-strong: 3px;
+  --glass-blur-bg: 1px;
+  --glass-blur-card: 2px;
+  --glass-blur-nav: 3px;
+  --glass-blur-modal: 4px;
   --glass-noise-opacity: 0;
   --glass-film-opacity: 0.3;
   --glass-caustic-opacity: 0.08;
