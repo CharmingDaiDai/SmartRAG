@@ -1,0 +1,34 @@
+.liquid-glass-flow-layout {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.liquid-glass-flow-layout--panel,
+.liquid-glass-flow-layout--dialog {
+  display: block;
+  width: 100%;
+}
+
+.liquid-glass-flow-layout > :not(.liquid-glass-flow-layout__root) {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.liquid-glass-flow-layout > .liquid-glass-flow-layout__root {
+  position: relative !important;
+  display: inline-block;
+  max-width: 100%;
+  transform: none !important;
+  z-index: 1;
+}
+
+.liquid-glass-flow-layout--panel > .liquid-glass-flow-layout__root,
+.liquid-glass-flow-layout--dialog > .liquid-glass-flow-layout__root {
+  display: block;
+  width: 100%;
+}

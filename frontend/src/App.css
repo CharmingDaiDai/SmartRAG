@@ -324,13 +324,7 @@
 :where(
   .ant-card,
   .ant-modal-content,
-  .ant-drawer-content,
-  .ant-dropdown-menu,
-  .ant-select-dropdown,
-  .ant-picker-dropdown,
-  .ant-popover-inner,
-  .ant-notification-notice,
-  .ant-message-notice-content
+  .ant-drawer-content
 ) > * {
   position: relative;
   z-index: 1;
@@ -869,6 +863,59 @@
 .suggestion-card:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+.liquid-glass-flow-layout .suggestion-card {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.liquid-glass-flow-layout .suggestion-card::before,
+.liquid-glass-flow-layout .suggestion-card::after {
+  content: none !important;
+}
+
+.liquid-glass-flow-layout .suggestion-card:hover,
+.liquid-glass-flow-layout .suggestion-card:focus-visible {
+  border: 0 !important;
+  background: transparent !important;
+  transform: translateY(var(--ui-hover-lift-sm, -1px));
+  outline: none !important;
+}
+
+.liquid-glass-flow-layout .suggestion-card:active {
+  border: 0 !important;
+  background: transparent !important;
+  transform: translateY(0);
+  outline: none !important;
+}
+
+.liquid-glass-flow-layout .suggestion-card > * {
+  position: static;
+  z-index: auto;
+}
+
+.suggestion-card-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.suggestion-card-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .chat-input-bar {

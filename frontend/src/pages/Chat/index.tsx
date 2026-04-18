@@ -62,6 +62,7 @@ import { TokenUsagePanel } from '../../components/TokenUsagePanel';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { getMethodConfig, RAG_STRATEGIES } from '../../config/ragConfig';
 import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
+import LiquidGlassWrapper from '../../components/common/LiquidGlassWrapper';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -131,9 +132,9 @@ const getDateGroup = (isoDate?: string): string => {
 
 /** 建议问题（空状态展示） */
 const SUGGESTION_QUESTIONS = [
-    { icon: <SearchOutlined />, text: '这个知识库里有哪些主要内容？' },
-    { icon: <BookOutlined />, text: '帮我总结一下最重要的知识点' },
-    { icon: <ThunderboltOutlined />, text: '有什么实际应用案例？' },
+    { icon: <SearchOutlined />, text: '主变压器安装的工艺标准是什么？' },
+    { icon: <BookOutlined />, text: '中性点系统设备安装的关键工序控制？' },
+    { icon: <ThunderboltOutlined />, text: '油浸式站用变压器安装的关键工序控制？' },
 ];
 
 const ChatPage: React.FC = () => {
@@ -807,47 +808,42 @@ const ChatPage: React.FC = () => {
 
                         {/* 建议问题卡片 */}
                         {currentKb && (
-                            <StaggerContainer style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 620 }}>
+                            <StaggerContainer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 620 }}>
                                 {SUGGESTION_QUESTIONS.map((q, i) => (
                                     <StaggerItem key={i}>
-                                        <div
+                                        <LiquidGlassWrapper
+                                            variant="card"
                                             className="suggestion-card"
+                                            padding="14px 18px"
                                             onClick={() => handleRequest(q.text)}
                                             role="button"
-                                            tabIndex={0}
+                                            tabIndex={isRequesting ? -1 : 0}
+                                            aria-disabled={isRequesting}
                                             aria-label={`使用建议问题：${q.text}`}
-                                            onKeyDown={(e) => {
+                                            onKeyDown={(e: React.KeyboardEvent) => {
+                                                if (isRequesting) {
+                                                    return;
+                                                }
                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                     e.preventDefault();
                                                     handleRequest(q.text);
                                                 }
                                             }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 12,
-                                                padding: '14px 18px',
-                                                cursor: 'pointer',
-                                                fontSize: 15,
-                                                color: token.colorText,
-                                            }}
+                                            disabled={isRequesting}
                                         >
-                                            <span style={{
-                                                width: 30,
-                                                height: 30,
-                                                borderRadius: 7,
-                                                background: `${token.colorPrimary}14`,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: token.colorPrimary,
-                                                fontSize: 13,
-                                                flexShrink: 0,
-                                            }}>
-                                                {q.icon}
-                                            </span>
-                                            {q.text}
-                                        </div>
+                                            <div className="suggestion-card-content" style={{ color: token.colorText }}>
+                                                <span
+                                                    className="suggestion-card-icon"
+                                                    style={{
+                                                        background: `${token.colorPrimary}14`,
+                                                        color: token.colorPrimary,
+                                                    }}
+                                                >
+                                                    {q.icon}
+                                                </span>
+                                                <span>{q.text}</span>
+                                            </div>
+                                        </LiquidGlassWrapper>
                                     </StaggerItem>
                                 ))}
                             </StaggerContainer>
