@@ -87,7 +87,7 @@
   overflow: hidden;
   border-right: var(--glass-edge-width, 1px) solid var(--color-border-subtle);
   background:
-    linear-gradient(165deg, rgba(var(--glass-warm-rgb), 0.16) 0%, rgba(var(--glass-warm-rgb), 0.06) 56%, rgba(255, 236, 188, 0.14) 100%),
+    linear-gradient(165deg, rgba(var(--glass-warm-rgb), 0.16) 0%, rgba(var(--glass-warm-rgb), 0.06) 56%, rgba(226, 232, 240, 0.16) 100%),
     conic-gradient(from 230deg at 30% 18%, rgba(255, 255, 255, 0.14), transparent 46%, rgba(var(--glass-warm-rgb), 0.16) 72%, transparent 100%);
 }
 
@@ -112,7 +112,7 @@
   height: 180px;
   left: -70px;
   bottom: -60px;
-  background: radial-gradient(circle, rgba(255, 232, 173, 0.24), rgba(255, 232, 173, 0.03) 72%);
+  background: radial-gradient(circle, rgba(226, 232, 240, 0.2), rgba(226, 232, 240, 0.03) 72%);
 }
 
 .illus-box {
@@ -286,8 +286,8 @@ html[data-theme='dark'] .auth-form .ant-input {
 html[data-theme='dark'] .auth-page {
   background:
     radial-gradient(820px 380px at -14% 8%, rgba(var(--glass-warm-rgb), 0.24), transparent 72%),
-    radial-gradient(680px 300px at 112% 88%, rgba(255, 229, 173, 0.18), transparent 70%),
-    conic-gradient(from 220deg at 54% 36%, rgba(255, 241, 205, 0.1), transparent 48%, rgba(var(--glass-warm-rgb), 0.12) 72%, transparent 100%),
+    radial-gradient(680px 300px at 112% 88%, rgba(226, 232, 240, 0.16), transparent 70%),
+    conic-gradient(from 220deg at 54% 36%, rgba(226, 232, 240, 0.1), transparent 48%, rgba(var(--glass-warm-rgb), 0.12) 72%, transparent 100%),
     linear-gradient(180deg, #090f1b 0%, #090f1b 100%);
 }
 
@@ -306,7 +306,7 @@ html[data-theme='dark'] .auth-card {
 
 html[data-theme='dark'] .auth-illustration {
   border-right-color: rgba(148, 163, 184, 0.16);
-  background: linear-gradient(165deg, rgba(var(--glass-warm-rgb), 0.24) 0%, rgba(var(--glass-warm-rgb), 0.08) 58%, rgba(255, 229, 173, 0.14) 100%);
+  background: linear-gradient(165deg, rgba(var(--glass-warm-rgb), 0.24) 0%, rgba(var(--glass-warm-rgb), 0.08) 58%, rgba(226, 232, 240, 0.14) 100%);
 }
 
 html[data-theme='dark'] .auth-form .ant-form-item-label > label {
