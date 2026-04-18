@@ -233,7 +233,7 @@ public class SadpPlanner {
      */
     public String executeDag(List<TaskNode> tasks, String originalQuery, Long kbId,
                               SseEmitter emitter, LLMClient llmClient, EmbeddingClient embeddingClient,
-                              TokenUsageLedger ledger, int perScopedTopK) {
+                              TokenUsageLedger ledger, String historyText, int perScopedTopK) {
         int totalTasks = tasks.size();
         int scopedTopK = perScopedTopK > 0 ? perScopedTopK : 10;
 
@@ -262,7 +262,7 @@ public class SadpPlanner {
                 // 无依赖：直接并行执行
                 taskFuture = CompletableFuture.supplyAsync(() ->
                         executeSubTask(task, Collections.emptyMap(), kbId,
-                        emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, scopedTopK));
+                    emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, historyText, scopedTopK));
             } else {
                 // 有依赖：等待所有前置任务完成后执行
                 CompletableFuture<Void> allDeps = CompletableFuture.allOf(
@@ -281,7 +281,7 @@ public class SadpPlanner {
                         }
                     }
                     return executeSubTask(task, priorResults, kbId,
-                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, scopedTopK);
+                            emitter, llmClient, embeddingClient, taskIndexMap, totalTasks, ledger, historyText, scopedTopK);
                 });
             }
 
@@ -359,7 +359,7 @@ public class SadpPlanner {
                                    Long kbId, SseEmitter emitter,
                                    LLMClient llmClient, EmbeddingClient embeddingClient,
                                    Map<String, Integer> taskIndexMap, int totalTasks,
-                                   TokenUsageLedger ledger, int scopedTopK) {
+                                   TokenUsageLedger ledger, String historyText, int scopedTopK) {
         task.setStatus(TaskNode.TaskStatus.RUNNING);
 
         int taskIndex = taskIndexMap.getOrDefault(task.getId(), 0);
@@ -377,7 +377,7 @@ public class SadpPlanner {
             String result = switch (type) {
                 case Scoped_Retrieve -> executeScopedRetrieve(task, kbId, embeddingClient, scopedTopK);
                 case Get_Summary     -> executeGetSummary(task, kbId);
-                case Generate        -> executeGenerate(task, priorResults, llmClient, ledger);
+                case Generate        -> executeGenerate(task, priorResults, historyText, llmClient, ledger);
             };
             task.setStatus(TaskNode.TaskStatus.DONE);
             log.info("SADP subtask {} completed (length={})", task.getId(), result.length());
@@ -492,14 +492,17 @@ public class SadpPlanner {
     /**
      * 构建 Generate 算子的 prompt（供内部 LLM 调用或外部流式调用共用）
      */
-    private String buildGeneratePrompt(TaskNode task, Map<String, String> priorResults) {
+    private String buildGeneratePrompt(TaskNode task, Map<String, String> priorResults, String historyText) {
         String depsText = priorResults.isEmpty()
                 ? "（无前置任务结果）"
                 : priorResults.entrySet().stream()
                         .map(e -> "任务[" + e.getKey() + "]:\n" + e.getValue())
                         .collect(Collectors.joining("\n\n"));
 
+        String resolvedHistory = historyText == null ? "" : historyText;
+
         return AppConstants.PromptTemplates.SADP_GENERATE_OPERATOR
+                .replace("{history}", resolvedHistory)
                 .replace("{query}", task.getQuery())
                 .replace("{dependencies_results}", depsText);
     }
@@ -512,8 +515,8 @@ public class SadpPlanner {
      * 避免二次 LLM 调用（先同步生成 → 再将答案作为 prompt 流式输出）。</p>
      */
     private String executeGenerate(TaskNode task, Map<String, String> priorResults,
-                                    LLMClient llmClient, TokenUsageLedger ledger) {
-        String prompt = buildGeneratePrompt(task, priorResults);
+                                    String historyText, LLMClient llmClient, TokenUsageLedger ledger) {
+        String prompt = buildGeneratePrompt(task, priorResults, historyText);
         if (task.isTerminalGenerate()) {
             log.debug("Terminal Generate task {}: returning prompt for streaming (skip sync LLM call)", task.getId());
             return prompt;

@@ -95,9 +95,10 @@ public class RAGServiceImpl implements RAGService {
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索");
+                        String directPrompt = buildDirectChatPrompt(question, historyText);
                         // 直接聊天
                         llmClient.streamChatWithEmitter(
-                                question,
+                                directPrompt,
                                 emitter,
                                 buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList())
                         );
@@ -235,7 +236,8 @@ public class RAGServiceImpl implements RAGService {
                 // 替换 Prompt 变量
                 String prompt = AppConstants.PromptTemplates.RAG_ANSWER
                         .replace("{query}", question)
-                        .replace("{context}", context);
+                    .replace("{context}", context)
+                    .replace("{history}", historyText == null ? "" : historyText);
 
                 // 大模型回答
                 llmClient.streamChatWithEmitter(
@@ -353,8 +355,9 @@ public class RAGServiceImpl implements RAGService {
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索");
+                        String directPrompt = buildDirectChatPrompt(question, historyText);
                         llmClient.streamChatWithEmitter(
-                                question,
+                                directPrompt,
                                 emitter,
                                 buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList())
                         );
@@ -487,7 +490,8 @@ public class RAGServiceImpl implements RAGService {
                 // 替换 Prompt 变量
                 String prompt = AppConstants.PromptTemplates.RAG_ANSWER
                         .replace("{query}", question)
-                        .replace("{context}", context);
+                    .replace("{context}", context)
+                    .replace("{history}", historyText == null ? "" : historyText);
 
                 // 大模型回答
                 llmClient.streamChatWithEmitter(
@@ -563,8 +567,9 @@ public class RAGServiceImpl implements RAGService {
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
                     if (!needRetrieval) {
                         log.info("意图识别结果: 不需要检索，直接聊天");
+                        String directPrompt = buildDirectChatPrompt(question, historyText);
                         llmClient.streamChatWithEmitter(
-                                question,
+                                directPrompt,
                                 emitter,
                                 wrapHandlers(tokenHandler, buildPersistenceHandler(userId, kbId, sessionId, request, Collections.emptyList()))
                         );
@@ -669,7 +674,8 @@ public class RAGServiceImpl implements RAGService {
 
                     String prompt = AppConstants.PromptTemplates.RAG_ANSWER
                             .replace("{query}", question)
-                            .replace("{context}", context);
+                            .replace("{context}", context)
+                            .replace("{history}", historyText == null ? "" : historyText);
 
                         llmClient.streamChatWithEmitter(
                             prompt,
@@ -693,7 +699,7 @@ public class RAGServiceImpl implements RAGService {
 
                     // DAG 并行执行，返回最后一个 Generate 算子的输出
                     String finalAnswer = sadpPlanner.executeDag(
-                            tasks, question, kbId, emitter, llmClient, embeddingClient, ledger, maxTopK);
+                            tasks, question, kbId, emitter, llmClient, embeddingClient, ledger, historyText, maxTopK);
 
                     SseEventBuilder.sendThoughtEvent(emitter, "success", "综合推理完成", "check");
 
@@ -711,6 +717,12 @@ public class RAGServiceImpl implements RAGService {
         });
 
         return emitter;
+    }
+
+    private String buildDirectChatPrompt(String question, String historyText) {
+        return AppConstants.PromptTemplates.DIRECT_CHAT_WITH_HISTORY
+                .replace("{history}", historyText == null ? "" : historyText)
+                .replace("{query}", question == null ? "" : question);
     }
 
     private StreamEventHandler wrapHandlers(StreamEventHandler... handlers) {

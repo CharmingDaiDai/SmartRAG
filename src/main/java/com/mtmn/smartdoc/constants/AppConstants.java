@@ -437,6 +437,11 @@ public final class AppConstants {
                 你是一个专业的知识综合助手。请根据前置任务的检索结果，完成当前的生成任务。
 
                 # Input
+                对话历史（可能为空）：
+                <history>
+                {history}
+                </history>
+
                 当前任务目标：
                 <target>
                 {query}
@@ -448,9 +453,10 @@ public final class AppConstants {
                 </dependencies_results>
 
                 # Rules
-                1. 严格基于 <dependencies_results> 中提供的信息回答 <target>。
-                2. 如果前置结果中没有相关信息，明确说明"未找到相关信息"，不要编造。
-                3. 逻辑清晰，直接输出答案正文，不要有任何前缀或开场白。
+                1. 可利用 <history> 做指代消解和语义承接，但事实依据必须来自 <dependencies_results>。
+                2. 严格基于 <dependencies_results> 中提供的信息回答 <target>。
+                3. 如果前置结果中没有相关信息，明确说明"未找到相关信息"，不要编造。
+                4. 逻辑清晰，直接输出答案正文，不要有任何前缀或开场白。
                 """;
 
         /**
@@ -497,11 +503,17 @@ public final class AppConstants {
                 3. **诚实原则**：如果【参考文档】中没有包含回答问题所需的信息，请直接回答"根据现有文档无法回答该问题"，不要编造。
                 4. **结构清晰**：回答要逻辑清晰，分点表述。
                 5. **拒绝客套**：**严禁**输出任何开场白（如“根据提供的参考文档...”、“你好”、“以下是回答...”等）。**直接输出答案正文，不要有任何铺垫。**
+                6. **多轮承接**：可使用【对话历史】进行指代消解与语义承接；若历史与参考文档冲突，以参考文档为准。
                 
                 # Context (参考文档)
                 <documents>
                 {context}
                 </documents>
+
+                # History (对话历史)
+                <history>
+                {history}
+                </history>
                 
                 # Query (用户问题)
                 <query>
@@ -510,6 +522,34 @@ public final class AppConstants {
                 
                 # Answer
                 (切记：不要有任何前缀或开场白，直接开始回答)：
+                """;
+
+        /**
+         * 直接聊天（无需检索）提示词
+         */
+        public static final String DIRECT_CHAT_WITH_HISTORY = """
+                # Role
+                你是一个专业的智能助手，请基于对话历史和当前问题进行自然、多轮一致的回复。
+
+                # Input
+                对话历史：
+                <history>
+                {history}
+                </history>
+
+                当前问题：
+                <query>
+                {query}
+                </query>
+
+                # Rules
+                1. 优先根据对话历史进行指代消解和语义承接。
+                2. 若历史无法提供足够信息，明确说明并引导用户补充上下文。
+                3. 回答简洁、自然，不要编造用户身份等无法确认的信息。
+                4. 直接输出答案正文，不要额外前缀。
+
+                # Answer
+                (直接开始回答)：
                 """;
     }
 
