@@ -203,6 +203,17 @@ export const getMethodConfig = (method: string) => {
       type: "switch",
       defaultValue: false,
     },
+    {
+      key: "historyWindow",
+      label: "历史对话轮数",
+      type: "slider",
+      min: 1,
+      max: 20,
+      step: 1,
+      defaultValue: 8,
+      section: "advanced",
+      description: "控制后端从当前会话中读取的最近历史轮数",
+    },
     // 选择类型
     {
       key: "rerankModelId",

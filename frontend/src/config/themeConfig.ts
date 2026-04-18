@@ -301,7 +301,7 @@ export const UI_STYLES: Record<UIStyle, UIStyleDef> = {
 // ==================== 默认值 ====================
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
-  colorTheme: 'amber',
+  colorTheme: 'indigo',
   fontFamily: 'noto',
   fontSize: 'medium',
   uiStyle: 'minimal',
