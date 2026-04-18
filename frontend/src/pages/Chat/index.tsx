@@ -690,7 +690,7 @@ const ChatPage: React.FC = () => {
                                     borderRadius: 8,
                                     cursor: 'pointer',
                                     background: activeHistoryId === item.sessionId
-                                        ? '#f0f7ff'
+                                        ? '#e6f4ff'
                                         : 'transparent',
                                     borderLeft: activeHistoryId === item.sessionId
                                         ? `2px solid ${token.colorPrimary}`

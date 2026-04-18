@@ -373,9 +373,22 @@ export default function KnowledgeBasePage() {
                                                     {INDEX_STRATEGY_LABEL_MAP[strategyType] || strategyType}
                                                 </Tag>
                                                 {item.embeddingModelId && (
-                                                    <Tag className="kb-tag-pill kb-tag-pill--outline" style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
-                                                        {item.embeddingModelId}
-                                                    </Tag>
+                                                    <Tooltip title={item.embeddingModelId}>
+                                                        <Tag
+                                                            className="kb-tag-pill kb-tag-pill--outline"
+                                                            style={{
+                                                                fontSize: 11,
+                                                                fontFamily: "'JetBrains Mono', monospace",
+                                                                maxWidth: 190,
+                                                                display: 'inline-block',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                        >
+                                                            {item.embeddingModelId}
+                                                        </Tag>
+                                                    </Tooltip>
                                                 )}
                                                 <Tag className="kb-tag-pill kb-tag-pill--outline kb-tag-pill--neutral" style={{ fontSize: 11 }}>
                                                     {`${item.documentCount || 0} 篇`}

@@ -436,7 +436,7 @@ function App() {
   const ct: ColorThemeDef = {
     ...themeColor,
     primary: '#1677ff',
-    primaryHover: '#0958d9',
+    primaryHover: '#0d66d0',
     primarySoft: 'rgba(22,119,255,0.1)',
     primaryBorder: 'rgba(22,119,255,0.24)',
     primaryLight: '#4096ff',

@@ -1543,7 +1543,7 @@ html[data-performance='lite'] :where(
 :root,
 [data-theme='light'] {
   --sys-primary: #1677ff;
-  --sys-primary-hover: #0958d9;
+  --sys-primary-hover: #0d66d0;
   --sys-success: #00b42a;
   --sys-warning: #ff7d00;
   --sys-strategy-fast: #13c2c2;
@@ -1620,7 +1620,7 @@ html[data-performance='lite'] :where(
 }
 
 .dashboard-stat-card .ant-statistic-content-value {
-  font-size: 16px !important;
+  font-size: 24px !important;
   font-weight: 600 !important;
   color: #1e293b !important;
   background: none !important;
@@ -1785,14 +1785,14 @@ html[data-performance='lite'] :where(
 }
 
 .docs-kb-tag {
-  border-radius: 999px !important;
+  border-radius: 6px !important;
   border: 1px solid var(--sys-border) !important;
   background: transparent !important;
   color: #64748b !important;
 }
 
 .docs-status-pill {
-  border-radius: 999px !important;
+  border-radius: 6px !important;
   font-size: 12px !important;
   line-height: 20px !important;
   height: 22px !important;
@@ -1830,6 +1830,14 @@ html[data-performance='lite'] :where(
 
 .chat-main-content {
   background: #ffffff !important;
+}
+
+.chat-page-layout .chat-side-panel--history.ant-layout-sider {
+  border-right: 1px solid var(--sys-border) !important;
+}
+
+.chat-page-layout .chat-side-panel--config.ant-layout-sider {
+  border-left: 1px solid var(--sys-border) !important;
 }
 
 .chat-history-item {
@@ -1871,6 +1879,25 @@ html[data-performance='lite'] :where(
   transform: none !important;
 }
 
+.chat-page-layout .chat-side-panel--config .ant-select-selector,
+.chat-page-layout .chat-side-panel--config .ant-collapse > .ant-collapse-item {
+  border: 1px solid var(--sys-border) !important;
+  border-radius: 8px !important;
+}
+
+.chat-page-layout .chat-side-panel--config .ant-collapse > .ant-collapse-item {
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+.chat-page-layout .chat-side-panel--config .ant-select-focused .ant-select-selector,
+.chat-page-layout .chat-side-panel--config .ant-select:not(.ant-select-disabled):hover .ant-select-selector,
+.chat-page-layout .chat-side-panel--config .ant-collapse > .ant-collapse-item:focus-within {
+  border-color: var(--sys-primary) !important;
+  box-shadow: none !important;
+}
+
 .chat-clear-btn.ant-btn {
   border: 1px solid rgba(255, 77, 79, 0.42) !important;
   color: #ff4d4f !important;
@@ -1885,7 +1912,7 @@ html[data-performance='lite'] :where(
 .liquid-glass-flow-layout .suggestion-card {
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.85) !important;
-  border-radius: 8px !important;
+  border-radius: 12px !important;
   backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
   transition: all 0.2s ease !important;

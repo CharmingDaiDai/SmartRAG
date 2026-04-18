@@ -30,6 +30,17 @@ interface DashboardData {
 
 const CHART_HEIGHT = 300;
 
+const getWordCloudSemanticColor = (item: WordCloudItem): string => {
+    const source = `${item.text ?? ''} ${item.name ?? ''}`.toLowerCase();
+
+    if (/chunk|chunking|切分/.test(source)) return '#1677ff';
+    if (/parse|parser|文档|解析/.test(source)) return '#13c2c2';
+    if (/prompt|提示词|hisem|sadp/.test(source)) return '#722ed1';
+    if (/index|索引|embedding|向量/.test(source)) return '#00b42a';
+    if (/conversation|chat|对话/.test(source)) return '#ff7d00';
+    return '#86909c';
+};
+
 // 统计卡片的强调色配置（第一张卡片使用主题色，在组件内构建）
 const getStatCards = (primaryColor: string) => [
     {
@@ -188,7 +199,7 @@ const Dashboard: React.FC = () => {
         layout: { spiral: 'rectangular' },
         colorField: 'text',
         autoFit: true,
-        color: ['#1677ff', '#13c2c2', '#722ed1', '#ff7d00', '#00b42a', '#86909c'],
+        color: (datum: WordCloudItem) => getWordCloudSemanticColor(datum),
     };
 
     const hasTrendData = data.conversationStats.last7Days.length > 0;
@@ -257,9 +268,9 @@ const Dashboard: React.FC = () => {
                                                 valueStyle={{
                                                     fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
                                                     fontVariantNumeric: 'tabular-nums',
-                                                    fontSize: 16,
+                                                    fontSize: 24,
                                                     fontWeight: 600,
-                                                    color: token.colorText,
+                                                    color: '#1e293b',
                                                 }}
                                             />
                                         </div>
