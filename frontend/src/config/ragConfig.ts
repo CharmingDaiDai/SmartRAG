@@ -14,6 +14,45 @@ export const RAG_STRATEGIES = {
   NAIVE_RAG: "NAIVE_RAG",
   HISEM_RAG: "HISEM_RAG",
   HISEM_RAG_FAST: "HISEM_RAG_FAST",
+} as const;
+
+export type RagStrategyType = (typeof RAG_STRATEGIES)[keyof typeof RAG_STRATEGIES];
+
+const STRATEGY_ALIAS_MAP: Record<string, RagStrategyType> = {
+  NAIVE: RAG_STRATEGIES.NAIVE_RAG,
+  NAIVE_RAG: RAG_STRATEGIES.NAIVE_RAG,
+  HISEM: RAG_STRATEGIES.HISEM_RAG,
+  HISEM_RAG: RAG_STRATEGIES.HISEM_RAG,
+  HISEM_SADP: RAG_STRATEGIES.HISEM_RAG,
+  HISEM_RAG_SADP: RAG_STRATEGIES.HISEM_RAG,
+  HISEM_FAST: RAG_STRATEGIES.HISEM_RAG_FAST,
+  HISEM_RAG_FAST: RAG_STRATEGIES.HISEM_RAG_FAST,
+  HISEMFAST: RAG_STRATEGIES.HISEM_RAG_FAST,
+};
+
+export const normalizeStrategyType = (rawType?: string | null): RagStrategyType => {
+  const base = (rawType ?? '').trim();
+  if (!base) {
+    return RAG_STRATEGIES.NAIVE_RAG;
+  }
+
+  const normalized = base.toUpperCase().replace(/[\s-]+/g, '_');
+  if (normalized in STRATEGY_ALIAS_MAP) {
+    return STRATEGY_ALIAS_MAP[normalized];
+  }
+
+  // 兜底：兼容历史数据或后端变体命名
+  if (normalized.includes('NAIVE')) {
+    return RAG_STRATEGIES.NAIVE_RAG;
+  }
+  if (normalized.includes('FAST')) {
+    return RAG_STRATEGIES.HISEM_RAG_FAST;
+  }
+  if (normalized.includes('HISEM') || normalized.includes('SADP')) {
+    return RAG_STRATEGIES.HISEM_RAG;
+  }
+
+  return RAG_STRATEGIES.NAIVE_RAG;
 };
 
 // 策略类型到方法的映射

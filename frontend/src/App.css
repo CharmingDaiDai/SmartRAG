@@ -528,10 +528,10 @@
 }
 
 .ant-tag {
-  border: 1px solid color-mix(in srgb, var(--glass-border) 82%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 82%, transparent);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.12)),
-    var(--glass-surface-card, rgba(255, 255, 255, 0.78)) !important;
+    var(--glass-surface-card, rgba(255, 255, 255, 0.78));
   backdrop-filter: blur(2px) saturate(136%);
   -webkit-backdrop-filter: blur(2px) saturate(136%);
   transition: border-color var(--ui-transition-fast, 0.16s) ease,
@@ -1592,8 +1592,8 @@ html[data-performance='lite'] :where(
 ) {
   background: rgba(255, 255, 255, 0.85) !important;
   border: 1px solid var(--sys-border) !important;
-  backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
+  backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
 }
 
 :where(
@@ -1671,8 +1671,8 @@ html[data-performance='lite'] :where(
 .ant-input-number {
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(120%) !important;
+  backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(120%) !important;
   transition: all 0.2s ease !important;
 }
 
@@ -1691,6 +1691,15 @@ html[data-performance='lite'] :where(
   border-color: var(--sys-focus) !important;
   outline: none !important;
   box-shadow: none !important;
+}
+
+.ant-input-affix-wrapper .ant-input,
+.ant-input-affix-wrapper .ant-input:hover,
+.ant-input-affix-wrapper .ant-input:focus,
+.ant-input-affix-wrapper .ant-input-focused {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .ant-table-container {
@@ -1749,13 +1758,31 @@ html[data-performance='lite'] :where(
   color: #ffffff !important;
 }
 
+.ant-pagination .ant-pagination-item-active:hover {
+  background: #4096ff !important;
+  border-color: #4096ff !important;
+}
+
 .kb-tag-pill {
-  border-radius: 999px !important;
+  border-radius: 6px !important;
   padding-inline: 10px !important;
   margin-inline-end: 0 !important;
   line-height: 20px !important;
   height: 22px !important;
   transition: all 0.2s ease !important;
+}
+
+.kb-tag-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.kb-tag-row .ant-tag {
+  margin-inline-end: 0 !important;
+  display: inline-flex;
+  align-items: center;
 }
 
 .kb-tag-pill--strategy:hover {
@@ -1766,6 +1793,11 @@ html[data-performance='lite'] :where(
   background: transparent !important;
   border: 1px solid var(--sys-border) !important;
   color: #64748b !important;
+}
+
+.kb-tag-pill--outline:hover {
+  border-color: var(--sys-focus) !important;
+  color: #475569 !important;
 }
 
 .kb-tag-pill--neutral {
@@ -1791,6 +1823,11 @@ html[data-performance='lite'] :where(
   color: #64748b !important;
 }
 
+.docs-kb-tag:hover {
+  border-color: var(--sys-focus) !important;
+  color: #475569 !important;
+}
+
 .docs-status-pill {
   border-radius: 6px !important;
   font-size: 12px !important;
@@ -1812,20 +1849,20 @@ html[data-performance='lite'] :where(
 
 .docs-action-btn--view:hover {
   color: var(--sys-primary) !important;
-  background: rgba(22, 119, 255, 0.08) !important;
+  background: rgba(22, 119, 255, 0.05) !important;
 }
 
 .docs-action-btn--delete:hover {
   color: #ff4d4f !important;
-  background: rgba(255, 77, 79, 0.08) !important;
+  background: rgba(255, 77, 79, 0.05) !important;
 }
 
 .chat-page-layout .chat-side-panel.ant-layout-sider,
 .chat-page-layout .ant-layout-header {
   background: rgba(248, 250, 252, 0.9) !important;
   border-color: var(--sys-border) !important;
-  backdrop-filter: blur(var(--glass-blur-nav, 4px)) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur-nav, 4px)) saturate(120%) !important;
+  backdrop-filter: blur(var(--glass-blur-nav, 3px)) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-nav, 3px)) saturate(120%) !important;
 }
 
 .chat-main-content {
@@ -1854,8 +1891,8 @@ html[data-performance='lite'] :where(
 .chat-input-bar {
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
+  backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
 }
 
 .chat-input-bar::before,
@@ -1874,8 +1911,13 @@ html[data-performance='lite'] :where(
   -webkit-backdrop-filter: none !important;
 }
 
-.chat-input-bar .chat-sender-root.ant-sender-main:is(:hover, :focus-within) {
+.chat-input-bar .chat-sender-root.ant-sender-main:hover {
   border-color: var(--sys-focus) !important;
+  transform: none !important;
+}
+
+.chat-input-bar .chat-sender-root.ant-sender-main:focus-within {
+  border-color: var(--sys-primary) !important;
   transform: none !important;
 }
 
@@ -1899,22 +1941,24 @@ html[data-performance='lite'] :where(
 }
 
 .chat-clear-btn.ant-btn {
-  border: 1px solid rgba(255, 77, 79, 0.42) !important;
-  color: #ff4d4f !important;
-  background: transparent !important;
+  border: 1px solid var(--sys-border) !important;
+  color: #64748b !important;
+  background: rgba(255, 255, 255, 0.88) !important;
 }
 
 .chat-clear-btn.ant-btn:hover {
-  background: rgba(255, 77, 79, 0.08) !important;
+  background: #f0f7ff !important;
+  border-color: var(--sys-focus) !important;
+  color: var(--sys-primary) !important;
 }
 
 .suggestion-card,
 .liquid-glass-flow-layout .suggestion-card {
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.85) !important;
-  border-radius: 12px !important;
-  backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur-card, 6px)) saturate(125%) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
   transition: all 0.2s ease !important;
 }
 

@@ -47,11 +47,11 @@
   --glass-surface-modal: rgba(255, 255, 255, 0.9);
   --glass-shadow: none;
   --glass-shadow-hover: none;
-  --glass-blur: 6px;
+  --glass-blur: 4px;
   --glass-blur-strong: 8px;
   --glass-blur-bg: 2px;
-  --glass-blur-card: 6px;
-  --glass-blur-nav: 4px;
+  --glass-blur-card: 4px;
+  --glass-blur-nav: 3px;
   --glass-blur-modal: 8px;
   --glass-noise-opacity: 0.035;
   --glass-prism-a: rgba(255, 255, 255, 0.58);
@@ -111,11 +111,11 @@
   --glass-surface-modal: rgba(15, 23, 42, 0.9);
   --glass-shadow: none;
   --glass-shadow-hover: none;
-  --glass-blur: 6px;
+  --glass-blur: 4px;
   --glass-blur-strong: 8px;
   --glass-blur-bg: 2px;
-  --glass-blur-card: 6px;
-  --glass-blur-nav: 4px;
+  --glass-blur-card: 4px;
+  --glass-blur-nav: 3px;
   --glass-blur-modal: 8px;
   --glass-noise-opacity: 0.05;
   --glass-prism-a: rgba(241, 245, 249, 0.24);
@@ -138,10 +138,10 @@
 }
 
 html[data-performance='lite'] {
-  --glass-blur: 3px;
+  --glass-blur: 2px;
   --glass-blur-strong: 4px;
   --glass-blur-bg: 1px;
-  --glass-blur-card: 3px;
+  --glass-blur-card: 2px;
   --glass-blur-nav: 2px;
   --glass-blur-modal: 4px;
   --glass-noise-opacity: 0;

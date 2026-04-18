@@ -8,6 +8,7 @@ import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
+import { normalizeStrategyType } from '../../config/ragConfig';
 import IndexingProgress from '../../components/IndexingProgress';
 import ChunkDrawer from '../../components/ChunkDrawer';
 
@@ -33,9 +34,9 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     const STRATEGY_LABELS: Record<string, { label: string; color: string }> = {
         NAIVE_RAG: { label: 'Naive RAG', color: '#6366f1' },
         HISEM_RAG: { label: 'HiSem-SADP', color: '#8b5cf6' },
-        HISEM_RAG_FAST: { label: 'HiSem Fast', color: '#06b6d4' },
+        HISEM_RAG_FAST: { label: 'HiSem RAG Fast', color: '#06b6d4' },
     };
-    const strategy = kbInfo?.indexStrategyType || 'NAIVE_RAG';
+    const strategy = normalizeStrategyType(kbInfo?.indexStrategyType);
     const strategyInfo = STRATEGY_LABELS[strategy] || { label: strategy, color: '#6366f1' };
 
     const stats = [
@@ -715,7 +716,7 @@ export default function KnowledgeBaseDetail() {
         onClose={() => { setChunkDrawerOpen(false); setSelectedDocument(null); }}
         document={selectedDocument}
         kbId={id || ''}
-        indexStrategyType={kbInfo?.indexStrategyType || 'NAIVE_RAG'}
+                indexStrategyType={normalizeStrategyType(kbInfo?.indexStrategyType)}
       />
     </FadeIn>
   );

@@ -6,7 +6,7 @@ import { kbService } from '../../services/kbService';
 import { modelService } from '../../services/modelService';
 import { KnowledgeBaseItem } from '../../types';
 import { StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '../../components/common/Motion';
-import { getMethodConfig, RAG_METHODS } from '../../config/ragConfig';
+import { getMethodConfig, normalizeStrategyType, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
 
@@ -254,7 +254,8 @@ export default function KnowledgeBasePage() {
             ) : (
                 <Row gutter={[24, 24]} style={{ margin: 0 }}>
                     {data.map((item) => {
-                        const strategyType = item.indexStrategyType || 'NAIVE_RAG';
+                        const strategyType = normalizeStrategyType(item.indexStrategyType);
+                        const strategyLabel = INDEX_STRATEGY_LABEL_MAP[strategyType] || 'Naive RAG';
                         const accentColor = STRATEGY_COLORS[strategyType] || '#86909c';
 
                         const cardMenuItems = [
@@ -339,7 +340,7 @@ export default function KnowledgeBasePage() {
                                                         background: accentColor,
                                                         flexShrink: 0,
                                                     }} />
-                                                    <Typography.Text strong style={{ fontSize: 15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <Typography.Text strong style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {item.name}
                                                     </Typography.Text>
                                                 </div>
@@ -360,7 +361,7 @@ export default function KnowledgeBasePage() {
                                             </div>
 
                                             {/* 标签区 */}
-                                            <Space size={4} wrap>
+                                            <div className="kb-tag-row">
                                                 <Tag
                                                     className="kb-tag-pill kb-tag-pill--strategy"
                                                     style={{
@@ -370,7 +371,7 @@ export default function KnowledgeBasePage() {
                                                         borderColor: accentColor,
                                                     }}
                                                 >
-                                                    {INDEX_STRATEGY_LABEL_MAP[strategyType] || strategyType}
+                                                    {strategyLabel}
                                                 </Tag>
                                                 {item.embeddingModelId && (
                                                     <Tooltip title={item.embeddingModelId}>
@@ -380,7 +381,8 @@ export default function KnowledgeBasePage() {
                                                                 fontSize: 11,
                                                                 fontFamily: "'JetBrains Mono', monospace",
                                                                 maxWidth: 190,
-                                                                display: 'inline-block',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
                                                                 overflow: 'hidden',
                                                                 textOverflow: 'ellipsis',
                                                                 whiteSpace: 'nowrap',
@@ -393,13 +395,19 @@ export default function KnowledgeBasePage() {
                                                 <Tag className="kb-tag-pill kb-tag-pill--outline kb-tag-pill--neutral" style={{ fontSize: 11 }}>
                                                     {`${item.documentCount || 0} 篇`}
                                                 </Tag>
-                                            </Space>
+                                            </div>
 
                                             {/* 描述 */}
                                             <Typography.Paragraph
                                                 type="secondary"
                                                 ellipsis={{ rows: 2 }}
-                                                style={{ margin: 0, fontSize: 13, flex: 1 }}
+                                                style={{
+                                                    margin: 0,
+                                                    fontSize: item.description ? 13 : 11,
+                                                    fontWeight: 400,
+                                                    color: item.description ? token.colorTextSecondary : '#94a3b8',
+                                                    flex: 1,
+                                                }}
                                             >
                                                 {item.description || '暂无描述'}
                                             </Typography.Paragraph>

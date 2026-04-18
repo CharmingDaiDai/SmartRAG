@@ -60,7 +60,7 @@ import ReferenceViewer from '../../components/ReferenceViewer';
 import RetrievalTreeViewer from '../../components/RetrievalTreeViewer';
 import { TokenUsagePanel } from '../../components/TokenUsagePanel';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
-import { getMethodConfig, RAG_STRATEGIES } from '../../config/ragConfig';
+import { getMethodConfig, normalizeStrategyType, RAG_STRATEGIES } from '../../config/ragConfig';
 import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
 
 const { Sider, Content } = Layout;
@@ -167,7 +167,7 @@ const ChatPage: React.FC = () => {
   const { strategy, endpoint } = useMemo(() => {
       if (!currentKb) return { strategy: RAG_STRATEGIES.NAIVE_RAG, endpoint: '/api/chat/rag/naive' };
 
-      const type = currentKb.indexStrategyType || RAG_STRATEGIES.NAIVE_RAG;
+      const type = normalizeStrategyType(currentKb.indexStrategyType);
       let ep = '/api/chat/rag/naive';
 
       if (type === RAG_STRATEGIES.HISEM_RAG) {
@@ -1174,7 +1174,7 @@ const ChatPage: React.FC = () => {
 
                 {/* 清空对话按钮 */}
                 <div style={{ padding: '12px 16px', borderTop: `1px solid ${token.colorBorderSecondary}` }}>
-                    <Button block type="default" danger className="chat-clear-btn" aria-label="清空当前对话消息" icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
+                    <Button block type="default" className="chat-clear-btn" aria-label="清空当前对话消息" icon={<ClearOutlined />} onClick={() => setMessages([])} size="small">
                         清空对话
                     </Button>
                 </div>

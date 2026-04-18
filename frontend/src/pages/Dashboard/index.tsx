@@ -138,7 +138,7 @@ const Dashboard: React.FC = () => {
         },
         area: {
             style: {
-                fill: 'l(270) 0:#1677ff22 1:#1677ff02',
+                fill: 'l(270) 0:rgba(22, 119, 255, 0.1) 1:rgba(22, 119, 255, 0.01)',
             },
         },
         xAxis: {
@@ -154,8 +154,8 @@ const Dashboard: React.FC = () => {
             },
             label: {
                 style: {
-                    fill: '#64748b',
-                    fontSize: 12,
+                    fill: '#94a3b8',
+                    fontSize: 11,
                 },
             },
         },
@@ -170,8 +170,8 @@ const Dashboard: React.FC = () => {
             },
             label: {
                 style: {
-                    fill: '#64748b',
-                    fontSize: 12,
+                    fill: '#94a3b8',
+                    fontSize: 11,
                 },
             },
         },
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
                     text: '平均值',
                     position: 'left',
                     dx: -10,
-                    style: { textBaseline: 'bottom', fill: '#64748b' },
+                    style: { textBaseline: 'bottom', fill: '#94a3b8', fontSize: 11 },
                 },
                 style: { stroke: '#94a3b8', lineDash: [4, 4] },
             },
@@ -209,7 +209,7 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-page" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
             <SlideInUp>
                 <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={4} style={{ marginBottom: 0 }}>数据仪表盘</Title>
+                    <Title level={4} style={{ marginBottom: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}>数据仪表盘</Title>
                     <Button type="primary" onClick={fetchStats} loading={loading}>刷新数据</Button>
                 </div>
             </SlideInUp>
@@ -264,13 +264,15 @@ const Dashboard: React.FC = () => {
                                                 )}
                                                 value={statValues[card.key]}
                                                 loading={loading}
-                                                styles={{ title: { fontSize: 12, fontWeight: 400, color: '#64748b' } }}
-                                                valueStyle={{
-                                                    fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
-                                                    fontVariantNumeric: 'tabular-nums',
-                                                    fontSize: 24,
-                                                    fontWeight: 600,
-                                                    color: '#1e293b',
+                                                styles={{
+                                                    title: { fontSize: 12, fontWeight: 400, color: '#64748b' },
+                                                    content: {
+                                                        fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
+                                                        fontVariantNumeric: 'tabular-nums',
+                                                        fontSize: 24,
+                                                        fontWeight: 600,
+                                                        color: '#1e293b',
+                                                    }
                                                 }}
                                             />
                                         </div>

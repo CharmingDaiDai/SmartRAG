@@ -337,11 +337,11 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const glassEdgeWidth = '1px';
   const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.16)';
   const glassBlurBg = isLite ? '1px' : '2px';
-  const glassBlurCard = isLite ? '3px' : '6px';
-  const glassBlurNav = isLite ? '2px' : '4px';
+  const glassBlurCard = isLite ? '2px' : '4px';
+  const glassBlurNav = isLite ? '2px' : '3px';
   const glassBlurModal = isLite ? '4px' : '8px';
   const glassBlur = glassBlurCard;
-  const glassBlurStrong = glassBlurNav;
+  const glassBlurStrong = glassBlurModal;
   const glassShadow = 'none';
   const glassShadowHover = 'none';
 

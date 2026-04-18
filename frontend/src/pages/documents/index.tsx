@@ -238,7 +238,10 @@ export default function DocumentsPage() {
                 return (
                     <Space style={{ width: '100%', minWidth: 0 }}>
                             {getFileIcon(fileName, token.colorPrimary)}
-                            <Typography.Text ellipsis={{ tooltip: fileName }} style={{ maxWidth: 320, minWidth: 0 }}>
+                            <Typography.Text
+                            ellipsis={{ tooltip: fileName }}
+                            style={{ maxWidth: 320, minWidth: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}
+                            >
                                     {fileName}
                             </Typography.Text>
                     </Space>
@@ -275,7 +278,11 @@ export default function DocumentsPage() {
       title: '大小',
       dataIndex: 'fileSize',
       width: 100,
-      render: (size) => (size / 1024 / 1024).toFixed(2) + ' MB',
+            render: (size) => (
+                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
+                            {(size / 1024 / 1024).toFixed(2)} MB
+                    </Typography.Text>
+            ),
     },
     {
       title: '状态',
@@ -316,7 +323,11 @@ export default function DocumentsPage() {
       dataIndex: 'uploadTime', // Changed from createdAt
       width: 180,
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
-      render: (val: string) => formatDateTime(val),
+            render: (val: string) => (
+                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
+                            {formatDateTime(val)}
+                    </Typography.Text>
+            ),
     },
     {
       title: '操作',

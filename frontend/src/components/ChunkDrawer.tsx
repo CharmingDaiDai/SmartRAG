@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { ChunkVO, DocumentItem, TreeNodeVO } from '../types';
 import { chunkService } from '../services/chunkService';
+import { normalizeStrategyType } from '../config/ragConfig';
 
 interface ChunkDrawerProps {
     open: boolean;
@@ -218,7 +219,7 @@ const ChunkDrawer: React.FC<ChunkDrawerProps> = ({
     kbId,
     indexStrategyType,
 }) => {
-    const isTree = indexStrategyType === 'HISEM_RAG';
+    const isTree = normalizeStrategyType(indexStrategyType) === 'HISEM_RAG';
 
     const [loading,      setLoading]      = useState(false);
     const [chunks,       setChunks]       = useState<ChunkVO[]>([]);
