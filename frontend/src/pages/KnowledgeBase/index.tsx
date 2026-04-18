@@ -453,7 +453,7 @@ export default function KnowledgeBasePage() {
                                   border: `2px solid ${ragMethod === card.value ? card.color : token.colorBorder}`,
                                   background: ragMethod === card.value ? card.bg : token.colorBgContainer,
                                   cursor: 'pointer',
-                                  transition: 'all 0.18s ease',
+                                  transition: 'background-color 0.18s ease, border-color 0.18s ease',
                               }}
                           >
                               <div style={{

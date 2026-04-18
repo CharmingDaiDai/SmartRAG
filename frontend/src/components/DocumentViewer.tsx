@@ -16,6 +16,11 @@ interface DocumentViewerProps {
 
 const PAGE_SIZE = 4;
 
+interface RawImageSize {
+  width: number;
+  height: number;
+}
+
 const Code: React.FC<ComponentProps> = (props) => {
   const { className, children } = props;
   const lang = className?.match(/language-(\w+)/)?.[1] || '';
@@ -46,6 +51,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [rawUrl, setRawUrl] = useState<string | null>(null);
+  const [rawImageSize, setRawImageSize] = useState<RawImageSize | null>(null);
 
   const requestIdRef = useRef(0);
   const rawUrlRef = useRef<string | null>(null);
@@ -66,12 +72,49 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
     setRawUrl(nextUrl);
   }, []);
 
+  const readImageNaturalSize = useCallback(async (blob: Blob): Promise<RawImageSize | null> => {
+    if (!blob.type.toLowerCase().startsWith('image/')) {
+      return null;
+    }
+
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bitmap = await createImageBitmap(blob);
+        const size = { width: bitmap.width, height: bitmap.height };
+        bitmap.close();
+        return size;
+      } catch {
+        // Fall through to Image loading for broader browser compatibility.
+      }
+    }
+
+    return new Promise<RawImageSize | null>((resolve) => {
+      const tmpUrl = URL.createObjectURL(blob);
+      const img = new Image();
+
+      img.onload = () => {
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+        URL.revokeObjectURL(tmpUrl);
+        resolve(width > 0 && height > 0 ? { width, height } : null);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(tmpUrl);
+        resolve(null);
+      };
+
+      img.src = tmpUrl;
+    });
+  }, []);
+
   const resetState = useCallback(() => {
     setErrorText('');
     setMeta(null);
     setTextSegments([]);
     setCurrentPage(0);
     setHasMore(false);
+    setRawImageSize(null);
     clearRawUrl();
   }, [clearRawUrl]);
 
@@ -99,6 +142,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
     setTextSegments([]);
     setCurrentPage(0);
     setHasMore(false);
+    setRawImageSize(null);
     clearRawUrl();
 
     try {
@@ -120,6 +164,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
         if (requestId !== requestIdRef.current) {
           return;
         }
+
+        if (blob.type.toLowerCase().startsWith('image/')) {
+          const imageSize = await readImageNaturalSize(blob);
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+          setRawImageSize(imageSize);
+        }
+
         const blobUrl = URL.createObjectURL(blob);
         replaceRawUrl(blobUrl);
         return;
@@ -140,7 +193,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
         setLoading(false);
       }
     }
-  }, [clearRawUrl, loadTextPage, replaceRawUrl]);
+  }, [clearRawUrl, loadTextPage, readImageNaturalSize, replaceRawUrl]);
 
   useEffect(() => {
     if (!open || !document) {
@@ -217,8 +270,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
 
       if (isRawImage) {
         return (
-          <div style={{ textAlign: 'center' }}>
-            <img src={rawUrl} alt={document?.filename || 'document-image'} style={{ maxWidth: '100%', maxHeight: '72vh' }} />
+          <div style={{ textAlign: 'center', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img
+              src={rawUrl}
+              alt={document?.filename || 'document-image'}
+              width={rawImageSize?.width}
+              height={rawImageSize?.height}
+              decoding="async"
+              style={{ maxWidth: '100%', maxHeight: '72vh', width: 'auto', height: 'auto', objectFit: 'contain' }}
+            />
           </div>
         );
       }

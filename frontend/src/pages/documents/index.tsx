@@ -345,8 +345,8 @@ export default function DocumentsPage() {
       (item.filename || item.fileName || '').toLowerCase().includes(searchText.toLowerCase())
   );
 
-  return (
-    <FadeIn style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    return (
+        <FadeIn className="documents-page" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* 工具栏 — 固定在顶部，不随表格滚动 */}
         <SlideInUp style={{ flexShrink: 0 }}>
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -376,10 +376,11 @@ export default function DocumentsPage() {
                 <Space>
                     {selectedRowKeys.length > 0 && (
                         <Popconfirm title="确定删除选中的文档吗?" onConfirm={handleBatchDelete}>
-                            <Button danger loading={batchDeleteLoading}>批量删除 ({selectedRowKeys.length})</Button>
+                            <Button className="documents-toolbar-btn" danger loading={batchDeleteLoading}>批量删除 ({selectedRowKeys.length})</Button>
                         </Popconfirm>
                     )}
                     <Button
+                        className="documents-toolbar-btn"
                         icon={<PlusOutlined />}
                         onClick={() => {
                             uploadForm.setFieldsValue({ kbId: currentKbId });

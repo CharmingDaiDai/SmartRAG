@@ -636,7 +636,7 @@ const ChatPage: React.FC = () => {
                 <Button
                     type="dashed"
                     block
-                    aria-label="新建对话"
+                    aria-label="新建聊天会话"
                     icon={<PlusOutlined />}
                     onClick={handleNewChat}
                     style={{
@@ -697,7 +697,7 @@ const ChatPage: React.FC = () => {
                                     borderLeft: activeHistoryId === item.sessionId
                                         ? `2px solid ${token.colorPrimary}`
                                         : '2px solid transparent',
-                                    transition: 'all 0.15s ease',
+                                    transition: 'background-color 0.15s ease, border-left-color 0.15s ease',
                                     position: 'relative',
                                 }}
                                 onClick={() => handleHistoryClick(item.sessionId)}
@@ -968,7 +968,7 @@ const ChatPage: React.FC = () => {
                         </div>
                         <Select
                             style={{ width: '100%' }}
-                            aria-label="选择当前知识库"
+                            aria-label="选择用于问答的知识库"
                             value={kbsLoaded && kbs.some(kb => kb.id === currentKbId) ? currentKbId : undefined}
                             onChange={setCurrentKbId}
                             options={kbs.map(kb => ({ label: kb.name, value: kb.id }))}

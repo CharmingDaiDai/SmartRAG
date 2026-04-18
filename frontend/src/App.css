@@ -259,6 +259,16 @@
 }
 
 :where(
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-popover-inner
+) {
+  transition: border-color var(--ui-transition-mid, 0.22s) ease,
+              background-color var(--ui-transition-mid, 0.22s) ease;
+}
+
+:where(
   .ant-card,
   .ant-modal-content,
   .ant-drawer-content,
@@ -500,6 +510,22 @@
   background: rgba(var(--glass-warm-rgb), 0.16) !important;
 }
 
+.documents-toolbar-btn.ant-btn:focus,
+.documents-toolbar-btn.ant-btn:focus-visible,
+.documents-toolbar-btn:focus,
+.documents-toolbar-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.documents-page .ant-checkbox-wrapper:focus-within,
+.documents-page .ant-table-selection-column .ant-checkbox-wrapper:focus-within,
+.documents-page .ant-checkbox-input:focus + .ant-checkbox-inner,
+.documents-page .ant-checkbox-input:focus-visible + .ant-checkbox-inner {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* ==================== Input & Select ==================== */
 .ant-input,
 .ant-input-affix-wrapper,
@@ -593,13 +619,6 @@
 }
 
 /* ==================== Overlay ==================== */
-.ant-select-dropdown,
-.ant-dropdown-menu,
-.ant-popover-inner,
-.ant-picker-dropdown {
-  animation: surface-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
 .ant-message-notice {
   animation: message-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -627,17 +646,6 @@
   from {
     opacity: 0;
     transform: translateY(-14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes surface-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;

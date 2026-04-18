@@ -277,7 +277,7 @@ code {
 .reference-item {
   background: var(--ref-item-bg) !important;
   border-color: var(--ref-item-border) !important;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .reference-item:hover {

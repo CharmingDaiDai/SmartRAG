@@ -89,7 +89,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) =>
                                 padding: '7px 10px',
                                 borderRadius: 7,
                                 cursor: 'pointer',
-                                transition: 'all 0.18s ease',
+                                transition: 'background-color 0.18s ease, border-color 0.18s ease',
                                 border: `1px solid ${token.colorBorderSecondary}`,
                                 background: token.colorBgContainer,
                             }}
