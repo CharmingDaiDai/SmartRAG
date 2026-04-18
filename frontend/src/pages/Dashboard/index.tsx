@@ -269,7 +269,7 @@ const Dashboard: React.FC = () => {
                                                     content: {
                                                         fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
                                                         fontVariantNumeric: 'tabular-nums',
-                                                        fontSize: 24,
+                                                        fontSize: 26,
                                                         fontWeight: 600,
                                                         color: '#1e293b',
                                                     }

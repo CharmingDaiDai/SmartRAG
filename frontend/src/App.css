@@ -1581,6 +1581,15 @@ html[data-performance='lite'] :where(
   box-shadow: none !important;
 }
 
+.dashboard-stat-card.ant-card,
+.dashboard-chart-card.ant-card,
+.kb-grid-card.ant-card,
+.documents-table-shell,
+.ui-empty-panel,
+.suggestion-card {
+  border-radius: 8px !important;
+}
+
 :where(
   .ant-card,
   .dashboard-stat-card.ant-card,
@@ -1620,12 +1629,23 @@ html[data-performance='lite'] :where(
 }
 
 .dashboard-stat-card .ant-statistic-content-value {
-  font-size: 24px !important;
+  font-size: 26px !important;
   font-weight: 600 !important;
   color: #1e293b !important;
   background: none !important;
   -webkit-background-clip: border-box !important;
   background-clip: border-box !important;
+}
+
+.kb-grid-card.ant-card {
+  transition: all 0.2s ease !important;
+}
+
+.kb-grid-card.ant-card:hover,
+.kb-grid-card.ant-card:focus-within {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: var(--sys-focus) !important;
+  transform: none !important;
 }
 
 .ant-btn {
@@ -1737,6 +1757,7 @@ html[data-performance='lite'] :where(
 .ant-pagination .ant-pagination-item-link {
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 8px !important;
   transition: all 0.2s ease !important;
 }
 
@@ -1764,7 +1785,7 @@ html[data-performance='lite'] :where(
 }
 
 .kb-tag-pill {
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   padding-inline: 10px !important;
   margin-inline-end: 0 !important;
   line-height: 20px !important;
@@ -1817,7 +1838,7 @@ html[data-performance='lite'] :where(
 }
 
 .docs-kb-tag {
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   border: 1px solid var(--sys-border) !important;
   background: transparent !important;
   color: #64748b !important;
@@ -1829,11 +1850,24 @@ html[data-performance='lite'] :where(
 }
 
 .docs-status-pill {
-  border-radius: 6px !important;
+  border-radius: 8px !important;
   font-size: 12px !important;
   line-height: 20px !important;
   height: 22px !important;
   padding-inline: 10px !important;
+}
+
+.kb-card-menu-btn.ant-btn {
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.kb-card-menu-btn.ant-btn:hover,
+.kb-card-menu-btn.ant-btn:focus-visible {
+  background: #f8fafc !important;
+  border-color: var(--sys-focus) !important;
+  color: #475569 !important;
 }
 
 .docs-status-pill--success {
@@ -1847,19 +1881,21 @@ html[data-performance='lite'] :where(
   transition: all 0.2s ease !important;
 }
 
-.docs-action-btn--view:hover {
+.documents-table .docs-action-btn--view.ant-btn-text:not(:disabled):hover {
   color: var(--sys-primary) !important;
   background: rgba(22, 119, 255, 0.05) !important;
+  border-color: var(--sys-focus) !important;
 }
 
-.docs-action-btn--delete:hover {
+.documents-table .docs-action-btn--delete.ant-btn-text:not(:disabled):hover {
   color: #ff4d4f !important;
   background: rgba(255, 77, 79, 0.05) !important;
+  border-color: rgba(255, 77, 79, 0.32) !important;
 }
 
 .chat-page-layout .chat-side-panel.ant-layout-sider,
 .chat-page-layout .ant-layout-header {
-  background: rgba(248, 250, 252, 0.9) !important;
+  background: #f8fafc !important;
   border-color: var(--sys-border) !important;
   backdrop-filter: blur(var(--glass-blur-nav, 3px)) saturate(120%) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-nav, 3px)) saturate(120%) !important;
@@ -1885,6 +1921,13 @@ html[data-performance='lite'] :where(
 .chat-history-item:hover,
 .chat-history-item:focus-within {
   background: #f0f7ff !important;
+  border-color: var(--sys-focus) !important;
+}
+
+.chat-history-item.chat-history-item--active,
+.chat-history-item.chat-history-item--active:hover,
+.chat-history-item.chat-history-item--active:focus-within {
+  background: #e6f4ff !important;
   border-color: var(--sys-focus) !important;
 }
 
@@ -1941,15 +1984,15 @@ html[data-performance='lite'] :where(
 }
 
 .chat-clear-btn.ant-btn {
-  border: 1px solid var(--sys-border) !important;
-  color: #64748b !important;
-  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid #ff4d4f !important;
+  color: #ff4d4f !important;
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 .chat-clear-btn.ant-btn:hover {
-  background: #f0f7ff !important;
-  border-color: var(--sys-focus) !important;
-  color: var(--sys-primary) !important;
+  background: rgba(255, 77, 79, 0.08) !important;
+  border-color: #ff4d4f !important;
+  color: #d9363e !important;
 }
 
 .suggestion-card,

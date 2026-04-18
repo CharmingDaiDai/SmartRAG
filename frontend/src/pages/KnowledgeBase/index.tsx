@@ -351,6 +351,7 @@ export default function KnowledgeBasePage() {
                                                 >
                                                     <Button
                                                         type="text"
+                                                        className="kb-card-menu-btn"
                                                         icon={<EllipsisOutlined />}
                                                         aria-label={`打开知识库 ${item.name} 的更多操作`}
                                                         size="small"

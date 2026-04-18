@@ -680,7 +680,7 @@ const ChatPage: React.FC = () => {
                         {items.map((item) => (
                             <div
                                 key={item.sessionId}
-                                className="chat-history-item"
+                                className={`chat-history-item ${activeHistoryId === item.sessionId ? 'chat-history-item--active' : ''}`}
                                 role="button"
                                 tabIndex={0}
                                 aria-label={`打开历史会话 ${item.title || item.lastQuestion || '新对话'}`}
