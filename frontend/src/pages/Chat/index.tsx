@@ -62,7 +62,6 @@ import { TokenUsagePanel } from '../../components/TokenUsagePanel';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { getMethodConfig, RAG_STRATEGIES } from '../../config/ragConfig';
 import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
-import LiquidGlassWrapper from '../../components/common/LiquidGlassWrapper';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -810,10 +809,8 @@ const ChatPage: React.FC = () => {
                             <StaggerContainer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 620 }}>
                                 {SUGGESTION_QUESTIONS.map((q, i) => (
                                     <StaggerItem key={i}>
-                                        <LiquidGlassWrapper
-                                            variant="card"
+                                        <div
                                             className="suggestion-card"
-                                            padding="14px 18px"
                                             onClick={() => handleRequest(q.text)}
                                             role="button"
                                             tabIndex={isRequesting ? -1 : 0}
@@ -828,7 +825,6 @@ const ChatPage: React.FC = () => {
                                                     handleRequest(q.text);
                                                 }
                                             }}
-                                            disabled={isRequesting}
                                         >
                                             <div className="suggestion-card-content" style={{ color: token.colorText }}>
                                                 <span
@@ -842,7 +838,7 @@ const ChatPage: React.FC = () => {
                                                 </span>
                                                 <span>{q.text}</span>
                                             </div>
-                                        </LiquidGlassWrapper>
+                                        </div>
                                     </StaggerItem>
                                 ))}
                             </StaggerContainer>
