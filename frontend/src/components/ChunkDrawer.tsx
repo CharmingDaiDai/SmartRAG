@@ -454,7 +454,7 @@ const ChunkDrawer: React.FC<ChunkDrawerProps> = ({
                 </div>
             }
             placement="right"
-            width={720}
+            size={720}
             open={open}
             onClose={onClose}
             destroyOnClose

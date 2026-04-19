@@ -10,7 +10,7 @@ import zhCN from 'antd/locale/zh_CN';
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <ConfigProvider locale={zhCN}>
         <AntdApp>
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <App />
             </BrowserRouter>
         </AntdApp>

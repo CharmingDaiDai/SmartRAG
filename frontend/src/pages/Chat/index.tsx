@@ -681,14 +681,10 @@ const ChatPage: React.FC = () => {
                             <div
                                 key={item.sessionId}
                                 className={`chat-history-item ${activeHistoryId === item.sessionId ? 'chat-history-item--active' : ''}`}
-                                role="button"
-                                tabIndex={0}
-                                aria-label={`打开历史会话 ${item.title || item.lastQuestion || '新对话'}`}
                                 style={{
                                     padding: '8px 12px',
                                     margin: '1px 6px',
                                     borderRadius: 8,
-                                    cursor: 'pointer',
                                     background: activeHistoryId === item.sessionId
                                         ? '#e6f4ff'
                                         : 'transparent',
@@ -698,32 +694,31 @@ const ChatPage: React.FC = () => {
                                     transition: 'background-color 0.2s ease, border-left-color 0.2s ease',
                                     position: 'relative',
                                 }}
-                                onClick={() => handleHistoryClick(item.sessionId)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        e.preventDefault();
-                                        handleHistoryClick(item.sessionId);
-                                    }
-                                }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden', flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <button
+                                        type="button"
+                                        className="chat-history-trigger"
+                                        aria-label={`打开历史会话 ${item.title || item.lastQuestion || '新对话'}`}
+                                        onClick={() => handleHistoryClick(item.sessionId)}
+                                    >
                                         <MessageOutlined style={{ fontSize: 12, color: token.colorTextTertiary, flexShrink: 0 }} />
                                         <Text
                                             ellipsis
                                             style={{
                                                 fontSize: 13,
+                                                flex: 1,
+                                                minWidth: 0,
                                                 color: activeHistoryId === item.sessionId ? token.colorPrimary : token.colorText,
                                                 fontWeight: activeHistoryId === item.sessionId ? 500 : 400,
                                             }}
                                         >
                                             {item.title || item.lastQuestion || '新对话'}
                                         </Text>
-                                    </div>
+                                    </button>
                                     {/* hover 时显示删除按钮 */}
                                     <div
                                         className="chat-history-actions"
-                                        onClick={(e) => e.stopPropagation()}
                                         style={{ flexShrink: 0, marginLeft: 4 }}
                                     >
                                         <Popconfirm
@@ -809,22 +804,13 @@ const ChatPage: React.FC = () => {
                             <StaggerContainer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 620 }}>
                                 {SUGGESTION_QUESTIONS.map((q, i) => (
                                     <StaggerItem key={i}>
-                                        <div
+                                        <button
+                                            type="button"
                                             className="suggestion-card"
                                             onClick={() => handleRequest(q.text)}
-                                            role="button"
-                                            tabIndex={isRequesting ? -1 : 0}
-                                            aria-disabled={isRequesting}
+                                            disabled={isRequesting}
                                             aria-label={`使用建议问题：${q.text}`}
-                                            onKeyDown={(e: React.KeyboardEvent) => {
-                                                if (isRequesting) {
-                                                    return;
-                                                }
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    handleRequest(q.text);
-                                                }
-                                            }}
+                                            style={{ width: '100%', textAlign: 'left' }}
                                         >
                                             <div className="suggestion-card-content" style={{ color: token.colorText }}>
                                                 <span
@@ -838,7 +824,7 @@ const ChatPage: React.FC = () => {
                                                 </span>
                                                 <span>{q.text}</span>
                                             </div>
-                                        </div>
+                                        </button>
                                     </StaggerItem>
                                 ))}
                             </StaggerContainer>

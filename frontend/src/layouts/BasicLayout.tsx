@@ -241,7 +241,7 @@ export default function BasicLayout() {
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
           placement="left"
-          width={240}
+          size={240}
           closeIcon={null}
           styles={{
             body: {

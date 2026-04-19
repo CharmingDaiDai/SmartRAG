@@ -11,22 +11,7 @@ import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import { normalizeStrategyType } from '../../config/ragConfig';
 import IndexingProgress from '../../components/IndexingProgress';
 import ChunkDrawer from '../../components/ChunkDrawer';
-
-// Augment component to use theme token
-const formatDateTime = (val: string | undefined | null): string => {
-    if (!val) return '—';
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return val;
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const isToday = d.toDateString() === now.toDateString();
-    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    const isYesterday = d.toDateString() === yesterday.toDateString();
-    if (isToday) return `今天 ${time}`;
-    if (isYesterday) return `昨天 ${time}`;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
-};
+import { formatRelativeDateTime } from '../../utils/formatters';
 
 // Augment component to use theme token
 const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
@@ -115,7 +100,7 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
                         ) : (
                             <Statistic
                                 value={stat.value as number}
-                                valueStyle={{ fontSize: 16, fontWeight: 700, color: token.colorText, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.3 }}
+                                styles={{ content: { fontSize: 16, fontWeight: 700, color: token.colorText, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.3 } }}
                                 style={{ lineHeight: 1 }}
                             />
                         )}
@@ -461,7 +446,7 @@ export default function KnowledgeBaseDetail() {
       dataIndex: 'uploadTime',
       width: 180,
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
-      render: (val: string) => formatDateTime(val),
+            render: (val: string) => formatRelativeDateTime(val),
     },
     {
       title: '操作',

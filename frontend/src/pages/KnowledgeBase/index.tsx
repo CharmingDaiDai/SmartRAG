@@ -9,26 +9,12 @@ import { StaggerContainer, StaggerItem, SlideInUp, HoverCard, ScaleIn } from '..
 import { getMethodConfig, normalizeStrategyType, RAG_METHODS } from '../../config/ragConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
+import { formatRelativeDateTime } from '../../utils/formatters';
 
 const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
     [RAG_METHODS.NAIVE]: 'NAIVE_RAG',
     [RAG_METHODS.HISEM_FAST]: 'HISEM_RAG_FAST',
     [RAG_METHODS.HISEM]: 'HISEM_RAG',
-};
-
-const formatDateTime = (val: string | undefined | null): string => {
-    if (!val) return '—';
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return val;
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const isToday = d.toDateString() === now.toDateString();
-    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    const isYesterday = d.toDateString() === yesterday.toDateString();
-    if (isToday) return `今天 ${time}`;
-    if (isYesterday) return `昨天 ${time}`;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
 };
 
 const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
@@ -304,6 +290,16 @@ export default function KnowledgeBasePage() {
                                             hoverable
                                             className="kb-card kb-grid-card"
                                             onClick={() => deletingKbId !== item.id && handleNavigateDetail(item.id)}
+                                            role="link"
+                                            tabIndex={deletingKbId === item.id ? -1 : 0}
+                                            aria-label={`进入知识库 ${item.name}`}
+                                            onKeyDown={(e) => {
+                                                if (deletingKbId === item.id) return;
+                                                if ((e.key === 'Enter' || e.key === ' ') && e.currentTarget === e.target) {
+                                                    e.preventDefault();
+                                                    handleNavigateDetail(item.id);
+                                                }
+                                            }}
                                             style={{
                                                 height: '100%',
                                                 cursor: deletingKbId === item.id ? 'not-allowed' : 'pointer',
@@ -416,7 +412,7 @@ export default function KnowledgeBasePage() {
                                             {/* 底部信息 */}
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                                    更新于 {formatDateTime(item.updatedAt)}
+                                                    更新于 {formatRelativeDateTime(item.updatedAt)}
                                                 </Typography.Text>
                                                 {/* 悬停 CTA */}
                                                 <div className="kb-card-cta">

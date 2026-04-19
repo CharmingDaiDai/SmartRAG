@@ -1,6 +1,7 @@
 import React from 'react';
 import { Collapse, Progress } from 'antd';
 import type { TokenUsageReport } from '../types';
+import { formatNumber } from '../utils/formatters';
 
 interface Props {
     tokenUsage: TokenUsageReport;
@@ -24,9 +25,9 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                 key: '1',
                 label: (
                     <span style={{ fontSize: 11, color: '#999' }}>
-                        Token 用量：{total.totalTokens.toLocaleString()}
+                        Token 用量：{formatNumber(total.totalTokens)}
                         <span style={{ marginLeft: 8, color: '#bbb' }}>
-                            （↑{total.inputTokens.toLocaleString()} 输入 / ↓{total.outputTokens.toLocaleString()} 输出 / ⏱ {formatDuration(total.durationMs)}）
+                            （↑{formatNumber(total.inputTokens)} 输入 / ↓{formatNumber(total.outputTokens)} 输出 / ⏱ {formatDuration(total.durationMs)}）
                         </span>
                     </span>
                 ),
@@ -64,13 +65,13 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                                     }}>
                                         <span>{entry.label}</span>
                                         <span style={{ textAlign: 'right', color: '#6366f1' }}>
-                                            {entry.inputTokens.toLocaleString()}
+                                            {formatNumber(entry.inputTokens)}
                                         </span>
                                         <span style={{ textAlign: 'right', color: '#10b981' }}>
-                                            {entry.outputTokens.toLocaleString()}
+                                            {formatNumber(entry.outputTokens)}
                                         </span>
                                         <span style={{ textAlign: 'right', fontWeight: 500 }}>
-                                            {entry.totalTokens.toLocaleString()}
+                                            {formatNumber(entry.totalTokens)}
                                         </span>
                                         <span style={{ textAlign: 'right', color: '#f59e0b' }}>
                                             {formatDuration(entry.durationMs)}
@@ -105,13 +106,13 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                         }}>
                             <span>合计</span>
                             <span style={{ textAlign: 'right', color: '#6366f1' }}>
-                                {total.inputTokens.toLocaleString()}
+                                {formatNumber(total.inputTokens)}
                             </span>
                             <span style={{ textAlign: 'right', color: '#10b981' }}>
-                                {total.outputTokens.toLocaleString()}
+                                {formatNumber(total.outputTokens)}
                             </span>
                             <span style={{ textAlign: 'right' }}>
-                                {total.totalTokens.toLocaleString()}
+                                {formatNumber(total.totalTokens)}
                             </span>
                             <span style={{ textAlign: 'right', color: '#f59e0b' }}>
                                 {formatDuration(total.durationMs)}

@@ -108,7 +108,7 @@ export default function ThemePopover() {
       trigger="click"
       placement="bottomRight"
       arrow={{ pointAtCenter: true }}
-      overlayInnerStyle={{ padding: '14px 18px 18px' }}
+      styles={{ container: { padding: '14px 18px 18px' } }}
     >
       <Tooltip title="个性化设置" mouseEnterDelay={0.5}>
         <Button

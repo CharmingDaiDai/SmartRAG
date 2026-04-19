@@ -1,6 +1,7 @@
 import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App, Empty, theme } from 'antd';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { documentService } from '../../services/documentService';
 import { kbService } from '../../services/kbService';
 import { useAppStore } from '../../store/useAppStore';
@@ -9,20 +10,20 @@ import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import DocumentViewer from '../../components/DocumentViewer';
+import { formatRelativeDateTime } from '../../utils/formatters';
 
-const formatDateTime = (val: string | undefined | null): string => {
-    if (!val) return '—';
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return val;
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const isToday = d.toDateString() === now.toDateString();
-    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-    const isYesterday = d.toDateString() === yesterday.toDateString();
-    if (isToday) return `今天 ${time}`;
-    if (isYesterday) return `昨天 ${time}`;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 10;
+
+const parsePositiveIntParam = (value: string | null, fallback: number) => {
+    if (!value) return fallback;
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return fallback;
+    }
+
+    return parsed;
 };
 
 const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
@@ -53,16 +54,17 @@ const formatFileSize = (size: number) => {
 export default function DocumentsPage() {
   const { message } = App.useApp();
   const { token } = theme.useToken();
+    const [searchParams, setSearchParams] = useSearchParams();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DocumentItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+    const [currentPage, setCurrentPage] = useState(() => parsePositiveIntParam(searchParams.get('page'), DEFAULT_PAGE));
+    const [pageSize, setPageSize] = useState(() => parsePositiveIntParam(searchParams.get('size'), DEFAULT_PAGE_SIZE));
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [searchText, setSearchText] = useState('');
+    const [searchText, setSearchText] = useState(() => searchParams.get('q') || '');
   const [kbs, setKbs] = useState<KnowledgeBaseItem[]>([]);
-  const [filterKbId, setFilterKbId] = useState<string | undefined>(undefined);
+    const [filterKbId, setFilterKbId] = useState<string | undefined>(() => searchParams.get('kbId') || undefined);
   const { currentKbId, setCurrentKbId } = useAppStore();
     const [uploadForm] = Form.useForm();
         const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -145,6 +147,39 @@ export default function DocumentsPage() {
   useEffect(() => {
       fetchKbs();
   }, []);
+
+  useEffect(() => {
+      const nextPage = parsePositiveIntParam(searchParams.get('page'), DEFAULT_PAGE);
+      const nextPageSize = parsePositiveIntParam(searchParams.get('size'), DEFAULT_PAGE_SIZE);
+      const nextSearchText = searchParams.get('q') || '';
+      const nextKbId = searchParams.get('kbId') || undefined;
+
+      setCurrentPage(prev => (prev === nextPage ? prev : nextPage));
+      setPageSize(prev => (prev === nextPageSize ? prev : nextPageSize));
+      setSearchText(prev => (prev === nextSearchText ? prev : nextSearchText));
+      setFilterKbId(prev => (prev === nextKbId ? prev : nextKbId));
+  }, [searchParams]);
+
+  useEffect(() => {
+      const nextParams = new URLSearchParams();
+
+      if (searchText) {
+          nextParams.set('q', searchText);
+      }
+      if (filterKbId) {
+          nextParams.set('kbId', String(filterKbId));
+      }
+      if (currentPage !== DEFAULT_PAGE) {
+          nextParams.set('page', String(currentPage));
+      }
+      if (pageSize !== DEFAULT_PAGE_SIZE) {
+          nextParams.set('size', String(pageSize));
+      }
+
+      if (nextParams.toString() !== searchParams.toString()) {
+          setSearchParams(nextParams, { replace: true });
+      }
+  }, [searchText, filterKbId, currentPage, pageSize, searchParams, setSearchParams]);
 
   useEffect(() => {
       fetchData(currentPage, pageSize);
@@ -325,7 +360,7 @@ export default function DocumentsPage() {
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
             render: (val: string) => (
                     <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
-                            {formatDateTime(val)}
+                    {formatRelativeDateTime(val)}
                     </Typography.Text>
             ),
     },
@@ -383,7 +418,10 @@ export default function DocumentsPage() {
                         allowClear
                         aria-label="搜索文档"
                         value={searchText}
-                        onChange={e => setSearchText(e.target.value)}
+                        onChange={e => {
+                            setSearchText(e.target.value);
+                            setCurrentPage(DEFAULT_PAGE);
+                        }}
                         style={{ width: 200 }}
                     />
                     <Select
@@ -392,7 +430,10 @@ export default function DocumentsPage() {
                         aria-label="筛选知识库"
                         allowClear
                         value={filterKbId}
-                        onChange={(val) => setFilterKbId(val)}
+                        onChange={(val) => {
+                            setFilterKbId(val);
+                            setCurrentPage(DEFAULT_PAGE);
+                        }}
                     >
                         {kbs.map(kb => (
                             <Select.Option key={kb.id} value={kb.id}>{kb.name}</Select.Option>

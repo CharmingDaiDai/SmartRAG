@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Row, Skeleton, Statistic, Typography, message, theme } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, MessageOutlined } from '@ant-design/icons';
 import { Line, WordCloud } from '@ant-design/plots';
@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const { token } = theme.useToken();
-    const STAT_CARDS = getStatCards(token.colorPrimary);
+    const STAT_CARDS = useMemo(() => getStatCards(token.colorPrimary), [token.colorPrimary]);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -106,101 +106,111 @@ const Dashboard: React.FC = () => {
         fetchStats();
     }, [fetchStats]);
 
-    const statValues: Record<string, number> = {
+    const statValues = useMemo<Record<string, number>>(() => ({
         knowledgeBases: data.knowledgeBases,
         documents: data.documents,
         'conversationStats.total': data.conversationStats.total,
-    };
+    }), [data]);
 
-    const averageValue = data.conversationStats.last7Days.reduce((acc, cur) => acc + cur.count, 0) / (data.conversationStats.last7Days.length || 1);
-
-    const trendConfig = {
-        data: data.conversationStats.last7Days.map((item) => ({
+    const trendConfig = useMemo(() => {
+        const trendData = data.conversationStats.last7Days.map((item) => ({
             value: item.count,
             date: item.date,
-        })),
-        autoFit: true,
-        padding: [10, 16, 18, 10] as [number, number, number, number],
-        xField: 'date',
-        yField: 'value',
-        smooth: true,
-        color: '#1677ff',
-        point: {
-            size: 3,
-            shape: 'circle',
+        }));
+        const averageValue = trendData.reduce((acc, cur) => acc + cur.value, 0) / (trendData.length || 1);
+
+        return {
+            data: trendData,
+            autoFit: true,
+            padding: [10, 16, 18, 10] as [number, number, number, number],
+            xField: 'date',
+            yField: 'value',
+            smooth: true,
+            color: '#1677ff',
+            point: {
+                size: 3,
+                shape: 'circle',
+                style: {
+                    fill: '#ffffff',
+                    lineWidth: 1,
+                },
+            },
             style: {
-                fill: '#ffffff',
-                lineWidth: 1,
+                lineWidth: 2,
             },
-        },
-        style: {
-            lineWidth: 2,
-        },
-        area: {
-            style: {
-                fill: 'l(270) 0:rgba(22, 119, 255, 0.1) 1:rgba(22, 119, 255, 0.01)',
-            },
-        },
-        xAxis: {
-            line: {
+            area: {
                 style: {
-                    stroke: '#e2e8f0',
+                    fill: 'l(270) 0:rgba(22, 119, 255, 0.1) 1:rgba(22, 119, 255, 0.01)',
                 },
             },
-            tickLine: {
-                style: {
-                    stroke: '#e2e8f0',
-                },
-            },
-            label: {
-                style: {
-                    fill: '#94a3b8',
-                    fontSize: 11,
-                },
-            },
-        },
-        yAxis: {
-            grid: {
+            xAxis: {
                 line: {
                     style: {
                         stroke: '#e2e8f0',
-                        lineDash: [3, 3],
+                    },
+                },
+                tickLine: {
+                    style: {
+                        stroke: '#e2e8f0',
+                    },
+                },
+                label: {
+                    style: {
+                        fill: '#94a3b8',
+                        fontSize: 11,
                     },
                 },
             },
-            label: {
-                style: {
-                    fill: '#94a3b8',
-                    fontSize: 11,
+            yAxis: {
+                grid: {
+                    line: {
+                        style: {
+                            stroke: '#e2e8f0',
+                            lineDash: [3, 3],
+                        },
+                    },
                 },
-            },
-        },
-        tooltip: {
-            title: (d: any) => d.date,
-            items: [{ channel: 'y', name: '对话次数' }]
-        },
-        annotations: [
-            {
-                type: 'lineY',
-                data: [averageValue],
                 label: {
-                    text: '平均值',
-                    position: 'left',
-                    dx: -10,
-                    style: { textBaseline: 'bottom', fill: '#94a3b8', fontSize: 11 },
+                    style: {
+                        fill: '#94a3b8',
+                        fontSize: 11,
+                    },
                 },
-                style: { stroke: '#94a3b8', lineDash: [4, 4] },
             },
-        ],
-    };
+            tooltip: {
+                title: (d: any) => d.date,
+                items: [{ channel: 'y', name: '对话次数' }]
+            },
+            annotations: [
+                {
+                    type: 'lineY',
+                    data: [averageValue],
+                    label: {
+                        text: '平均值',
+                        position: 'left',
+                        dx: -10,
+                        style: { textBaseline: 'bottom', fill: '#94a3b8', fontSize: 11 },
+                    },
+                    style: { stroke: '#94a3b8', lineDash: [4, 4] },
+                },
+            ],
+        };
+    }, [data.conversationStats.last7Days]);
 
-    const wordCloudConfig = {
-        data: data.wordCloud,
-        layout: { spiral: 'rectangular' },
+    const wordCloudData = useMemo(() => (
+        [...data.wordCloud]
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 80)
+    ), [data.wordCloud]);
+
+    const wordCloudConfig = useMemo(() => ({
+        data: wordCloudData,
+        layout: { spiral: 'rectangular' as const },
         colorField: 'text',
         autoFit: true,
+        random: () => 0.5,
         color: (datum: WordCloudItem) => getWordCloudSemanticColor(datum),
-    };
+    }), [wordCloudData]);
 
     const hasTrendData = data.conversationStats.last7Days.length > 0;
     const hasWordCloudData = data.wordCloud.length > 0;

@@ -935,6 +935,25 @@
   border: 1px solid transparent;
 }
 
+.chat-history-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat-history-trigger:focus-visible {
+  outline: none;
+}
+
 .chat-history-item .chat-history-actions {
   opacity: 0;
   pointer-events: none;
@@ -1283,7 +1302,9 @@
 .dashboard-chart-card.ant-card,
 .kb-grid-card.ant-card {
   border-radius: 14px !important;
-  border: var(--glass-border-width, 1px) solid var(--glass-border) !important;
+  border: 1.5px solid var(--sys-card-border) !important;
+  outline: 1px solid var(--sys-card-inner-stroke);
+  outline-offset: -2px;
   background:
     linear-gradient(145deg, var(--glass-bg-strong), var(--glass-bg)),
     linear-gradient(120deg, rgba(var(--glass-warm-rgb), 0.12), transparent 58%) !important;
@@ -1295,7 +1316,8 @@
 .dashboard-stat-card.ant-card:hover,
 .dashboard-chart-card.ant-card:hover,
 .kb-grid-card.ant-card:hover {
-  border-color: color-mix(in srgb, var(--color-primary-border) 76%, var(--glass-border)) !important;
+  border-color: var(--sys-card-border-hover) !important;
+  outline-color: rgba(255, 255, 255, 0.8);
   background:
     linear-gradient(145deg, var(--glass-bg-strong), rgba(var(--glass-warm-rgb), 0.2)),
     linear-gradient(120deg, rgba(255, 255, 255, 0.2), transparent 62%) !important;
@@ -1551,6 +1573,19 @@ html[data-performance='lite'] :where(
   --sys-neutral: #86909c;
   --sys-border: #e2e8f0;
   --sys-focus: #bfdbfe;
+  --sys-card-border: #c7d3e2;
+  --sys-card-border-hover: #9fb6d6;
+  --sys-card-bg-start: rgba(255, 255, 255, 0.95);
+  --sys-card-bg-end: rgba(247, 250, 255, 0.88);
+  --sys-card-inner-stroke: rgba(255, 255, 255, 0.62);
+}
+
+[data-theme='dark'] {
+  --sys-card-border: rgba(100, 116, 139, 0.56);
+  --sys-card-border-hover: rgba(125, 145, 170, 0.82);
+  --sys-card-bg-start: rgba(15, 23, 42, 0.88);
+  --sys-card-bg-end: rgba(18, 31, 53, 0.82);
+  --sys-card-inner-stroke: rgba(30, 41, 59, 0.86);
 }
 
 :where(
@@ -1599,8 +1634,10 @@ html[data-performance='lite'] :where(
   .ui-empty-panel,
   .documents-table-shell
 ) {
-  background: rgba(255, 255, 255, 0.85) !important;
-  border: 1px solid var(--sys-border) !important;
+  background: linear-gradient(152deg, var(--sys-card-bg-start), var(--sys-card-bg-end)) !important;
+  border: 1.5px solid var(--sys-card-border) !important;
+  outline: 1px solid var(--sys-card-inner-stroke);
+  outline-offset: -2px;
   backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
 }
@@ -1613,8 +1650,9 @@ html[data-performance='lite'] :where(
   .suggestion-card,
   .ui-empty-panel
 ):is(:hover, :focus-within) {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: var(--sys-focus) !important;
+  background: linear-gradient(152deg, rgba(255, 255, 255, 0.99), rgba(239, 246, 255, 0.93)) !important;
+  border-color: var(--sys-card-border-hover) !important;
+  outline-color: rgba(255, 255, 255, 0.8);
 }
 
 .dashboard-stat-card .ant-card-body,
@@ -1638,7 +1676,7 @@ html[data-performance='lite'] :where(
 }
 
 .kb-grid-card.ant-card {
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease !important;
 }
 
 .kb-grid-card.ant-card:hover,
@@ -1651,7 +1689,7 @@ html[data-performance='lite'] :where(
 .ant-btn {
   border-radius: 8px !important;
   border: 1px solid var(--sys-border) !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, filter 0.2s ease !important;
 }
 
 .ant-btn-primary:not(:disabled) {
@@ -1693,7 +1731,7 @@ html[data-performance='lite'] :where(
   background: rgba(255, 255, 255, 0.9) !important;
   backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(120%) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(120%) !important;
-  transition: all 0.2s ease !important;
+  transition: border-color 0.2s ease, background-color 0.2s ease !important;
 }
 
 .ant-input:hover,
@@ -1758,7 +1796,7 @@ html[data-performance='lite'] :where(
   border: 1px solid var(--sys-border) !important;
   background: rgba(255, 255, 255, 0.9) !important;
   border-radius: 8px !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
 .ant-pagination .ant-pagination-item:hover,
@@ -1790,7 +1828,7 @@ html[data-performance='lite'] :where(
   margin-inline-end: 0 !important;
   line-height: 20px !important;
   height: 22px !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, filter 0.2s ease !important;
 }
 
 .kb-tag-row {
@@ -1829,7 +1867,7 @@ html[data-performance='lite'] :where(
 .kb-enter-link {
   color: var(--sys-primary) !important;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
 .kb-card:hover .kb-enter-link,
@@ -1860,7 +1898,7 @@ html[data-performance='lite'] :where(
 .kb-card-menu-btn.ant-btn {
   border: 1px solid transparent !important;
   border-radius: 4px !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
 .kb-card-menu-btn.ant-btn:hover,
@@ -1878,7 +1916,7 @@ html[data-performance='lite'] :where(
 
 .docs-action-btn {
   border-radius: 8px !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
 .documents-table .docs-action-btn--view.ant-btn-text:not(:disabled):hover {
@@ -1915,7 +1953,7 @@ html[data-performance='lite'] :where(
 
 .chat-history-item {
   border: 1px solid transparent !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
 }
 
 .chat-history-item:hover,
@@ -1997,12 +2035,20 @@ html[data-performance='lite'] :where(
 
 .suggestion-card,
 .liquid-glass-flow-layout .suggestion-card {
-  border: 1px solid var(--sys-border) !important;
-  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1.5px solid var(--sys-card-border) !important;
+  background: linear-gradient(152deg, var(--sys-card-bg-start), var(--sys-card-bg-end)) !important;
+  outline: 1px solid var(--sys-card-inner-stroke);
+  outline-offset: -2px;
   border-radius: 8px !important;
   backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur-card, 4px)) saturate(125%) !important;
-  transition: all 0.2s ease !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+.suggestion-card:disabled,
+.liquid-glass-flow-layout .suggestion-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .suggestion-card::before,
@@ -2014,8 +2060,9 @@ html[data-performance='lite'] :where(
 
 .suggestion-card:hover,
 .liquid-glass-flow-layout .suggestion-card:hover {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: var(--sys-focus) !important;
+  background: linear-gradient(152deg, rgba(255, 255, 255, 0.99), rgba(239, 246, 255, 0.93)) !important;
+  border-color: var(--sys-card-border-hover) !important;
+  outline-color: rgba(255, 255, 255, 0.8);
 }
 
 .ant-modal-mask,
@@ -2047,8 +2094,22 @@ html[data-performance='lite'] :where(
   .ui-empty-panel,
   .documents-table-shell
 ) {
-  background: rgba(15, 23, 42, 0.84) !important;
-  border-color: rgba(148, 163, 184, 0.24) !important;
+  background: linear-gradient(154deg, var(--sys-card-bg-start), var(--sys-card-bg-end)) !important;
+  border-color: var(--sys-card-border) !important;
+  outline-color: var(--sys-card-inner-stroke);
+}
+
+[data-theme='dark'] :where(
+  .ant-card,
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card,
+  .suggestion-card,
+  .ui-empty-panel,
+  .documents-table-shell
+):is(:hover, :focus-within) {
+  background: linear-gradient(154deg, rgba(24, 39, 66, 0.92), rgba(19, 32, 56, 0.86)) !important;
+  border-color: var(--sys-card-border-hover) !important;
 }
 
 [data-theme='dark'] .documents-table .ant-table-thead > tr > th {

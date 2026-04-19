@@ -341,7 +341,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, document
         </Space>
       }
       placement="right"
-      width={920}
+      size={920}
       open={open}
       onClose={onClose}
       destroyOnClose
