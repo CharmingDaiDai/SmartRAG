@@ -182,6 +182,10 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
   if (isDark) {
     return {
       ...base,
+      colorSuccess: '#34d399',
+      colorWarning: '#fbbf24',
+      colorError: '#f87171',
+      colorInfo: '#60a5fa',
       colorBgBase: '#0b1220',
       colorBgContainer: '#111a2b',
       colorBgElevated: '#162033',
@@ -194,13 +198,13 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
 
       colorText: '#e8eef8',
       colorTextSecondary: '#b7c5d8',
-      colorTextTertiary: '#94a8c2',
-      colorTextQuaternary: '#768ca6',
+      colorTextTertiary: '#97abc4',
+      colorTextQuaternary: '#7b90aa',
       colorTextDescription: '#b7c5d8',
-      colorTextDisabled: '#6d839d',
+      colorTextDisabled: '#6f839c',
       colorTextHeading: '#f8fbff',
       colorTextLabel: '#d5e0ec',
-      colorTextPlaceholder: '#8ea3bd',
+      colorTextPlaceholder: '#8298b3',
 
       colorFill: 'rgba(148, 163, 184, 0.14)',
       colorFillSecondary: 'rgba(148, 163, 184, 0.10)',

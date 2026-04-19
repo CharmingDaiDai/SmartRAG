@@ -1,5 +1,5 @@
 import React from 'react';
-import { Collapse, Progress } from 'antd';
+import { Collapse, Progress, theme } from 'antd';
 import type { TokenUsageReport } from '../types';
 import { formatNumber } from '../utils/formatters';
 
@@ -14,6 +14,7 @@ const formatDuration = (ms: number): string => {
 
 export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
     const { entries, total } = tokenUsage;
+    const { token } = theme.useToken();
     if (!entries?.length) return null;
 
     return (
@@ -24,9 +25,9 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
             items={[{
                 key: '1',
                 label: (
-                    <span style={{ fontSize: 11, color: '#999' }}>
+                    <span style={{ fontSize: 11, color: token.colorTextSecondary }}>
                         Token 用量：{formatNumber(total.totalTokens)}
-                        <span style={{ marginLeft: 8, color: '#bbb' }}>
+                        <span style={{ marginLeft: 8, color: token.colorTextTertiary }}>
                             （↑{formatNumber(total.inputTokens)} 输入 / ↓{formatNumber(total.outputTokens)} 输出 / ⏱ {formatDuration(total.durationMs)}）
                         </span>
                     </span>
@@ -38,7 +39,7 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                             display: 'grid',
                             gridTemplateColumns: '1fr 60px 60px 60px 52px',
                             gap: 4,
-                            color: '#aaa',
+                            color: token.colorTextTertiary,
                             marginBottom: 6,
                             padding: '0 2px'
                         }}>
@@ -61,10 +62,10 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                                         gridTemplateColumns: '1fr 60px 60px 60px 52px',
                                         gap: 4,
                                         padding: '0 2px',
-                                        color: '#555'
+                                        color: token.colorTextSecondary
                                     }}>
                                         <span>{entry.label}</span>
-                                        <span style={{ textAlign: 'right', color: '#6366f1' }}>
+                                        <span style={{ textAlign: 'right', color: token.colorPrimary }}>
                                             {formatNumber(entry.inputTokens)}
                                         </span>
                                         <span style={{ textAlign: 'right', color: '#10b981' }}>
@@ -82,10 +83,10 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
                                             percent={pct}
                                             size="small"
                                             showInfo={false}
-                                            strokeColor="#6366f1"
+                                            strokeColor={token.colorPrimary}
                                             style={{ flex: 1, margin: 0 }}
                                         />
-                                        <span style={{ color: '#bbb', fontSize: 10, minWidth: 28, textAlign: 'right' }}>
+                                        <span style={{ color: token.colorTextTertiary, fontSize: 10, minWidth: 28, textAlign: 'right' }}>
                                             {pct}%
                                         </span>
                                     </div>
@@ -95,17 +96,17 @@ export const TokenUsagePanel: React.FC<Props> = ({ tokenUsage }) => {
 
                         {/* 合计行 */}
                         <div style={{
-                            borderTop: '1px solid #f0f0f0',
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
                             paddingTop: 6,
                             display: 'grid',
                             gridTemplateColumns: '1fr 60px 60px 60px 52px',
                             gap: 4,
                             padding: '6px 2px 0',
                             fontWeight: 600,
-                            color: '#333'
+                            color: token.colorText
                         }}>
                             <span>合计</span>
-                            <span style={{ textAlign: 'right', color: '#6366f1' }}>
+                            <span style={{ textAlign: 'right', color: token.colorPrimary }}>
                                 {formatNumber(total.inputTokens)}
                             </span>
                             <span style={{ textAlign: 'right', color: '#10b981' }}>

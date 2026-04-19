@@ -36,6 +36,18 @@ import {
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 
+const STATUS_COLORS = {
+    neutral: 'var(--color-status-neutral)',
+    info: 'var(--color-status-info)',
+    processing: 'var(--color-status-processing)',
+    structural: 'var(--color-status-structural)',
+    warning: 'var(--color-status-warning)',
+    progress: 'var(--color-status-progress)',
+    accent: 'var(--color-status-accent)',
+    success: 'var(--color-status-success)',
+    error: 'var(--color-status-error)',
+};
+
 /** 防止用户篡改 URL 传入失效参数，强转为合法的正整数分页 */
 const parsePositiveIntParam = (value: string | null, fallback: number) => {
     if (!value) return fallback;
@@ -49,17 +61,17 @@ const parsePositiveIntParam = (value: string | null, fallback: number) => {
 };
 
 /** 简易文件拓展名到 Ant Design V5 图标和颜色的映射表 */
-const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
+const getFileIcon = (fileName: string, primaryColor = '#6366f1', neutralColor = STATUS_COLORS.neutral) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
-    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
+    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: STATUS_COLORS.error }} />;
     if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: primaryColor }} />;
-    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
-    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
-    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#06b6d4' }} />;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#f59e0b' }} />;
-    return <FileTextOutlined style={{ ...style, color: '#a8a29e' }} />;
+    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: STATUS_COLORS.success }} />;
+    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: STATUS_COLORS.warning }} />;
+    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: STATUS_COLORS.accent }} />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: STATUS_COLORS.processing }} />;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: STATUS_COLORS.warning }} />;
+    return <FileTextOutlined style={{ ...style, color: neutralColor }} />;
 };
 
 /** 桥接 RcUpload 的 File 对象至原生的 BOM File */
@@ -317,7 +329,7 @@ export default function DocumentsPage() {
                 const fileName = text || entity.filename || entity.fileName || '未命名文档';
                 return (
                     <Space style={{ width: '100%', minWidth: 0 }}>
-                            {getFileIcon(fileName, token.colorPrimary)}
+                            {getFileIcon(fileName, token.colorPrimary, token.colorTextTertiary)}
                             <Typography.Text
                             ellipsis={{ tooltip: fileName }}
                                 style={{ maxWidth: 320, minWidth: 0, fontSize: 16, fontWeight: 600, color: token.colorTextHeading }}
@@ -370,19 +382,19 @@ export default function DocumentsPage() {
       width: 120,
       render: (status) => {
           const statusMap: any = {
-              UPLOADED: { text: '已上传', color: '#a8a29e' },
+              UPLOADED: { text: '已上传', color: token.colorTextTertiary },
               READING: { text: '读取中', color: token.colorPrimary },
-              PARSING: { text: '解析中', color: '#3b82f6' },
-              CHUNKING: { text: '切分中', color: '#06b6d4' },
-              TREE_BUILDING: { text: '构建语义树', color: '#84cc16' },
-              LLM_ENRICHING: { text: '语义增强中', color: '#eab308' },
-              SAVING: { text: '保存中', color: '#f97316' },
-              EMBEDDING: { text: '向量化中', color: '#8b5cf6' },
-              STORING: { text: '存储向量', color: '#f97316' },
-              INDEXED: { text: '已索引', color: '#00b42a' },
-              ERROR: { text: '错误', color: '#ef4444' },
+              PARSING: { text: '解析中', color: STATUS_COLORS.info },
+              CHUNKING: { text: '切分中', color: STATUS_COLORS.processing },
+              TREE_BUILDING: { text: '构建语义树', color: STATUS_COLORS.structural },
+              LLM_ENRICHING: { text: '语义增强中', color: STATUS_COLORS.warning },
+              SAVING: { text: '保存中', color: STATUS_COLORS.progress },
+              EMBEDDING: { text: '向量化中', color: STATUS_COLORS.accent },
+              STORING: { text: '存储向量', color: STATUS_COLORS.progress },
+              INDEXED: { text: '已索引', color: STATUS_COLORS.success },
+              ERROR: { text: '错误', color: STATUS_COLORS.error },
           };
-          const s = statusMap[status] || { text: status, color: '#a8a29e' };
+          const s = statusMap[status] || { text: status, color: token.colorTextTertiary };
           if (status === 'INDEXED') {
               return (
                   <Tag className="docs-status-pill docs-status-pill--success" style={{ margin: 0 }}>
@@ -608,11 +620,11 @@ export default function DocumentsPage() {
                         </div>
                         <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                             {fileList.map(file => (
-                                <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                  <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                     <FileTextOutlined style={{ color: token.colorPrimary, marginRight: 8 }} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: 14 }}>{file.name}</div>
-                                        <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
+                                            <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                     </div>
                                     <Button type="text" aria-label={`移除文件 ${file.name}`} icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                                 </div>

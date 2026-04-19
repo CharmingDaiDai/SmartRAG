@@ -38,9 +38,9 @@ const INDEX_STRATEGY_LABEL_MAP: Record<string, string> = {
 
 // RAG 策略的颜色点
 const STRATEGY_COLORS: Record<string, string> = {
-    NAIVE_RAG: '#86909c',
-    HISEM_RAG_FAST: '#13c2c2',
-    HISEM_RAG: '#722ed1',
+    NAIVE_RAG: 'var(--color-status-neutral)',
+    HISEM_RAG_FAST: 'var(--color-status-processing)',
+    HISEM_RAG: 'var(--color-status-accent)',
 };
 
 const toCamelCase = (key: string) => key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase());
@@ -52,24 +52,24 @@ const RAG_METHOD_CARDS = [
         label: 'Naive RAG',
         desc: '基础检索增强，按固定文本块切分和向量检索',
         scene: '适合：快速上手、小规模文档、低配置环境',
-        color: '#86909c',
-        bg: 'rgba(134,144,156,0.08)',
+        color: 'var(--color-status-neutral)',
+        bg: 'color-mix(in srgb, var(--color-status-neutral) 12%, transparent)',
     },
     {
         value: RAG_METHODS.HISEM_FAST,
         label: 'HiSem RAG Fast',
         desc: '语义感知切分，保留上下文结构，速度优先',
         scene: '适合：中大规模文档、对速度有要求',
-        color: '#13c2c2',
-        bg: 'rgba(19,194,194,0.08)',
+        color: 'var(--color-status-processing)',
+        bg: 'color-mix(in srgb, var(--color-status-processing) 12%, transparent)',
     },
     {
         value: RAG_METHODS.HISEM,
         label: 'HiSem-SADP',
         desc: '全语义增强，可选摘要压缩，检索精度最高',
         scene: '适合：高质量问答、允许较长建库时间',
-        color: '#722ed1',
-        bg: 'rgba(114,46,209,0.08)',
+        color: 'var(--color-status-accent)',
+        bg: 'color-mix(in srgb, var(--color-status-accent) 12%, transparent)',
     },
 ];
 
@@ -255,7 +255,7 @@ export default function KnowledgeBasePage() {
                     {data.map((item) => {
                         const strategyType = normalizeStrategyType(item.indexStrategyType);
                         const strategyLabel = INDEX_STRATEGY_LABEL_MAP[strategyType] || 'Naive RAG';
-                        const accentColor = STRATEGY_COLORS[strategyType] || '#86909c';
+                        const accentColor = STRATEGY_COLORS[strategyType] || 'var(--color-status-neutral)';
 
                         const cardMenuItems = [
                             {

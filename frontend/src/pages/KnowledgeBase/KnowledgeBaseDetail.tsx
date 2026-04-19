@@ -20,16 +20,28 @@ import IndexingProgress from '../../components/IndexingProgress';
 import ChunkDrawer from '../../components/ChunkDrawer';
 import { formatRelativeDateTime } from '../../utils/formatters';
 
+const STATUS_COLORS = {
+    neutral: 'var(--color-status-neutral)',
+    info: 'var(--color-status-info)',
+    processing: 'var(--color-status-processing)',
+    structural: 'var(--color-status-structural)',
+    warning: 'var(--color-status-warning)',
+    progress: 'var(--color-status-progress)',
+    accent: 'var(--color-status-accent)',
+    success: 'var(--color-status-success)',
+    error: 'var(--color-status-error)',
+};
+
 // Augment component to use theme token
 const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     const { token } = theme.useToken();
     const STRATEGY_LABELS: Record<string, { label: string; color: string }> = {
-        NAIVE_RAG: { label: 'Naive RAG', color: '#6366f1' },
-        HISEM_RAG: { label: 'HiSem-SADP', color: '#8b5cf6' },
-        HISEM_RAG_FAST: { label: 'HiSem RAG Fast', color: '#06b6d4' },
+        NAIVE_RAG: { label: 'Naive RAG', color: STATUS_COLORS.neutral },
+        HISEM_RAG: { label: 'HiSem-SADP', color: STATUS_COLORS.accent },
+        HISEM_RAG_FAST: { label: 'HiSem RAG Fast', color: STATUS_COLORS.processing },
     };
     const strategy = normalizeStrategyType(kbInfo?.indexStrategyType);
-    const strategyInfo = STRATEGY_LABELS[strategy] || { label: strategy, color: '#6366f1' };
+    const strategyInfo = STRATEGY_LABELS[strategy] || { label: strategy, color: STATUS_COLORS.info };
 
     const stats = [
         {
@@ -42,7 +54,7 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
         {
             key: 'indexed',
             icon: <DatabaseOutlined />,
-            color: '#10b981',
+            color: STATUS_COLORS.success,
             title: '已索引',
             value: kbInfo?.indexedDocumentCount ?? kbInfo?.documentCount ?? 0,
         },
@@ -57,7 +69,7 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
         {
             key: 'model',
             icon: <RobotOutlined />,
-            color: '#f59e0b',
+            color: STATUS_COLORS.warning,
             title: 'Embedding 模型',
             value: kbInfo?.embeddingModelId || '-',
             isText: true,
@@ -84,8 +96,8 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
                         width: 28,
                         height: 28,
                         borderRadius: 7,
-                        background: `${stat.color}18`,
-                        border: `1px solid ${stat.color}30`,
+                        background: `color-mix(in srgb, ${stat.color} 18%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${stat.color} 36%, transparent)`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -118,17 +130,17 @@ const KbInfoCards = ({ kbInfo }: { kbInfo: KnowledgeBaseItem | null }) => {
     );
 };
 
-const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
+const getFileIcon = (fileName: string, primaryColor = '#6366f1', neutralColor = STATUS_COLORS.neutral) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
-    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: '#ef4444' }} />;
+    if (ext === 'pdf') return <FilePdfOutlined style={{ ...style, color: STATUS_COLORS.error }} />;
     if (ext === 'doc' || ext === 'docx') return <FileWordOutlined style={{ ...style, color: primaryColor }} />;
-    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: '#10b981' }} />;
-    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: '#f59e0b' }} />;
-    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: '#8b5cf6' }} />;
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: '#06b6d4' }} />;
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: '#f59e0b' }} />;
-    return <FileTextOutlined style={{ ...style, color: '#a8a29e' }} />;
+    if (ext === 'xls' || ext === 'xlsx') return <FileExcelOutlined style={{ ...style, color: STATUS_COLORS.success }} />;
+    if (ext === 'ppt' || ext === 'pptx') return <FilePptOutlined style={{ ...style, color: STATUS_COLORS.warning }} />;
+    if (ext === 'md' || ext === 'markdown') return <FileMarkdownOutlined style={{ ...style, color: STATUS_COLORS.accent }} />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return <FileImageOutlined style={{ ...style, color: STATUS_COLORS.processing }} />;
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) return <FileZipOutlined style={{ ...style, color: STATUS_COLORS.warning }} />;
+    return <FileTextOutlined style={{ ...style, color: neutralColor }} />;
 };
 
 const toNativeFile = (file: UploadFile): File | null => {
@@ -420,7 +432,7 @@ export default function KnowledgeBaseDetail() {
                 const fileName = text || entity.filename || entity.fileName || '未命名文档';
                 return (
                     <Space style={{ width: '100%', minWidth: 0 }}>
-                            {getFileIcon(fileName, token.colorPrimary)}
+                            {getFileIcon(fileName, token.colorPrimary, token.colorTextTertiary)}
                             <Typography.Text ellipsis={{ tooltip: fileName }} style={{ maxWidth: 320, minWidth: 0 }}>
                                     {fileName}
                             </Typography.Text>
@@ -440,19 +452,19 @@ export default function KnowledgeBaseDetail() {
       width: 120,
       render: (status) => {
           const statusMap: any = {
-              UPLOADED: { text: '已上传', color: '#a8a29e', dot: '#a8a29e' },
+              UPLOADED: { text: '已上传', color: token.colorTextTertiary, dot: token.colorTextTertiary },
               READING: { text: '读取中', color: token.colorPrimary, dot: token.colorPrimary },
-              PARSING: { text: '解析中', color: '#3b82f6', dot: '#3b82f6' },
-              CHUNKING: { text: '切分中', color: '#06b6d4', dot: '#06b6d4' },
-              TREE_BUILDING: { text: '构建语义树', color: '#84cc16', dot: '#84cc16' },
-              LLM_ENRICHING: { text: '语义增强中', color: '#eab308', dot: '#eab308' },
-              SAVING: { text: '保存中', color: '#f97316', dot: '#f97316' },
-              EMBEDDING: { text: '向量化中', color: '#8b5cf6', dot: '#8b5cf6' },
-              STORING: { text: '存储向量', color: '#f97316', dot: '#f97316' },
-              INDEXED: { text: '已索引', color: '#10b981', dot: '#10b981' },
-              ERROR: { text: '错误', color: '#ef4444', dot: '#ef4444' },
+              PARSING: { text: '解析中', color: STATUS_COLORS.info, dot: STATUS_COLORS.info },
+              CHUNKING: { text: '切分中', color: STATUS_COLORS.processing, dot: STATUS_COLORS.processing },
+              TREE_BUILDING: { text: '构建语义树', color: STATUS_COLORS.structural, dot: STATUS_COLORS.structural },
+              LLM_ENRICHING: { text: '语义增强中', color: STATUS_COLORS.warning, dot: STATUS_COLORS.warning },
+              SAVING: { text: '保存中', color: STATUS_COLORS.progress, dot: STATUS_COLORS.progress },
+              EMBEDDING: { text: '向量化中', color: STATUS_COLORS.accent, dot: STATUS_COLORS.accent },
+              STORING: { text: '存储向量', color: STATUS_COLORS.progress, dot: STATUS_COLORS.progress },
+              INDEXED: { text: '已索引', color: STATUS_COLORS.success, dot: STATUS_COLORS.success },
+              ERROR: { text: '错误', color: STATUS_COLORS.error, dot: STATUS_COLORS.error },
           };
-          const s = statusMap[status] || { text: status, color: '#a8a29e', dot: '#a8a29e' };
+          const s = statusMap[status] || { text: status, color: token.colorTextTertiary, dot: token.colorTextTertiary };
           return (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block', flexShrink: 0 }} />
@@ -700,11 +712,11 @@ export default function KnowledgeBaseDetail() {
                       </div>
                       <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                           {fileList.map(file => (
-                              <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #f0f0f0' }}>
+                              <div key={file.uid} style={{ display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                   <FileTextOutlined style={{ color: token.colorPrimary, marginRight: 8 }} />
                                   <div style={{ flex: 1 }}>
                                       <div style={{ fontSize: 14 }}>{file.name}</div>
-                                      <div style={{ fontSize: 12, color: '#a8a29e' }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
+                                      <div style={{ fontSize: 12, color: token.colorTextTertiary }}>{formatFileSize(file.size || file.originFileObj?.size || 0)}</div>
                                   </div>
                                   <Button type="text" aria-label={`移除文件 ${file.name}`} icon={<CloseOutlined />} onClick={() => setFileList(prev => prev.filter(item => item.uid !== file.uid))} />
                               </div>

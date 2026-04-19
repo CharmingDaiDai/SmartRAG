@@ -2310,6 +2310,57 @@ html[data-performance='lite'] :where(
   color: #ffffff !important;
 }
 
+[data-theme='dark'] .ant-form-item-label > label,
+[data-theme='dark'] .ant-empty-description,
+[data-theme='dark'] .ant-breadcrumb,
+[data-theme='dark'] .ant-breadcrumb a,
+[data-theme='dark'] .ant-breadcrumb-link,
+[data-theme='dark'] .ant-modal-title {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme='dark'] .ant-form-item-extra,
+[data-theme='dark'] .ant-form-item-explain,
+[data-theme='dark'] .ant-upload-text,
+[data-theme='dark'] .ant-upload-hint,
+[data-theme='dark'] .ant-alert-description,
+[data-theme='dark'] .ant-statistic-title,
+[data-theme='dark'] .ant-descriptions-item-label {
+  color: var(--color-text-muted) !important;
+}
+
+[data-theme='dark'] .ant-alert-message,
+[data-theme='dark'] .ant-statistic-content,
+[data-theme='dark'] .ant-descriptions-item-content,
+[data-theme='dark'] .ant-dropdown-menu-item,
+[data-theme='dark'] .ant-dropdown-menu-title-content {
+  color: var(--color-text) !important;
+}
+
+[data-theme='dark'] :where(
+  .ant-typography.ant-typography-disabled,
+  .ant-btn:disabled,
+  .ant-input[disabled],
+  .ant-input-disabled,
+  .ant-select-disabled .ant-select-selector,
+  .ant-picker.ant-picker-disabled,
+  .ant-upload-disabled
+) {
+  color: var(--color-text-disabled) !important;
+}
+
+[data-theme='dark'] .ant-input::placeholder,
+[data-theme='dark'] .ant-input-textarea textarea::placeholder,
+[data-theme='dark'] .ant-select-selection-placeholder {
+  color: var(--color-text-disabled) !important;
+}
+
+[data-theme='dark'] .ant-dropdown-menu-item:hover,
+[data-theme='dark'] .ant-dropdown-menu-item-active {
+  color: var(--color-text) !important;
+  background: rgba(148, 163, 184, 0.16) !important;
+}
+
 [data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:hover,
 [data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:focus-within {
   background: rgba(30, 41, 59, 1) !important;

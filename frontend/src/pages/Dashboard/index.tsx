@@ -54,15 +54,15 @@ const getStatCards = (primaryColor: string) => [
         title: '文档总数',
         key: 'documents' as const,
         icon: <FileTextOutlined />,
-        accentColor: '#00b42a',
-        bgColor: 'rgba(0, 180, 42, 0.1)',
+        accentColor: 'var(--color-status-success)',
+        bgColor: 'color-mix(in srgb, var(--color-status-success) 14%, transparent)',
     },
     {
         title: '对话总次数',
         key: 'conversationStats.total' as const,
         icon: <MessageOutlined />,
-        accentColor: '#ff7d00',
-        bgColor: 'rgba(255, 125, 0, 0.1)',
+        accentColor: 'var(--color-status-warning)',
+        bgColor: 'color-mix(in srgb, var(--color-status-warning) 14%, transparent)',
     },
 ];
 

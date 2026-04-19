@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     Drawer, List, Tag, Button, Input, Space, Spin, Empty,
-    Typography, Divider, Tooltip, message as antMessage
+    Typography, Divider, Tooltip, message as antMessage, theme
 } from 'antd';
 import {
     EditOutlined, RightOutlined, DownOutlined,
@@ -57,6 +57,7 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
         editingId, editContent, saving,
         onStartEdit, onCancelEdit, onSave, onEditChange,
     } = props;
+    const { token } = theme.useToken();
 
     const isLeaf      = node.nodeType === 'LEAF';
     const hasChildren = node.children.length > 0;
@@ -64,7 +65,7 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
     const expanded    = expandedIds.has(node.nodeId);
     const isEditing   = editingId === node.id;
 
-    const dotColor  = NODE_DOT_COLOR[node.nodeType] ?? '#6b7280';
+    const dotColor  = NODE_DOT_COLOR[node.nodeType] ?? token.colorTextTertiary;
     const tagColor  = NODE_TAG_COLOR[node.nodeType] ?? 'default';
     const typeLabel = NODE_LABEL[node.nodeType] ?? node.nodeType;
 
@@ -91,12 +92,12 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
                     borderRadius: 6,
                     cursor: canExpand ? 'pointer' : 'default',
                     userSelect: 'none',
-                    background: isEditing ? '#f0f7ff' : 'transparent',
+                    background: isEditing ? token.colorPrimaryBg : 'transparent',
                     transition: 'background 0.15s',
                 }}
                 onMouseEnter={e => {
                     if (!isEditing)
-                        (e.currentTarget as HTMLElement).style.background = '#f5f5f5';
+                        (e.currentTarget as HTMLElement).style.background = token.colorFillTertiary;
                 }}
                 onMouseLeave={e => {
                     if (!isEditing)
@@ -107,8 +108,8 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
                 <span style={{ width: 14, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                     {canExpand && (
                         expanded
-                            ? <DownOutlined  style={{ fontSize: 10, color: '#aaa' }} />
-                            : <RightOutlined style={{ fontSize: 10, color: '#aaa' }} />
+                            ? <DownOutlined  style={{ fontSize: 10, color: token.colorTextTertiary }} />
+                            : <RightOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} />
                     )}
                 </span>
 
@@ -137,7 +138,7 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
 
                 {/* 叶子节点字数提示 */}
                 {isLeaf && (
-                    <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: token.colorTextTertiary, flexShrink: 0 }}>
                         {node.content ? `${node.content.length} 字` : '空'}
                     </span>
                 )}
@@ -179,7 +180,8 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = (props) => {
                                 <div>
                                     <Typography.Paragraph
                                         style={{
-                                            fontSize: 13, color: '#555',
+                                            fontSize: 13,
+                                            color: node.content ? token.colorTextSecondary : token.colorTextTertiary,
                                             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                                             marginBottom: 6,
                                         }}
