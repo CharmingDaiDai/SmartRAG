@@ -39,7 +39,7 @@ public class ChunkManageController {
             @RequestParam Long documentId,
             @RequestParam Long kbId,
             @AuthenticationPrincipal User user) {
-        log.debug("listChunks: documentId={}, kbId={}, userId={}", documentId, kbId, user.getId());
+        log.debug("🔍 查询文档chunks: documentId={}, kbId={}, userId={}", documentId, kbId, user.getId());
         return ApiResponse.success(chunkManageService.listChunks(documentId, kbId));
     }
 
@@ -54,7 +54,7 @@ public class ChunkManageController {
             @RequestParam Long kbId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal User user) {
-        log.info("updateChunk: chunkId={}, kbId={}, userId={}", id, kbId, user.getId());
+        log.info("✍️  更新chunk: chunkId={}, kbId={}, userId={}", id, kbId, user.getId());
         String newContent = body.get("content");
         if (newContent == null || newContent.isBlank()) {
             return ApiResponse.badRequest("内容不能为空");
@@ -72,7 +72,7 @@ public class ChunkManageController {
             @RequestParam Long documentId,
             @RequestParam Long kbId,
             @AuthenticationPrincipal User user) {
-        log.debug("listTreeNodes: documentId={}, kbId={}, userId={}", documentId, kbId, user.getId());
+        log.debug("🔍 查询文档树节点: documentId={}, kbId={}, userId={}", documentId, kbId, user.getId());
         return ApiResponse.success(chunkManageService.listTreeNodesAsTree(documentId, kbId));
     }
 
@@ -87,7 +87,7 @@ public class ChunkManageController {
             @RequestParam Long kbId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal User user) {
-        log.info("updateTreeNode: nodeDbId={}, kbId={}, userId={}", id, kbId, user.getId());
+        log.info("✍️  更新树节点: nodeDbId={}, kbId={}, userId={}", id, kbId, user.getId());
         String newContent = body.get("content");
         if (newContent == null || newContent.isBlank()) {
             return ApiResponse.badRequest("内容不能为空");

@@ -32,7 +32,7 @@ public class ProfileController {
     @GetMapping
     @Operation(summary = "获取个人资料", description = "获取当前登录用户的个人资料")
     public ApiResponse<UserProfileDto> getUserProfile(@AuthenticationPrincipal User user) {
-        log.info("获取用户个人资料: {}", user.getUsername());
+        log.info("👤 获取用户个人资料: {}", user.getUsername());
         UserProfileDto profile = userService.getUserProfile(user.getUsername());
         return ApiResponse.success(profile);
     }
@@ -43,12 +43,12 @@ public class ProfileController {
             @AuthenticationPrincipal User user,
             @RequestBody UpdateProfileRequest request) {
 
-        log.info("更新用户个人资料: {}", user.getUsername());
+        log.info("✍️  更新用户个人资料: {}", user.getUsername());
         try {
             UserProfileDto updatedProfile = userService.updateProfile(user.getUsername(), request);
             return ApiResponse.success("个人资料更新成功", updatedProfile);
         } catch (Exception e) {
-            log.error("更新个人资料失败: {}", e.getMessage(), e);
+            log.error("❌ 更新个人资料失败: {}", e.getMessage(), e);
             return ApiResponse.error("更新个人资料失败: " + e.getMessage());
         }
     }
@@ -59,12 +59,12 @@ public class ProfileController {
             @AuthenticationPrincipal User user,
             @RequestParam("file") MultipartFile file) {
 
-        log.info("上传用户头像: {}", user.getUsername());
+        log.info("💸 上传用户头像: {}", user.getUsername());
         try {
             UserProfileDto updatedProfile = userService.uploadAvatar(user.getUsername(), file);
             return ApiResponse.success("头像上传成功", updatedProfile);
         } catch (Exception e) {
-            log.error("上传头像失败: {}", e.getMessage(), e);
+            log.error("❌ 上传头像失败: {}", e.getMessage(), e);
             return ApiResponse.error("上传头像失败: " + e.getMessage());
         }
     }
@@ -75,12 +75,12 @@ public class ProfileController {
             @AuthenticationPrincipal User user,
             @RequestBody ChangePasswordRequest request) {
 
-        log.info("修改用户密码: {}", user.getUsername());
+        log.info("🔐 修改用户密码: {}", user.getUsername());
         try {
             boolean result = userService.changePassword(user.getUsername(), request);
             return ApiResponse.success("密码修改成功", null);
         } catch (Exception e) {
-            log.error("修改密码失败: {}", e.getMessage(), e);
+            log.error("❌ 修改密码失败: {}", e.getMessage(), e);
             return ApiResponse.error("修改密码失败: " + e.getMessage());
         }
     }

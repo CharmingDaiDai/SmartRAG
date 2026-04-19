@@ -44,7 +44,7 @@ public class ChatController {
     @Operation(summary = "naive rag", description = "naive rag 问答")
     @PostMapping(value = "/rag/naive", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter naiveRagChat(@AuthenticationPrincipal User user, @RequestBody NaiveRagChatRequest request) {
-        log.info("收到普通对话测试请求");
+        log.info("💬 收到普通对话测试请求");
 
         if (user == null) {
             throw new UnauthorizedAccessException("用户未登录");
@@ -55,7 +55,7 @@ public class ChatController {
     @Operation(summary = "hisem rag fast", description = "hisem rag 快速版问答")
     @PostMapping(value = "/rag/hisem-fast", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter hisemRagFastChat(@AuthenticationPrincipal User user, @RequestBody HisemRagChatRequest request) {
-        log.info("收到简单 RAG 对话测试请求");
+        log.info("📚 收到简单 RAG 对话测试请求");
 
         if (user == null) {
             throw new UnauthorizedAccessException("用户未登录");
@@ -66,7 +66,7 @@ public class ChatController {
     @Operation(summary = "hisem rag", description = "hisem rag 问答")
     @PostMapping(value = "/rag/hisem", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter hisemRagChat(@AuthenticationPrincipal User user, @RequestBody HisemRagChatRequest request) {
-        log.info("收到高级 RAG 对话测试请求");
+        log.info("🤖 收到高级 RAG 对话测试请求");
 
         if (user == null) {
             throw new UnauthorizedAccessException("用户未登录");

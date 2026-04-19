@@ -45,7 +45,7 @@ public class RestApiLogAspect {
             HttpServletRequest request = attributes.getRequest();
 
             // 记录HTTP方法、URL和IP地址
-            log.info("请求开始 - 方法: {}, URL: {}, IP: {}, 类方法: {}.{}",
+            log.info("🌐 请求开始 - 方法: {}, URL: {}, IP: {}, 类方法: {}.{}",
                     request.getMethod(),
                     request.getRequestURL().toString(),
                     request.getRemoteAddr(),
@@ -57,7 +57,7 @@ public class RestApiLogAspect {
             if (params.contains("password")) {
                 params = "包含敏感信息，不记录详细参数";
             }
-            log.debug("请求参数: {}", params);
+            log.debug("📝 请求参数: {}", params);
         }
 
         // 执行方法，获取返回值
@@ -65,7 +65,7 @@ public class RestApiLogAspect {
 
         // 计算执行时间
         long executionTime = System.currentTimeMillis() - startTime;
-        log.info("请求结束 - 执行时间: {}ms", executionTime);
+        log.info("✅ 请求结束 - 执行时间: {}ms", executionTime);
 
         return result;
     }
@@ -75,7 +75,7 @@ public class RestApiLogAspect {
      */
     @AfterThrowing(pointcut = "apiPointcut()", throwing = "e")
     public void logAfterThrowing(JoinPoint joinPoint, Throwable e) {
-        log.error("API异常 - 类方法: {}.{}, 异常信息: {}",
+        log.error("💥 API异常 - 类方法: {}.{}, 异常信息: {}",
                 joinPoint.getSignature().getDeclaringTypeName(),
                 joinPoint.getSignature().getName(),
                 e.getMessage());

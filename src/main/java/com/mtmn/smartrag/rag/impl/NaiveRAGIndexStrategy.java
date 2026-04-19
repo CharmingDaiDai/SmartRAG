@@ -302,7 +302,10 @@ public class NaiveRAGIndexStrategy extends AbstractIndexStrategy {
                 callback.onSubStepProgress(documentId, docName, IndexingStep.EMBEDDING, i + 1, chunks.size());
             }
 
+            log.info("📤 正在上传 {} 个向量到 Milvus (kbId={})", vectorItems.size(), kbId);
             milvusService.store(kbId, vectorItems);
+            log.info("✅ 向量上传成功到 Milvus: documentId={}, kbId={}, vectorCount={}", 
+                     documentId, kbId, vectorItems.size());
 
         } catch (Exception e) {
             log.error("Failed to vectorize chunks: documentId={}", documentId, e);

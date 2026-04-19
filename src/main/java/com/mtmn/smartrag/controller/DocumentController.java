@@ -48,7 +48,7 @@ public class DocumentController {
             @Parameter(description = "文档标题（可选）") @RequestParam(required = false) String title,
             @AuthenticationPrincipal User user) {
 
-        log.info("Uploading document to knowledge base {}: {}", kbId, file.getOriginalFilename());
+        log.info("📄 上传文档到知识库 {}: {}", kbId, file.getOriginalFilename());
 
         DocumentResponse response = documentService.uploadDocument(kbId, user.getId(), file, title);
 
@@ -66,7 +66,7 @@ public class DocumentController {
             @Parameter(description = "文档标题数组（可选）") @RequestParam(required = false) String[] titles,
             @AuthenticationPrincipal User user) {
 
-        log.info("Batch uploading {} documents to knowledge base {}", files.length, kbId);
+        log.info("📚 批量上传 {} 个文档到知识库 {}", files.length, kbId);
 
         List<DocumentResponse> responses = documentService.uploadDocuments(
                 kbId, user.getId(), files, titles);
@@ -84,7 +84,7 @@ public class DocumentController {
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal User user) {
 
-        log.debug("Listing all documents for user {}, page={}, size={}", user.getId(), page, size);
+        log.debug("🔍 查询用户 {} 的所有文档, page={}, size={}", user.getId(), page, size);
 
         org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listAllDocuments(user.getId(), page, size);
 
@@ -102,7 +102,7 @@ public class DocumentController {
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal User user) {
 
-        log.debug("Listing documents for knowledge base {}, page={}, size={}", kbId, page, size);
+        log.debug("🔍 查询知识库 {} 的文档, page={}, size={}", kbId, page, size);
 
         org.springframework.data.domain.Page<DocumentResponse> responses = documentService.listDocumentsByKb(kbId, user.getId(), page, size);
 

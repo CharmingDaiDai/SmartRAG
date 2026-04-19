@@ -54,7 +54,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public void submitIndexingTask(Long documentId, Long kbId) {
-        log.info("Submitting indexing task: documentId={}, kbId={}", documentId, kbId);
+        log.info("🔎 提交索引任务: documentId={}, kbId={}", documentId, kbId);
 
         KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
                 .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
@@ -66,7 +66,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public void submitBatchIndexingTask(Long kbId, List<Long> documentIds) {
-        log.info("Submitting batch indexing task: kbId={}, count={}", kbId, documentIds.size());
+        log.info("📚 提交批量索引任务: kbId={}, 数量={}", kbId, documentIds.size());
 
         KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
                 .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
@@ -96,7 +96,7 @@ public class IndexingServiceImpl implements IndexingService {
      */
     @Override
     public void executeIndexing(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
-        log.info("Executing indexing: documentId={}, kbId={}", documentId, kb.getId());
+        log.info("🔍 执行索引: documentId={}, kbId={}", documentId, kb.getId());
 
         DocumentPo documentPo = null;
         try {
@@ -113,10 +113,10 @@ public class IndexingServiceImpl implements IndexingService {
             self.updateDocumentStatus(documentId, DocumentIndexStatus.INDEXED);
             callback.onDocumentCompleted(documentId, documentPo.getFilename());
 
-            log.info("Indexing completed: documentId={}", documentId);
+            log.info("✅ 索引完成: documentId={}", documentId);
 
         } catch (Exception e) {
-            log.error("Indexing failed: documentId={}", documentId, e);
+            log.error("❌ 索引失败: documentId={}", documentId, e);
             self.updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
             String docName = documentPo != null ? documentPo.getFilename() : "unknown";
             callback.onDocumentFailed(documentId, docName, e.getMessage());
@@ -126,7 +126,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public void rebuildDocumentIndexFromChunks(Long documentId, Long kbId) {
-        log.info("Submitting rebuild index from chunks task: documentId={}, kbId={}", documentId, kbId);
+        log.info("🔄 提交重建索引任务: documentId={}, kbId={}", documentId, kbId);
         KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
                 .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
         IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
@@ -135,7 +135,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public void batchRebuildDocumentIndexFromChunks(Long kbId, List<Long> documentIds) {
-        log.info("Submitting batch rebuild index from chunks task: kbId={}, count={}", kbId, documentIds.size());
+        log.info("🔄 提交批量重建索引任务: kbId={}, 数量={}", kbId, documentIds.size());
         KnowledgeBase knowledgeBase = knowledgeBaseRepository.findById(kbId)
                 .orElseThrow(() -> new ResourceNotFoundException("KnowledgeBase", kbId));
         IndexStrategyConfig indexConfig = parseIndexStrategyConfig(knowledgeBase);
@@ -143,7 +143,7 @@ public class IndexingServiceImpl implements IndexingService {
             try {
                 self.executeRebuildIndexFromChunks(documentId, knowledgeBase, indexConfig);
             } catch (Exception e) {
-                log.error("Failed to rebuild index for document: {}", documentId, e);
+                log.error("❌ 重建索引失败: documentId={}", documentId, e);
                 // Continue with other documents
             }
         }
@@ -162,7 +162,7 @@ public class IndexingServiceImpl implements IndexingService {
      */
     @Override
     public void executeRebuildIndexFromChunks(Long documentId, KnowledgeBase kb, IndexStrategyConfig indexConfig, IndexingProgressCallback callback) {
-        log.info("Executing rebuild index from chunks: documentId={}, kbId={}", documentId, kb.getId());
+        log.info("🔃 执行重建索引: documentId={}, kbId={}", documentId, kb.getId());
 
         DocumentPo documentPo = null;
         try {
@@ -179,10 +179,10 @@ public class IndexingServiceImpl implements IndexingService {
             self.updateDocumentStatus(documentId, DocumentIndexStatus.INDEXED);
             callback.onDocumentCompleted(documentId, documentPo.getFilename());
 
-            log.info("Rebuild index from chunks completed: documentId={}", documentId);
+            log.info("✅ 重建索引完成: documentId={}", documentId);
 
         } catch (Exception e) {
-            log.error("Rebuild index from chunks failed: documentId={}", documentId, e);
+            log.error("❌ 重建索引失败: documentId={}", documentId, e);
             self.updateDocumentStatus(documentId, DocumentIndexStatus.ERROR);
             String docName = documentPo != null ? documentPo.getFilename() : "unknown";
             callback.onDocumentFailed(documentId, docName, e.getMessage());
@@ -229,7 +229,7 @@ public class IndexingServiceImpl implements IndexingService {
             return objectMapper.readValue(configJson, IndexStrategyConfig.class);
 
         } catch (Exception e) {
-            log.error("Failed to parse index strategy config for kbId={}", kb.getId(), e);
+            log.error("❌ 解析索引配置失败: kbId={}", kb.getId(), e);
             throw new RuntimeException("Failed to parse index strategy config: " + e.getMessage(), e);
         }
     }
@@ -237,7 +237,7 @@ public class IndexingServiceImpl implements IndexingService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void rebuildIndex(Long kbId) {
-        log.info("Rebuilding index for KB: {}", kbId);
+        log.info("🔃 重建知识库索引: {}", kbId);
 
         try {
             // 验证知识库存在
@@ -248,7 +248,7 @@ public class IndexingServiceImpl implements IndexingService {
             List<DocumentPo> documents = documentRepository.findByKbId(kbId);
 
             if (documents.isEmpty()) {
-                log.info("No documents to rebuild for kbId={}", kbId);
+                log.info("⏭️  没有文档需要重建 kbId={}", kbId);
                 return;
             }
 
@@ -268,17 +268,17 @@ public class IndexingServiceImpl implements IndexingService {
                 self.executeIndexing(document.getId(), kb, indexConfig);
             }
 
-            log.info("Index rebuild initiated for {} documents", documents.size());
+            log.info("🔗 已提交 {} 个文档的重建任务", documents.size());
 
         } catch (Exception e) {
-            log.error("Failed to rebuild index for kbId={}", kbId, e);
+            log.error("❌ 重建知识库索引失败: kbId={}", kbId, e);
             throw new RuntimeException("Failed to rebuild index: " + e.getMessage(), e);
         }
     }
 
     @Override
     public void cancelIndexing(Long documentId) {
-        log.info("Canceling indexing: documentId={}", documentId);
+        log.info("🗑️  取消索引: documentId={}", documentId);
 
         // TODO: 实现取消逻辑
         // 1. 标记任务为取消状态
@@ -297,7 +297,7 @@ public class IndexingServiceImpl implements IndexingService {
         documentRepository.findById(documentId).ifPresent(document -> {
             document.setIndexStatus(status);
             documentRepository.save(document);
-            log.debug("Document status updated: id={}, status={}", documentId, status);
+            log.debug("📄 文档状态更新: id={}, status={}", documentId, status);
         });
     }
 }

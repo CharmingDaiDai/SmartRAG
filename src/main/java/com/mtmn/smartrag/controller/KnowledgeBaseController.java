@@ -39,7 +39,7 @@ public class KnowledgeBaseController {
             @RequestBody CreateKnowledgeBaseRequest request,
             @AuthenticationPrincipal User user) {
 
-        log.info("Creating knowledge base: {}, user: {}", request.getName(), user.getId());
+        log.info("📚 创建知识库: {}, 用户: {}", request.getName(), user.getId());
 
         KnowledgeBaseResponse response = knowledgeBaseService.createKnowledgeBase(
                 request, user.getId());
@@ -55,7 +55,7 @@ public class KnowledgeBaseController {
     public ApiResponse<List<KnowledgeBaseResponse>> listKnowledgeBases(
             @AuthenticationPrincipal User user) {
 
-        log.debug("Listing knowledge bases for user: {}", user.getId());
+        log.debug("🔍 查询用户 {} 的知识库", user.getId());
 
         List<KnowledgeBaseResponse> responses = knowledgeBaseService.listKnowledgeBases(user.getId());
 
@@ -71,7 +71,7 @@ public class KnowledgeBaseController {
             @Parameter(description = "知识库ID") @PathVariable Long kbId,
             @AuthenticationPrincipal User user) {
 
-        log.debug("Getting knowledge base: {}, user: {}", kbId, user.getId());
+        log.debug("🔍 获取知识库: {}, 用户: {}", kbId, user.getId());
 
         KnowledgeBaseResponse response = knowledgeBaseService.getKnowledgeBase(kbId, user.getId());
 
@@ -87,7 +87,7 @@ public class KnowledgeBaseController {
             @Parameter(description = "知识库ID") @PathVariable Long kbId,
             @AuthenticationPrincipal User user) {
 
-        log.info("Deleting knowledge base: {}, user: {}", kbId, user.getId());
+        log.info("🗑️  删除知识库: {}, 用户: {}", kbId, user.getId());
 
         knowledgeBaseService.deleteKnowledgeBase(kbId, user.getId());
 

@@ -71,7 +71,15 @@ public class RAGServiceImpl implements RAGService {
      */
     @Override
     public SseEmitter naiveRagChat(Long userId, NaiveRagChatRequest request) {
-        log.info("收到 Naive RAG 对话请求: userId={}, kbId={}, question={}", userId, request.getKbId(), request.getQuestion());
+        long requestStartTime = System.currentTimeMillis();
+        log.info("🚀 收到 NaiveRAG 对话请求: userId={}, kbId={}, sessionId={}", 
+                 userId, request.getKbId(), request.getSessionId());
+        log.info("📝 问题: '{}' (长度={})", 
+                 request.getQuestion(), request.getQuestion().length());
+        log.info("⚙️  参数: topK={}, threshold={}, 意图识别={}, 查询重写={}, 问题分解={}, HyDE={}",
+                 request.getTopK(), request.getThreshold(),
+                 request.getEnableIntentRecognition(), request.getEnableQueryRewrite(),
+                 request.getEnableQueryDecomposition(), request.getEnableHyde());
 
         // 创建 SseEmitter，设置超时时间 (例如 5 分钟)
         SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
@@ -91,10 +99,16 @@ public class RAGServiceImpl implements RAGService {
 
                 // 1. 意图识别
                 if (request.getEnableIntentRecognition()) {
+                    long intentStartTime = System.currentTimeMillis();
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在分析查询意图...", "search");
+                    log.debug("🧠 意图识别: 开始分析");
+                    
                     boolean needRetrieval = ragQueryProcessor.analyzeIntent(question, historyText);
+                    log.info("⏱️  意图识别耗时: {}ms, 需要检索={}", 
+                             System.currentTimeMillis() - intentStartTime, needRetrieval);
+                    
                     if (!needRetrieval) {
-                        log.info("意图识别结果: 不需要检索");
+                        log.info("   ⏭️  跳过检索: 直接生成回答");
                         String directPrompt = buildDirectChatPrompt(question, historyText);
                         // 直接聊天
                         llmClient.streamChatWithEmitter(
@@ -104,7 +118,6 @@ public class RAGServiceImpl implements RAGService {
                         );
                         return;
                     }
-                    log.info("意图识别结果: 需要检索");
                 }
 
                 // 收集所有需要检索的查询语句
@@ -113,28 +126,40 @@ public class RAGServiceImpl implements RAGService {
                 // 2. 查询重写
                 String finalQuery = question;
                 if (request.getEnableQueryRewrite()) {
+                    long rewriteStartTime = System.currentTimeMillis();
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在重写查询语句...", "edit");
                     String rewritten = ragQueryProcessor.rewriteQuery(question, historyText);
                     if (rewritten != null && !rewritten.equals(question)) {
                         finalQuery = rewritten;
-                        log.info("查询重写结果: {}", finalQuery);
+                        log.info("✏️  查询重写: '{}' -> '{}' (耗时: {}ms)", 
+                                 question, finalQuery, System.currentTimeMillis() - rewriteStartTime);
+                    } else {
+                        log.debug("   查询重写无需改动, 耗时: {}ms", System.currentTimeMillis() - rewriteStartTime);
                     }
                 }
                 searchQueries.add(finalQuery);
 
                 // 3. 问题分解
                 if (request.getEnableQueryDecomposition()) {
+                    long decomposeStartTime = System.currentTimeMillis();
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在问题分解...", "edit");
                     List<String> subQueries = ragQueryProcessor.decomposeQuery(question);
                     if (subQueries != null && !subQueries.isEmpty()) {
                         searchQueries.addAll(subQueries);
-                        log.info("问题分解结果: {}", subQueries);
+                        log.info("🔗 问题分解: 生成 {} 个子问题 (耗时: {}ms)", 
+                                 subQueries.size(), System.currentTimeMillis() - decomposeStartTime);
+                        subQueries.forEach(sq -> log.debug("   - {}", sq.substring(0, Math.min(50, sq.length()))));
+                    } else {
+                        log.debug("   问题分解无结果, 耗时: {}ms", System.currentTimeMillis() - decomposeStartTime);
                     }
                 }
 
                 // 4. HyDE
                 if (request.getEnableHyde()) {
+                    long hydeStartTime = System.currentTimeMillis();
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在生成假想答案(HyDE)...", "think");
+                    log.debug("💭 HyDE 转换: 开始为 {} 个查询生成假想文档", searchQueries.size());
+                    
                     // 对所有查询进行 HyDE 转换
                     List<CompletableFuture<String>> hydeFutures = searchQueries.stream()
                             .map(q -> CompletableFuture.supplyAsync(() -> {
@@ -151,10 +176,13 @@ public class RAGServiceImpl implements RAGService {
                             .map(CompletableFuture::join)
                             .collect(Collectors.toSet());
 
-                    log.info("HyDE处理完成，生成 {} 个假设文档用于检索", searchQueries.size());
+                    log.info("✅ HyDE完成: {} 个文档已生成 (耗时: {}ms)", 
+                             searchQueries.size(), System.currentTimeMillis() - hydeStartTime);
                 }
 
                 // 5. 并行向量检索
+                log.debug("🔎 准备向量检索: 查询数={}, topK={}, threshold={}",
+                         searchQueries.size(), request.getTopK(), request.getThreshold());
                 SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在检索中...", "search");
                 int topK = request.getTopK() != null ? request.getTopK() : 10;
 
@@ -164,12 +192,14 @@ public class RAGServiceImpl implements RAGService {
                 // 如果没有启用问题分解，才需要截断到 topK
                 // 启用问题分解时，保留所有结果（每个子问题的 topK），确保覆盖所有子知识点
                 if (!Boolean.TRUE.equals(request.getEnableQueryDecomposition()) && results.size() > topK) {
+                    log.debug("✂️  截断结果: {} → {} (topK={})", results.size(), topK, topK);
                     SseEventBuilder.sendThoughtEvent(emitter, "processing", "正在对结果重排序...", "sort");
                     results = results.stream().limit(topK).toList();
                 }
 
-                log.info("检索完成: 查询数={}, 结果数={}, 问题分解={}",
-                        searchQueries.size(), results.size(), request.getEnableQueryDecomposition());
+                log.info("📊 检索统计: 查询数={}, 返回结果数={}, 分解={}, 总耗时={}ms",
+                        searchQueries.size(), results.size(), request.getEnableQueryDecomposition(),
+                        System.currentTimeMillis() - requestStartTime);
 
                 // 获取文档标题
                 List<Long> docIds = results.stream()
@@ -204,6 +234,17 @@ public class RAGServiceImpl implements RAGService {
                         .collect(Collectors.toList());
 
                 // 检索完成
+                log.info("📚 参考文档统计: 来自 {} 个文档, {} 个 chunks",
+                         docTitles.size(), documents.size());
+                if (!documents.isEmpty()) {
+                    log.debug("📚 TOP3 高分片段:");
+                    documents.stream().limit(3).forEach(doc ->
+                            log.debug("⭐ [{}] {} (score={})",
+                                    doc.getTitle(), 
+                                    doc.getContent().substring(0, Math.min(40, doc.getContent().length())),
+                                    String.format("%.3f", doc.getScore())));
+                }
+                
                 String message = String.format("检索完成，找到 %d 个相关片段", documents.size());
                 SseEventBuilder.sendThoughtEvent(emitter, "success", message, "check");
 
@@ -213,6 +254,8 @@ public class RAGServiceImpl implements RAGService {
                 }
 
                 // 构建 Context (带 XML 标签和 ID)
+                log.debug("� 构建Prompt: 开始生成上下文 XML");
+                long promptStartTime = System.currentTimeMillis();
                 String context = IntStream.range(0, documents.size())
                         .mapToObj(i -> {
                             ReferenceDocument doc = documents.get(i);
@@ -233,18 +276,31 @@ public class RAGServiceImpl implements RAGService {
                         })
                         .collect(Collectors.joining("\n"));
 
+                log.debug("📄 上下文XML: {} 个文档, 总长度: {}字符", documents.size(), context.length());
+
                 // 替换 Prompt 变量
                 String prompt = AppConstants.PromptTemplates.RAG_ANSWER
                         .replace("{query}", question)
                     .replace("{context}", context)
                     .replace("{history}", historyText == null ? "" : historyText);
 
+                log.info("🤖 调用LLM: model={}, prompt长度={}字符, 参考文档数={}, 耗时={}ms",
+                         request.getLlmModelId(), prompt.length(), documents.size(),
+                         System.currentTimeMillis() - promptStartTime);
+
                 // 大模型回答
+                long llmStartTime = System.currentTimeMillis();
                 llmClient.streamChatWithEmitter(
                     prompt,
                     emitter,
                     buildPersistenceHandler(userId, kbId, sessionId, request, documents)
                 );
+                
+                long totalDuration = System.currentTimeMillis() - requestStartTime;
+                log.info("✨ NaiveRAG对话完成: 总耗时={}ms, 检索={}ms, LLM={}ms",
+                         totalDuration, 
+                         System.currentTimeMillis() - promptStartTime,
+                         System.currentTimeMillis() - llmStartTime);
 
             } catch (Exception e) {
                 handleStreamException(emitter, "NaiveRAG 对话失败", e);
@@ -266,28 +322,45 @@ public class RAGServiceImpl implements RAGService {
      */
     private List<RetrievalResult> parallelSearch(Long kbId, Set<String> queries, EmbeddingClient embeddingClient, int topK, double threshold) {
         if (queries == null || queries.isEmpty()) {
+            log.debug("⏭️  跳过检索: 查询集合为空, kbId={}", kbId);
             return Collections.emptyList();
         }
 
+        long startTime = System.currentTimeMillis();
+        log.info("🚀 并行检索开始: kbId={}, 查询数={}, topK={}, threshold={}", 
+                 kbId, queries.size(), topK, threshold);
+        
+        AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failureCount = new AtomicInteger(0);
         AtomicReference<Throwable> firstFailure = new AtomicReference<>(null);
 
         List<CompletableFuture<List<RetrievalResult>>> futures = queries.stream()
                 .map(query -> CompletableFuture.supplyAsync(() -> {
+                    long queryStartTime = System.currentTimeMillis();
+                    log.debug("  📍 查询向量化: '{}...' (长度={})", 
+                             query.substring(0, Math.min(30, query.length())), query.length());
+                    
                     Embedding queryVector = embeddingClient.embed(query);
-                    return milvusService.search(kbId, queryVector, topK, threshold);
+                    log.debug("    ✓ 向量化完成: dimension={}, 耗时={}ms", 
+                             queryVector.dimension(), System.currentTimeMillis() - queryStartTime);
+                    
+                    List<RetrievalResult> results = milvusService.search(kbId, queryVector, topK, threshold);
+                    long queryDuration = System.currentTimeMillis() - queryStartTime;
+                    log.debug("    ✓ 查询完成: 结果数={}, 总耗时={}ms", results.size(), queryDuration);
+                    return results;
                 }).handle((results, throwable) -> {
                     if (throwable == null) {
+                        successCount.incrementAndGet();
                         return results == null ? Collections.<RetrievalResult>emptyList() : results;
                     }
 
                     failureCount.incrementAndGet();
                     Throwable root = RagStreamErrorMapper.unwrap(throwable);
                     firstFailure.compareAndSet(null, root);
-                    log.warn("检索失败: query={}, error={}",
-                            query,
+                    log.warn("❌ 查询检索失败: query='{}', error={}",
+                            query.substring(0, Math.min(30, query.length())),
                             root != null ? root.getMessage() : throwable.getMessage());
-                        return Collections.<RetrievalResult>emptyList();
+                    return Collections.<RetrievalResult>emptyList();
                 }))
                 .toList();
 
@@ -298,13 +371,16 @@ public class RAGServiceImpl implements RAGService {
             throw new RuntimeException("全部检索任务执行失败", firstFailure.get());
         }
         if (failureCount.get() > 0) {
-            log.warn("并行检索部分失败: failed={}/{}", failureCount.get(), queries.size());
+            log.warn("⚠️  并行检索部分失败: 成功={}, 失败={}/{}", 
+                    successCount.get(), failureCount.get(), queries.size());
         }
 
         // 合并结果并去重
+        int rawCount = 0;
         Map<String, RetrievalResult> uniqueResults = new HashMap<>();
         for (CompletableFuture<List<RetrievalResult>> future : futures) {
             List<RetrievalResult> results = future.join();
+            rawCount += results.size();
             for (RetrievalResult result : results) {
                 // 使用 sourceId (chunkId) 作为去重键
                 // 如果同一个 chunk 被多次检索到，保留分数最高的那个（通常 Milvus 返回的就是最高分，这里简单覆盖即可，或者比较 score）
@@ -314,11 +390,19 @@ public class RAGServiceImpl implements RAGService {
                 }
             }
         }
+        
+        log.debug("📊 结果汇总: 原始数={}, 去重后={}", rawCount, uniqueResults.size());
 
         // 排序并返回
-        return uniqueResults.values().stream()
+        List<RetrievalResult> finalResults = uniqueResults.values().stream()
                 .sorted((r1, r2) -> Double.compare(r2.getScore(), r1.getScore())) // 降序
                 .collect(Collectors.toList());
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("✅ 并行检索完成: 最终结果数={}, 总耗时={}ms", 
+                finalResults.size(), duration);
+        
+        return finalResults;
     }
 
     /**

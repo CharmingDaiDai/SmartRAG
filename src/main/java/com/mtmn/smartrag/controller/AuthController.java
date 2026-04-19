@@ -35,13 +35,13 @@ public class AuthController {
     public ApiResponse<AuthenticationResponse> register(
             @RequestBody RegisterRequest request
     ) {
-        log.info("收到用户注册请求: {}", request.getUsername());
+        log.info("👤 收到用户注册请求: {}", request.getUsername());
         try {
             AuthenticationResponse response = authenticationService.register(request);
-            log.info("用户注册成功: {}", request.getUsername());
+            log.info("✅ 用户注册成功: {}", request.getUsername());
             return ApiResponse.success("用户注册成功", response);
         } catch (Exception e) {
-            log.error("用户注册失败: {} - 错误信息: {}", request.getUsername(), e.getMessage());
+            log.error("❌ 用户注册失败: {} - 错误信息: {}", request.getUsername(), e.getMessage());
             throw e;
         }
     }
@@ -51,13 +51,13 @@ public class AuthController {
     public ApiResponse<AuthenticationResponse> login(
             @RequestBody AuthenticationRequest request
     ) {
-        log.info("收到用户登录请求: {}", request.getUsername());
+        log.info("🔑 收到用户登录请求: {}", request.getUsername());
         try {
             AuthenticationResponse response = authenticationService.authenticate(request);
-            log.info("用户登录成功: {}", request.getUsername());
+            log.info("✅ 用户登录成功: {}", request.getUsername());
             return ApiResponse.success("登录成功", response);
         } catch (Exception e) {
-            log.error("用户登录失败: {} - 错误信息: {}", request.getUsername(), e.getMessage());
+            log.error("❌ 用户登录失败: {} - 错误信息: {}", request.getUsername(), e.getMessage());
             throw e;
         }
     }
@@ -65,7 +65,7 @@ public class AuthController {
     @PostMapping("/login/github")
     @Operation(summary = "GitHub登录", description = "生成GitHub授权URL")
     public ApiResponse<String> githubLogin() {
-        log.info("收到GitHub登录请求");
+        log.info("🐙 收到GitHub登录请求");
         String authorizationUrl = authenticationService.createGithubAuthorizationUrl();
         return ApiResponse.success("已生成GitHub授权URL", authorizationUrl);
     }
@@ -77,11 +77,11 @@ public class AuthController {
             @RequestParam(value = "state", required = false) String state,
             HttpServletResponse response
     ) {
-        log.info("收到GitHub回调请求");
+        log.info("🔄 收到GitHub回调请求");
         try {
             // 获取GitHub用户信息和生成JWT token
             AuthenticationResponse authResponse = authenticationService.authenticateWithGithub(code, state);
-            log.info("GitHub登录成功");
+            log.info("✅ GitHub登录成功");
 
             // 生成一次性授权码（使用UUID）
             String oneTimeCode = UUID.randomUUID().toString();
@@ -94,12 +94,12 @@ public class AuthController {
             String frontendRedirectUrl = "http://localhost:3000/auth/callback/github?code=" + oneTimeCode;
             response.sendRedirect(frontendRedirectUrl);
         } catch (Exception e) {
-            log.error("GitHub登录失败 - 错误信息: {}", e.getMessage());
+            log.error("❌ GitHub登录失败 - 错误信息: {}", e.getMessage());
             try {
                 // 登录失败时重定向到登录页面并带上错误信息
                 response.sendRedirect("http://localhost:3000/login?error=github-auth-failed");
             } catch (IOException ex) {
-                log.error("重定向失败", ex);
+                log.error("❌ 重定向失败", ex);
             }
         }
     }
@@ -107,7 +107,7 @@ public class AuthController {
     @PostMapping("/login/wx")
     @Operation(summary = "微信登录", description = "生成微信授权URL")
     public ApiResponse<String> wxLogin() {
-        log.info("收到微信登录请求");
+        log.info("🤝 收到微信登录请求");
 
         return ApiResponse.error(404, "敬请期待");
     }
@@ -115,7 +115,7 @@ public class AuthController {
     @PostMapping("/login/qq")
     @Operation(summary = "qq登录", description = "生成qq授权URL")
     public ApiResponse<String> qqLogin() {
-        log.info("收到qq登录请求");
+        log.info("🎮 收到qq登录请求");
 
         return ApiResponse.error(404, "敬请期待");
     }
@@ -123,17 +123,17 @@ public class AuthController {
     @PostMapping("/exchange-token")
     @Operation(summary = "交换授权码获取Token", description = "使用一次性授权码获取JWT token")
     public ApiResponse<AuthenticationResponse> exchangeToken(@RequestParam("code") String code) {
-        log.info("收到授权码交换Token请求");
+        log.info("🔐 收到授权码交换Token请求");
 
         // 验证并获取授权码对应的认证信息
         AuthenticationResponse authResponse = authCodeStorage.getAndRemoveAuthResponse(code);
 
         if (authResponse == null) {
-            log.warn("无效或已过期的授权码: {}", code);
+            log.warn("⚠️  无效或已过期的授权码: {}", code);
             return ApiResponse.error(401, "无效或已过期的授权码");
         }
 
-        log.info("授权码交换Token成功");
+        log.info("✅ 授权码交换Token成功");
         return ApiResponse.success("Token获取成功", authResponse);
     }
 
@@ -142,13 +142,13 @@ public class AuthController {
     public ApiResponse<AuthenticationResponse> refreshToken(
             @RequestBody TokenRefreshRequest request
     ) {
-        log.info("收到令牌刷新请求");
+        log.info("🔄 收到令牌刷新请求");
         try {
             AuthenticationResponse response = authenticationService.refreshToken(request.getRefreshToken());
-            log.info("令牌刷新成功");
+            log.info("✅ 令牌刷新成功");
             return ApiResponse.success("令牌刷新成功", response);
         } catch (Exception e) {
-            log.error("令牌刷新失败 - 错误信息: {}", e.getMessage());
+            log.error("❌ 令牌刷新失败 - 错误信息: {}", e.getMessage());
             throw e;
         }
     }

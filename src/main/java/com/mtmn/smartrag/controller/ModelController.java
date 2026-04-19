@@ -32,7 +32,7 @@ public class ModelController {
     @GetMapping("/llms")
     @Operation(summary = "获取可用LLM模型列表", description = "返回系统中可用的LLM模型名称列表")
     public ApiResponse<List<String>> getAvailableLLMModels(@AuthenticationPrincipal User user) {
-        log.info("User {} is requesting available LLM models", user.getId());
+        log.info("🤖 用户 {} 请求可用 LLM 模型", user.getId());
 
         List<String> availableLLMModels = modelFactory.getAvailableLLMModels();
 
@@ -42,7 +42,7 @@ public class ModelController {
     @GetMapping("/embeddings")
     @Operation(summary = "获取可用嵌入模型列表", description = "返回系统中可用的嵌入模型名称列表")
     public ApiResponse<List<String>> getAvailableEmbeddingModels(@AuthenticationPrincipal User user) {
-        log.info("User {} is requesting available embedding models", user.getId());
+        log.info("🤖 用户 {} 请求可用嵌入模型", user.getId());
 
         List<String> availableEmbeddingModels = modelFactory.getAvailableEmbeddingModels();
 
@@ -52,7 +52,7 @@ public class ModelController {
     @GetMapping("/reranks")
     @Operation(summary = "获取可用重排序模型列表", description = "返回系统中可用的重排序模型名称列表")
     public ApiResponse<List<String>> getAvailableRerankModels(@AuthenticationPrincipal User user) {
-        log.info("User {} is requesting available rerank models", user.getId());
+        log.info("🤖 用户 {} 请求可用重排模型", user.getId());
 
         List<String> availableRerankModels = modelFactory.getAvailableRerankModels();
 

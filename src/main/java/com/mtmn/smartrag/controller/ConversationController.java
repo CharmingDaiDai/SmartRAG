@@ -44,7 +44,7 @@ public class ConversationController {
             throw new UnauthorizedAccessException("用户未登录");
         }
 
-        log.debug("查询会话列表: kbId={}, userId={}, page={}, size={}", kbId, user.getId(), page, size);
+        log.debug("🔍 查询会话列表: kbId={}, userId={}, page={}, size={}", kbId, user.getId(), page, size);
         Page<ConversationSessionResponse> sessions = conversationService.listSessions(kbId, user.getId(), page, size);
         return ApiResponse.success(sessions);
     }
@@ -60,7 +60,7 @@ public class ConversationController {
             throw new UnauthorizedAccessException("用户未登录");
         }
 
-        log.debug("查询会话详情: kbId={}, userId={}, sessionId={}", kbId, user.getId(), sessionId);
+        log.debug("🔍 查询会话详情: kbId={}, userId={}, sessionId={}", kbId, user.getId(), sessionId);
         ConversationSessionDetailResponse detail = conversationService.getSessionDetail(kbId, user.getId(), sessionId);
         return ApiResponse.success(detail);
     }
@@ -76,7 +76,7 @@ public class ConversationController {
             throw new UnauthorizedAccessException("用户未登录");
         }
 
-        log.info("删除会话: kbId={}, userId={}, sessionId={}", kbId, user.getId(), sessionId);
+        log.info("🗑️  删除会话: kbId={}, userId={}, sessionId={}", kbId, user.getId(), sessionId);
         conversationService.deleteSession(kbId, user.getId(), sessionId);
         return ApiResponse.success("会话删除成功", null);
     }

@@ -67,9 +67,9 @@ public class MilvusServiceImpl implements MilvusService {
                             .withPort(port)
                             .build()
             );
-            log.info("Milvus client initialized successfully");
+            log.info("✅ Milvus 客户端初始化成功");
         } catch (Exception e) {
-            log.error("Failed to initialize Milvus client", e);
+            log.error("❌ Milvus 客户端初始化失败: {}", e.getMessage());
         }
     }
 
@@ -96,13 +96,13 @@ public class MilvusServiceImpl implements MilvusService {
 
     @Override
     public void dropCollection(String collectionName) {
-        log.info("Dropping collection: {}", collectionName);
+        log.info("🗑️  删除 Milvus 集合: {}", collectionName);
 
         if (milvusClient == null) {
-            log.warn("Milvus client is not initialized. Attempting to initialize...");
+            log.warn("⚠️  Milvus 客户端未初始化，尝试重新初始化...");
             init();
             if (milvusClient == null) {
-                log.warn("Milvus service is unavailable. Skipping drop collection: {}", collectionName);
+                log.warn("⚠️  Milvus 服务不可用，跳过删除集合: {}", collectionName);
                 return;
             }
         }
@@ -118,16 +118,22 @@ public class MilvusServiceImpl implements MilvusService {
             }, "drop collection");
             
             storeCache.remove(collectionName);
-            log.info("Collection dropped successfully: {}", collectionName);
+            log.info("✅ 集合删除成功: {}", collectionName);
         } catch (Exception e) {
-            log.warn("Failed to drop collection: {}. Error: {}", collectionName, e.getMessage());
+            log.warn("⚠️  集合删除失败: {}, 错误: {}", collectionName, e.getMessage());
         }
     }
 
     @Override
     public List<RetrievalResult> search(Long kbId, Embedding queryVector, int topK, double threshold) {
         String collectionName = MILVUS_CHUNKS_COLLECTION_TEMPLATE.formatted(kbId);
-        MilvusEmbeddingStore store = getEmbeddingStore(collectionName, queryVector.dimension());
+        int dimension = queryVector.dimension();
+        
+        long startTime = System.currentTimeMillis();
+        log.debug("🔍 Milvus向量搜索开始: collection={}, dimension={}, topK={}, threshold={}", 
+                  collectionName, dimension, topK, threshold);
+        
+        MilvusEmbeddingStore store = getEmbeddingStore(collectionName, dimension);
 
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryVector)
@@ -137,19 +143,37 @@ public class MilvusServiceImpl implements MilvusService {
 
         EmbeddingSearchResult<TextSegment> result = executeWithRetry(
                 () -> store.search(request),
-                "search vectors"
+                "search vectors in " + collectionName
         );
-
-        return result.matches().stream()
+        
+        List<RetrievalResult> results = result.matches().stream()
                 .map(this::convertToRetrievalResult)
                 .collect(Collectors.toList());
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("✅ Milvus向量搜索完成: collection={}, 耗时={}ms, 结果数={}", 
+                 collectionName, duration, results.size());
+        if (!results.isEmpty()) {
+            log.debug("  TOP3结果: {} | {} | {}",
+                    results.get(0).getScore() + " (" + results.get(0).getContent().substring(0, Math.min(20, results.get(0).getContent().length())) + ")",
+                    results.size() > 1 ? results.get(1).getScore() : "N/A",
+                    results.size() > 2 ? results.get(2).getScore() : "N/A");
+        }
+
+        return results;
     }
 
     @Override
     public List<RetrievalResult> search(Long kbId, Embedding queryVector, int topK,
                                          double threshold, Filter filter) {
         String collectionName = MILVUS_CHUNKS_COLLECTION_TEMPLATE.formatted(kbId);
-        MilvusEmbeddingStore store = getEmbeddingStore(collectionName, queryVector.dimension());
+        int dimension = queryVector.dimension();
+        
+        long startTime = System.currentTimeMillis();
+        log.debug("🔍 Milvus过滤向量搜索开始: collection={}, dimension={}, topK={}, threshold={}, filter={}", 
+                  collectionName, dimension, topK, threshold, filter != null ? "applied" : "none");
+        
+        MilvusEmbeddingStore store = getEmbeddingStore(collectionName, dimension);
 
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryVector)
@@ -160,12 +184,18 @@ public class MilvusServiceImpl implements MilvusService {
 
         EmbeddingSearchResult<TextSegment> result = executeWithRetry(
                 () -> store.search(request),
-                "search vectors with filter"
+                "search vectors with filter in " + collectionName
         );
 
-        return result.matches().stream()
+        List<RetrievalResult> results = result.matches().stream()
                 .map(this::convertToRetrievalResult)
                 .collect(Collectors.toList());
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("✅ Milvus过滤向量搜索完成: collection={}, 耗时={}ms, 结果数={}", 
+                 collectionName, duration, results.size());
+
+        return results;
     }
 
     @Override
@@ -183,6 +213,8 @@ public class MilvusServiceImpl implements MilvusService {
         }
 
         MilvusEmbeddingStore store = getEmbeddingStore(collectionName, dimension);
+        log.info("📊 开始存储向量: collectionName={}, totalItems={}, dimension={}", 
+                 collectionName, items.size(), dimension);
 
         List<String> ids = items.stream().map(VectorItem::getId).collect(Collectors.toList());
         List<Embedding> embeddings = items.stream().map(VectorItem::getEmbedding).collect(Collectors.toList());
@@ -191,17 +223,28 @@ public class MilvusServiceImpl implements MilvusService {
                 .collect(Collectors.toList());
 
         // 分批插入
+        int batchCount = 0;
         for (int i = 0; i < ids.size(); i += MILVUS_INSERT_BATCH_SIZE) {
             int end = Math.min(i + MILVUS_INSERT_BATCH_SIZE, ids.size());
             List<String> batchIds = ids.subList(i, end);
             List<Embedding> batchEmbeddings = embeddings.subList(i, end);
             List<TextSegment> batchSegments = segments.subList(i, end);
+            
+            int batchNum = batchCount + 1;
+            int totalBatches = (ids.size() + MILVUS_INSERT_BATCH_SIZE - 1) / MILVUS_INSERT_BATCH_SIZE;
 
             executeWithRetry(() -> {
                 store.addAll(batchIds, batchEmbeddings, batchSegments);
+                log.debug("✅ 向量批次存储成功: 批次 {}/{}, 数量={}", 
+                          batchNum, totalBatches, batchIds.size());
                 return null;
-            }, "store vectors batch");
+            }, "store vectors batch [" + batchNum + "/" + totalBatches + "]");
+            
+            batchCount++;
         }
+        
+        log.info("✅ 向量存储完成: collectionName={}, totalItems={}, batches={}", 
+                 collectionName, items.size(), batchCount);
     }
 
     @Override
@@ -264,7 +307,7 @@ public class MilvusServiceImpl implements MilvusService {
             return null;
         }, "remove by document id");
         
-        log.info("Removed vectors for document {} in kb {}", docId, kbId);
+        log.info("✅ 向量删除成功: 文档id={}, 知识库id={}", docId, kbId);
     }
 
     // ===================== 私有辅助方法 =====================
@@ -368,7 +411,7 @@ public class MilvusServiceImpl implements MilvusService {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("重试等待被中断");
+            log.warn("⚠️  重试等待被中断");
         }
     }
 
