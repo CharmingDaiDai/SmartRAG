@@ -1787,13 +1787,13 @@ html[data-performance='lite'] :where(
 }
 
 .dashboard-stat-card .ant-statistic-title {
-  color: #64748b !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .dashboard-stat-card .ant-statistic-content-value {
   font-size: 26px !important;
   font-weight: 600 !important;
-  color: #1e293b !important;
+  color: var(--color-text) !important;
   background: none !important;
   -webkit-background-clip: border-box !important;
   background-clip: border-box !important;
@@ -1975,17 +1975,17 @@ html[data-performance='lite'] :where(
 .kb-tag-pill--outline {
   background: transparent !important;
   border: 1px solid var(--sys-border) !important;
-  color: #64748b !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .kb-tag-pill--outline:hover {
   border-color: var(--sys-focus) !important;
-  color: #475569 !important;
+  color: var(--color-text) !important;
 }
 
 .kb-tag-pill--neutral {
   border-color: rgba(134, 144, 156, 0.35) !important;
-  color: #86909c !important;
+  color: var(--color-text-muted) !important;
 }
 
 .kb-enter-link {
@@ -2003,12 +2003,12 @@ html[data-performance='lite'] :where(
   border-radius: 8px !important;
   border: 1px solid var(--sys-border) !important;
   background: transparent !important;
-  color: #64748b !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .docs-kb-tag:hover {
   border-color: var(--sys-focus) !important;
-  color: #475569 !important;
+  color: var(--color-text) !important;
 }
 
 .docs-status-pill {
@@ -2029,7 +2029,7 @@ html[data-performance='lite'] :where(
 .kb-card-menu-btn.ant-btn:focus-visible {
   background: #f8fafc !important;
   border-color: var(--sys-focus) !important;
-  color: #475569 !important;
+  color: var(--color-text) !important;
 }
 
 .docs-status-pill--success {
@@ -2273,6 +2273,41 @@ html[data-performance='lite'] :where(
 [data-theme='dark'] .liquid-glass-flow-layout .suggestion-card:hover {
   background: linear-gradient(154deg, rgba(24, 39, 66, 0.92), rgba(19, 32, 56, 0.86)) !important;
   border-color: var(--sys-card-border-hover) !important;
+}
+
+[data-theme='dark'] :where(
+  .dashboard-page,
+  .knowledge-base-page,
+  .documents-page,
+  .chat-page-layout
+) .ant-typography {
+  color: var(--color-text) !important;
+}
+
+[data-theme='dark'] :where(
+  .dashboard-page,
+  .knowledge-base-page,
+  .documents-page,
+  .chat-page-layout
+) .ant-typography.ant-typography-secondary {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme='dark'] .documents-table .ant-table-thead > tr > th {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme='dark'] .documents-table .ant-table-tbody > tr > td {
+  color: var(--color-text) !important;
+}
+
+[data-theme='dark'] .ant-pagination .ant-pagination-item a,
+[data-theme='dark'] .ant-pagination .ant-pagination-item-link {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme='dark'] .ant-pagination .ant-pagination-item-active a {
+  color: #ffffff !important;
 }
 
 [data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:hover,

@@ -349,7 +349,7 @@ export default function KnowledgeBasePage() {
                                                         background: accentColor,
                                                         flexShrink: 0,
                                                     }} />
-                                                    <Typography.Text strong style={{ fontSize: 16, fontWeight: 600, color: '#1e293b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    <Typography.Text strong style={{ fontSize: 16, fontWeight: 600, color: token.colorTextHeading, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {item.name}
                                                     </Typography.Text>
                                                 </div>
@@ -415,7 +415,7 @@ export default function KnowledgeBasePage() {
                                                     margin: 0,
                                                     fontSize: item.description ? 13 : 11,
                                                     fontWeight: 400,
-                                                    color: item.description ? token.colorTextSecondary : '#94a3b8',
+                                                    color: item.description ? token.colorTextSecondary : token.colorTextTertiary,
                                                     flex: 1,
                                                 }}
                                             >

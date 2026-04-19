@@ -320,7 +320,7 @@ export default function DocumentsPage() {
                             {getFileIcon(fileName, token.colorPrimary)}
                             <Typography.Text
                             ellipsis={{ tooltip: fileName }}
-                            style={{ maxWidth: 320, minWidth: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}
+                                style={{ maxWidth: 320, minWidth: 0, fontSize: 16, fontWeight: 600, color: token.colorTextHeading }}
                             >
                                     {fileName}
                             </Typography.Text>
@@ -359,7 +359,7 @@ export default function DocumentsPage() {
       dataIndex: 'fileSize',
       width: 100,
             render: (size) => (
-                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
+                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: token.colorTextSecondary }}>
                             {(size / 1024 / 1024).toFixed(2)} MB
                     </Typography.Text>
             ),
@@ -404,7 +404,7 @@ export default function DocumentsPage() {
       width: 180,
       sorter: (a: any, b: any) => new Date(a.uploadTime).getTime() - new Date(b.uploadTime).getTime(),
             render: (val: string) => (
-                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
+                    <Typography.Text style={{ fontSize: 12, fontWeight: 400, color: token.colorTextSecondary }}>
                     {formatRelativeDateTime(val)}
                     </Typography.Text>
             ),

@@ -118,6 +118,8 @@ const Dashboard: React.FC = () => {
             date: item.date,
         }));
         const averageValue = trendData.reduce((acc, cur) => acc + cur.value, 0) / (trendData.length || 1);
+        const axisStroke = token.colorBorderSecondary;
+        const axisLabelColor = token.colorTextTertiary;
 
         return {
             data: trendData,
@@ -126,12 +128,12 @@ const Dashboard: React.FC = () => {
             xField: 'date',
             yField: 'value',
             shapeField: 'smooth',
-            color: '#1677ff',
+            color: token.colorPrimary,
             point: {
                 size: 3,
                 shape: 'circle',
                 style: {
-                    fill: '#ffffff',
+                    fill: token.colorBgContainer,
                     lineWidth: 1,
                 },
             },
@@ -146,17 +148,17 @@ const Dashboard: React.FC = () => {
             xAxis: {
                 line: {
                     style: {
-                        stroke: '#e2e8f0',
+                        stroke: axisStroke,
                     },
                 },
                 tickLine: {
                     style: {
-                        stroke: '#e2e8f0',
+                        stroke: axisStroke,
                     },
                 },
                 label: {
                     style: {
-                        fill: '#94a3b8',
+                        fill: axisLabelColor,
                         fontSize: 11,
                     },
                 },
@@ -165,14 +167,14 @@ const Dashboard: React.FC = () => {
                 grid: {
                     line: {
                         style: {
-                            stroke: '#e2e8f0',
+                            stroke: axisStroke,
                             lineDash: [3, 3],
                         },
                     },
                 },
                 label: {
                     style: {
-                        fill: '#94a3b8',
+                        fill: axisLabelColor,
                         fontSize: 11,
                     },
                 },
@@ -189,13 +191,13 @@ const Dashboard: React.FC = () => {
                         text: '平均值',
                         position: 'left',
                         dx: -10,
-                        style: { textBaseline: 'bottom', fill: '#94a3b8', fontSize: 11 },
+                        style: { textBaseline: 'bottom', fill: axisLabelColor, fontSize: 11 },
                     },
-                    style: { stroke: '#94a3b8', lineDash: [4, 4] },
+                    style: { stroke: axisLabelColor, lineDash: [4, 4] },
                 },
             ],
         };
-    }, [data.conversationStats.last7Days]);
+    }, [data.conversationStats.last7Days, token.colorBgContainer, token.colorBorderSecondary, token.colorPrimary, token.colorTextTertiary]);
 
     const wordCloudData = useMemo(() => (
         [...data.wordCloud]
@@ -219,7 +221,7 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-page" style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
             <SlideInUp>
                 <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={4} style={{ marginBottom: 0, fontSize: 16, fontWeight: 600, color: '#1e293b' }}>数据仪表盘</Title>
+                    <Title level={4} style={{ marginBottom: 0, fontSize: 16, fontWeight: 600, color: token.colorTextHeading }}>数据仪表盘</Title>
                     <Button type="primary" onClick={fetchStats} loading={loading}>刷新数据</Button>
                 </div>
             </SlideInUp>
@@ -275,13 +277,13 @@ const Dashboard: React.FC = () => {
                                                 value={statValues[card.key]}
                                                 loading={loading}
                                                 styles={{
-                                                    title: { fontSize: 12, fontWeight: 400, color: '#64748b' },
+                                                    title: { fontSize: 12, fontWeight: 400, color: token.colorTextSecondary },
                                                     content: {
                                                         fontFamily: "'JetBrains Mono', ui-monospace, Consolas, monospace",
                                                         fontVariantNumeric: 'tabular-nums',
                                                         fontSize: 26,
                                                         fontWeight: 600,
-                                                        color: '#1e293b',
+                                                        color: token.colorTextHeading,
                                                     }
                                                 }}
                                             />
