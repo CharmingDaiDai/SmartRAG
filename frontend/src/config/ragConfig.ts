@@ -62,6 +62,58 @@ export const STRATEGY_TO_METHOD: Record<string, string> = {
   [RAG_STRATEGIES.HISEM_RAG_FAST]: RAG_METHODS.HISEM_FAST,
 };
 
+const STRATEGY_LABEL_MAP: Record<RagStrategyType, string> = {
+  [RAG_STRATEGIES.NAIVE_RAG]: "Naive RAG",
+  [RAG_STRATEGIES.HISEM_RAG]: "HiSem-SADP",
+  [RAG_STRATEGIES.HISEM_RAG_FAST]: "HiSem RAG Fast",
+};
+
+const MARKDOWN_FILE_REGEX = /\.(md|markdown)$/i;
+
+export const getStrategyLabel = (rawType?: string | null): string => {
+  const normalized = normalizeStrategyType(rawType);
+  return STRATEGY_LABEL_MAP[normalized];
+};
+
+export const isMarkdownOnlyStrategy = (rawType?: string | null): boolean => {
+  const normalized = normalizeStrategyType(rawType);
+  return normalized === RAG_STRATEGIES.HISEM_RAG || normalized === RAG_STRATEGIES.HISEM_RAG_FAST;
+};
+
+export const isUploadFileSupportedByStrategy = (
+  fileName: string,
+  rawType?: string | null,
+): boolean => {
+  if (!fileName) {
+    return true;
+  }
+  if (!isMarkdownOnlyStrategy(rawType)) {
+    return true;
+  }
+  return MARKDOWN_FILE_REGEX.test(fileName);
+};
+
+export const getUploadAcceptByStrategy = (rawType?: string | null): string | undefined => {
+  if (isMarkdownOnlyStrategy(rawType)) {
+    return ".md,.markdown";
+  }
+  return undefined;
+};
+
+export const getUploadDescriptionByStrategy = (rawType?: string | null): string => {
+  if (isMarkdownOnlyStrategy(rawType)) {
+    return `当前策略为 ${getStrategyLabel(rawType)}，仅支持 Markdown (.md) 格式`;
+  }
+  return "支持 PDF、Word、PPT、Markdown 等常见格式";
+};
+
+export const getUploadRejectMessageByStrategy = (rawType?: string | null): string => {
+  if (isMarkdownOnlyStrategy(rawType)) {
+    return `当前策略为 ${getStrategyLabel(rawType)}，仅支持上传 Markdown (.md) 文件`;
+  }
+  return "当前策略不支持该文件格式";
+};
+
 export const SPLITTER_TYPES = [
   { label: "按段落切分", value: "BY_PARAGRAPH" },
   { label: "按行切分", value: "BY_LINE" },

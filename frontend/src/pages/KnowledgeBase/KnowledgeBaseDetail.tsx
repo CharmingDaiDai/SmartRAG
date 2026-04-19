@@ -8,7 +8,14 @@ import { DocumentItem, KnowledgeBaseItem } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
-import { normalizeStrategyType } from '../../config/ragConfig';
+import {
+    getUploadAcceptByStrategy,
+    getUploadDescriptionByStrategy,
+    getUploadRejectMessageByStrategy,
+    isMarkdownOnlyStrategy,
+    isUploadFileSupportedByStrategy,
+    normalizeStrategyType,
+} from '../../config/ragConfig';
 import IndexingProgress from '../../components/IndexingProgress';
 import ChunkDrawer from '../../components/ChunkDrawer';
 import { formatRelativeDateTime } from '../../utils/formatters';
@@ -141,6 +148,10 @@ export default function KnowledgeBaseDetail() {
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const [kbInfo, setKbInfo] = useState<KnowledgeBaseItem | null>(null);
+    const uploadStrategyType = kbInfo?.indexStrategyType;
+    const uploadDescription = getUploadDescriptionByStrategy(uploadStrategyType);
+    const uploadAccept = getUploadAcceptByStrategy(uploadStrategyType);
+    const markdownOnlyUpload = isMarkdownOnlyStrategy(uploadStrategyType);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DocumentItem[]>([]);
@@ -371,6 +382,15 @@ export default function KnowledgeBaseDetail() {
           message.error('文件无效，请重新选择');
           return;
       }
+
+      if (markdownOnlyUpload) {
+          const hasUnsupportedFile = files.some(file => !isUploadFileSupportedByStrategy(file.name, uploadStrategyType));
+          if (hasUnsupportedFile) {
+              message.error(getUploadRejectMessageByStrategy(uploadStrategyType));
+              return;
+          }
+      }
+
       setUploading(true);
       try {
           const titles = fileList.map(file => file.name);
@@ -643,10 +663,15 @@ export default function KnowledgeBaseDetail() {
               />
               <Form.Item label="选择文件">
                 <Upload.Dragger
+                    accept={uploadAccept}
                     multiple
                     showUploadList={false}
                     fileList={fileList}
                     beforeUpload={(file) => {
+                        if (!isUploadFileSupportedByStrategy(file.name, uploadStrategyType)) {
+                            message.warning(getUploadRejectMessageByStrategy(uploadStrategyType));
+                            return Upload.LIST_IGNORE;
+                        }
                         setFileList(prev => {
                             const exists = prev.some(item => item.uid === file.uid);
                             if (exists) {
@@ -663,7 +688,7 @@ export default function KnowledgeBaseDetail() {
                     </p>
                     <Typography.Title level={5} style={{ marginBottom: 8 }}>拖拽文件或点击上传</Typography.Title>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                        支持 PDF、Word、PPT、Markdown 等常见格式
+                        {uploadDescription}
                     </Typography.Paragraph>
                 </Upload.Dragger>
               </Form.Item>

@@ -11,6 +11,13 @@ import type { UploadFile } from 'antd/es/upload/interface';
 import { FadeIn, SlideInUp, ScaleIn } from '../../components/common/Motion';
 import DocumentViewer from '../../components/DocumentViewer';
 import { formatRelativeDateTime } from '../../utils/formatters';
+import {
+    getUploadAcceptByStrategy,
+    getUploadDescriptionByStrategy,
+    getUploadRejectMessageByStrategy,
+    isMarkdownOnlyStrategy,
+    isUploadFileSupportedByStrategy,
+} from '../../config/ragConfig';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
@@ -67,6 +74,12 @@ export default function DocumentsPage() {
     const [filterKbId, setFilterKbId] = useState<string | undefined>(() => searchParams.get('kbId') || undefined);
   const { currentKbId, setCurrentKbId } = useAppStore();
     const [uploadForm] = Form.useForm();
+                const uploadKbId = Form.useWatch('kbId', uploadForm);
+                const effectiveUploadKbId = uploadKbId ?? currentKbId;
+                const uploadTargetKb = kbs.find(kb => String(kb.id) === String(effectiveUploadKbId ?? ''));
+                const uploadStrategyType = uploadTargetKb?.indexStrategyType;
+                const uploadDescription = getUploadDescriptionByStrategy(uploadStrategyType);
+                const uploadAccept = getUploadAcceptByStrategy(uploadStrategyType);
         const [fileList, setFileList] = useState<UploadFile[]>([]);
         const [uploading, setUploading] = useState(false);
         const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
@@ -232,6 +245,11 @@ export default function DocumentsPage() {
           message.error('请先选择知识库');
           return;
       }
+
+      const targetKb = kbs.find(kb => String(kb.id) === String(kbId));
+      const targetStrategyType = targetKb?.indexStrategyType;
+      const markdownOnly = isMarkdownOnlyStrategy(targetStrategyType);
+
       if (fileList.length === 0) {
           message.warning('请先选择需要上传的文件');
           return;
@@ -243,6 +261,15 @@ export default function DocumentsPage() {
           message.error('文件无效，请重新选择');
           return;
       }
+
+      if (markdownOnly) {
+          const hasUnsupportedFile = files.some(file => !isUploadFileSupportedByStrategy(file.name, targetStrategyType));
+          if (hasUnsupportedFile) {
+              message.error(getUploadRejectMessageByStrategy(targetStrategyType));
+              return;
+          }
+      }
+
       setUploading(true);
       try {
           const titles = fileList.map(file => file.name);
@@ -526,10 +553,15 @@ export default function DocumentsPage() {
                 />
                 <Form.Item label="选择文件">
                     <Upload.Dragger
+                        accept={uploadAccept}
                         multiple
                         showUploadList={false}
                         fileList={fileList}
                         beforeUpload={(file) => {
+                            if (!isUploadFileSupportedByStrategy(file.name, uploadStrategyType)) {
+                                message.warning(getUploadRejectMessageByStrategy(uploadStrategyType));
+                                return Upload.LIST_IGNORE;
+                            }
                             setFileList(prev => {
                                 const exists = prev.some(item => item.uid === file.uid);
                                 if (exists) {
@@ -546,7 +578,7 @@ export default function DocumentsPage() {
                         </p>
                         <Typography.Title level={5} style={{ marginBottom: 8 }}>拖拽文件或点击上传</Typography.Title>
                         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                            支持 PDF、Word、PPT、Markdown 等常见格式
+                            {uploadDescription}
                         </Typography.Paragraph>
                     </Upload.Dragger>
                 </Form.Item>
