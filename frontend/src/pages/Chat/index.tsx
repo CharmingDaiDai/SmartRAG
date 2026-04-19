@@ -134,6 +134,8 @@ const SUGGESTION_QUESTIONS = [
     { icon: <SearchOutlined />, text: '主变压器安装的工艺标准是什么？' },
     { icon: <BookOutlined />, text: '中性点系统设备安装的关键工序控制？' },
     { icon: <ThunderboltOutlined />, text: '主变压器安装和油浸式站用变压器安装的工艺标准有什么区别？' },
+    { icon: <BookOutlined />, text: '第一章讲了什么内容？' },
+    { icon: <BookOutlined />, text: '整个文档讲了什么内容？' },
 ];
 
 const ChatPage: React.FC = () => {
