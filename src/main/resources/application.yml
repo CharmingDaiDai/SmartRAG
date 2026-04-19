@@ -2,9 +2,9 @@ spring:
   profiles:
     active: dev # 激活开发环境配置
   application:
-    name: smart-doc
+    name: smart-rag
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:smart_doc}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:smartrag_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -40,7 +40,7 @@ server:
 logging:
   level:
     root: INFO
-    com.mtmn.smartdoc: DEBUG
+    com.mtmn.smartrag: DEBUG
 
 # 应用配置
 application:
@@ -207,7 +207,7 @@ springdoc:
   group-configs:
     - group: '默认分组'
       paths-to-match: '/**'
-      packages-to-scan: com.mtmn.smartdoc.controller
+      packages-to-scan: com.mtmn.smartrag.controller
   default-flat-param-object: true
 
 knife4j:

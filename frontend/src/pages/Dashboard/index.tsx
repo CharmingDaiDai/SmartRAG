@@ -125,7 +125,7 @@ const Dashboard: React.FC = () => {
             padding: [10, 16, 18, 10] as [number, number, number, number],
             xField: 'date',
             yField: 'value',
-            smooth: true,
+            shapeField: 'smooth',
             color: '#1677ff',
             point: {
                 size: 3,

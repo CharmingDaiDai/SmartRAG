@@ -114,7 +114,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: smartdoc-backend
+    container_name: smartrag-backend
     restart: always
     environment:
       # Database Configuration
@@ -176,7 +176,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    container_name: smartdoc-frontend
+    container_name: smartrag-frontend
     restart: always
     depends_on:
       - backend

@@ -51,8 +51,6 @@ docs
 application-dev.yml
 src/main/resources/application-dev.yml
 
-src/test/*
-
 backup
 
 .claude

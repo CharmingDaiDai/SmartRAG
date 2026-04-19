@@ -15,7 +15,7 @@ FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 # 拷贝打好的 jar
-COPY --from=build /app/target/smartDoc-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/smartrag-3.0.jar app.jar
 
 # 暴露端口
 EXPOSE 8080

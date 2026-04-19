@@ -1,8 +1,8 @@
 spring:
   application:
-    name: smart-doc
+    name: smart-rag
   datasource:
-    url: jdbc:mysql://10.0.30.172:13306/smart_doc?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://10.0.30.172:13306/smart_rag_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -30,7 +30,7 @@ server:
 logging:
   level:
     root: INFO
-    com.mtmn.smartdoc: DEBUG
+    com.mtmn.smartrag: DEBUG
 
 # 应用配置
 application:
@@ -84,7 +84,7 @@ minio:
   accessKey: root #minio的用户名
   secretKey: 12345678 #minio的密码
   bucket:
-    files: smartdoc
+    files: smartrag
 
 # Knife4j 配置
 springdoc:
@@ -97,7 +97,7 @@ springdoc:
   group-configs:
     - group: '默认分组'
       paths-to-match: '/**'
-      packages-to-scan: com.mtmn.smartdoc.controller
+      packages-to-scan: com.mtmn.smartrag.controller
   default-flat-param-object: true
 
 knife4j:

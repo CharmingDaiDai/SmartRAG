@@ -1,4 +1,4 @@
-# SmartDoc 3.0
+# SmartRAG 3.0
 
 <div align="center">
 
@@ -15,7 +15,7 @@
 
 ## 项目简介
 
-SmartDoc 提供从文档上传、索引构建、检索问答到会话追踪的完整闭环能力：
+SmartRAG 提供从文档上传、索引构建、检索问答到会话追踪的完整闭环能力：
 
 - 前端：React + TypeScript + Vite + Ant Design
 - 后端：Spring Boot + LangChain4j
@@ -47,11 +47,11 @@ flowchart TB
 
 ## 检索策略与接口映射
 
-| 逻辑能力 | 索引策略类型 | 对话接口 | 说明 |
-|---|---|---|---|
-| Naive RAG | NAIVE_RAG | POST /api/chat/rag/naive | 平铺 chunk 检索 |
-| HiSem Fast | HISEM_RAG_FAST | POST /api/chat/rag/hisem-fast | Markdown 分层切块 + 标题增强 |
-| HiSem-SADP 完整版 | HISEM_RAG | POST /api/chat/rag/hisem | 同一接口内根据意图路由：简单事实走自适应层级检索，复杂问题走 SADP DAG |
+| 逻辑能力          | 索引策略类型   | 对话接口                      | 说明                                                                  |
+| ----------------- | -------------- | ----------------------------- | --------------------------------------------------------------------- |
+| Naive RAG         | NAIVE_RAG      | POST /api/chat/rag/naive      | 平铺 chunk 检索                                                       |
+| HiSem Fast        | HISEM_RAG_FAST | POST /api/chat/rag/hisem-fast | Markdown 分层切块 + 标题增强                                          |
+| HiSem-SADP 完整版 | HISEM_RAG      | POST /api/chat/rag/hisem      | 同一接口内根据意图路由：简单事实走自适应层级检索，复杂问题走 SADP DAG |
 
 说明：当前代码里没有单独的 /api/chat/rag/hisem-sadp 路由；HiSem-SADP 能力由 /api/chat/rag/hisem 在复杂意图分支触发。
 
@@ -61,7 +61,7 @@ flowchart TB
 
 ```bash
 git clone https://github.com/CharmingDaiDai/SmartRAG.git
-cd smartDoc
+cd smartRAG
 
 cp .env.example .env
 # 按需填写 .env（数据库、JWT、模型 Key 等）
@@ -300,8 +300,8 @@ sequenceDiagram
 ## 项目结构
 
 ```text
-smartDoc/
-├── src/main/java/com/mtmn/smartdoc/
+smartRAG/
+├── src/main/java/com/mtmn/smartrag/
 │   ├── controller/
 │   ├── service/
 │   ├── rag/
@@ -325,7 +325,3 @@ smartDoc/
 - Docker 详细部署、备份与运维建议见 README-docker.md。
 - HiSem-SADP 对话入口为 /api/chat/rag/hisem；当问题被路由为复杂意图时，自动执行 SADP DAG 规划与检索。
 - 注意：HiSem-SADP（完整版）链路要求知识库文档为 Markdown（.md）格式。
-
-## 许可证
-
-本项目采用 MIT License。

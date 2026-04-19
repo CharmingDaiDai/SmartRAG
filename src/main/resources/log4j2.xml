@@ -43,7 +43,7 @@
         </Root>
 
         <!-- 应用日志配置 -->
-        <Logger name="com.mtmn.smartdoc" level="debug" additivity="false">
+        <Logger name="com.mtmn.smartrag" level="debug" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="appLog"/>
         </Logger>

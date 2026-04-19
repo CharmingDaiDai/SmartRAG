@@ -705,7 +705,7 @@ const ChatPage: React.FC = () => {
                                     margin: '1px 6px',
                                     borderRadius: 8,
                                     background: activeHistoryId === item.sessionId
-                                        ? '#e6f4ff'
+                                        ? token.colorPrimaryBg
                                         : 'transparent',
                                     borderLeft: activeHistoryId === item.sessionId
                                         ? `2px solid ${token.colorPrimary}`
@@ -780,7 +780,7 @@ const ChatPage: React.FC = () => {
         </Sider>
 
         {/* ==================== 中间内容区：对话消息列表 + 输入框 ==================== */}
-        <Content className="chat-main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: '#ffffff' }}>
+        <Content className="chat-main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, background: token.colorBgContainer }}>
             <FadeIn style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
             {/* 消息滚动区域 */}
             <div ref={scrollRef} className="chat-messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24, minHeight: 0, overscrollBehavior: 'contain' }}>

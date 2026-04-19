@@ -2084,6 +2084,48 @@ html[data-performance='lite'] :where(
   background: rgba(15, 23, 42, 0.9) !important;
 }
 
+[data-theme='dark'] .chat-history-item:hover,
+[data-theme='dark'] .chat-history-item:focus-within {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme='dark'] .chat-history-item.chat-history-item--active,
+[data-theme='dark'] .chat-history-item.chat-history-item--active:hover,
+[data-theme='dark'] .chat-history-item.chat-history-item--active:focus-within {
+  background: rgba(22, 119, 255, 0.2) !important;
+}
+
+[data-theme='dark'] .chat-input-bar {
+  background: rgba(15, 23, 42, 0.65) !important;
+}
+
+[data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main {
+  background: rgba(30, 41, 59, 0.8) !important;
+}
+
+[data-theme='dark'] .chat-page-layout .chat-side-panel--config .ant-collapse > .ant-collapse-item {
+  background: rgba(30, 41, 59, 0.6) !important;
+}
+
+[data-theme='dark'] .chat-clear-btn.ant-btn {
+  background: rgba(30, 41, 59, 0.8) !important;
+}
+
+[data-theme='dark'] .chat-page-layout .chat-side-panel--config .ant-collapse-content {
+  background: transparent !important;
+}
+
+[data-theme='dark'] .suggestion-card:hover,
+[data-theme='dark'] .liquid-glass-flow-layout .suggestion-card:hover {
+  background: linear-gradient(154deg, rgba(24, 39, 66, 0.92), rgba(19, 32, 56, 0.86)) !important;
+  border-color: var(--sys-card-border-hover) !important;
+}
+
+[data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:hover,
+[data-theme='dark'] .chat-input-bar .chat-sender-root.ant-sender-main:focus-within {
+  background: rgba(30, 41, 59, 1) !important;
+}
+
 /* ==================== Interaction Sweep Motion System ==================== */
 :root,
 [data-theme='light'] {

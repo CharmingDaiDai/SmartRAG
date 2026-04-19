@@ -1,6 +1,6 @@
-# smartDoc Docker 部署完整指南
+# smartRAG Docker 部署完整指南
 
-本文档说明如何使用 Docker 和 Docker Compose 在本地开发环境以及生产服务器上部署 smartDoc 系统（包含后端 Java、前端 React、MySQL、MinIO、Milvus）。
+本文档说明如何使用 Docker 和 Docker Compose 在本地开发环境以及生产服务器上部署 smartRAG 系统（包含后端 Java、前端 React、MySQL、MinIO、Milvus）。
 
 > **前置要求**：已在本机/服务器上安装了 Docker 和 Docker Compose（Docker Desktop 或 docker compose 插件）。
 
@@ -24,7 +24,7 @@
 项目根目录下与 Docker 部署相关的文件：
 
 ```
-smartDoc/
+smartRAG/
 ├── docker-compose.yml                 # 开发/构建用 compose（本地使用）
 ├── docker-compose.runtime.yml         # 生产/运行时 compose（服务器使用）
 ├── Dockerfile.backend                 # 后端 Java 镜像构建文件
@@ -38,14 +38,14 @@ smartDoc/
 
 ### 文件用途
 
-| 文件 | 用途 | 说明 |
-|------|------|------|
-| `docker-compose.yml` | 开发/构建用 compose | 自动构建后端/前端镜像，所有配置直接定义在文件中 |
-| `docker-compose.runtime.yml` | 生产/运行时 compose | 只使用预构建镜像，所有配置直接定义在文件中 |
-| `Dockerfile.backend` | 后端镜像构建 | 多阶段构建：Maven → OpenJDK 运行时 |
-| `Dockerfile.frontend` | 前端镜像构建 | 多阶段构建：Node.js → Nginx |
-| `nginx.conf` | Nginx 反向代理配置 | API 反向代理和 SSE 流式连接支持 |
-| `.env.example` | 环境变量参考 | 仅供参考，不参与部署，所有配置已在 docker-compose 中定义 |
+| 文件                           | 用途                | 说明                                                     |
+| ------------------------------ | ------------------- | -------------------------------------------------------- |
+| `docker-compose.yml`         | 开发/构建用 compose | 自动构建后端/前端镜像，所有配置直接定义在文件中          |
+| `docker-compose.runtime.yml` | 生产/运行时 compose | 只使用预构建镜像，所有配置直接定义在文件中               |
+| `Dockerfile.backend`         | 后端镜像构建        | 多阶段构建：Maven → OpenJDK 运行时                      |
+| `Dockerfile.frontend`        | 前端镜像构建        | 多阶段构建：Node.js → Nginx                             |
+| `nginx.conf`                 | Nginx 反向代理配置  | API 反向代理和 SSE 流式连接支持                          |
+| `.env.example`               | 环境变量参考        | 仅供参考，不参与部署，所有配置已在 docker-compose 中定义 |
 
 ---
 
@@ -53,15 +53,15 @@ smartDoc/
 
 ### 标准端口映射
 
-| 服务 | 容器内端口 | 宿主机端口 | 访问地址 | 说明 |
-|------|-----------|---------|--------|------|
-| **Frontend** | 80 | 3000 | http://localhost:3000 | 前端 Web 应用 |
-| **Backend** | 8080 | 8080 | http://localhost:8080 | 后端 API |
-| **MySQL** | 3306 | 13306 | localhost:13306 | 关系型数据库 |
-| **MinIO (API)** | 9000 | 9000 | http://localhost:9000 | 对象存储 API |
-| **MinIO (Console)** | 9001 | 9001 | http://localhost:9001 | MinIO 管理控制台 |
-| **Milvus** | 19530 | 19530 | localhost:19530 | 向量数据库 gRPC 服务 |
-| **Milvus Metrics** | 9091 | 9091 | http://localhost:9091 | Milvus 监控指标 |
+| 服务                      | 容器内端口 | 宿主机端口 | 访问地址              | 说明                 |
+| ------------------------- | ---------- | ---------- | --------------------- | -------------------- |
+| **Frontend**        | 80         | 3000       | http://localhost:3000 | 前端 Web 应用        |
+| **Backend**         | 8080       | 8080       | http://localhost:8080 | 后端 API             |
+| **MySQL**           | 3306       | 13306      | localhost:13306       | 关系型数据库         |
+| **MinIO (API)**     | 9000       | 9000       | http://localhost:9000 | 对象存储 API         |
+| **MinIO (Console)** | 9001       | 9001       | http://localhost:9001 | MinIO 管理控制台     |
+| **Milvus**          | 19530      | 19530      | localhost:19530       | 向量数据库 gRPC 服务 |
+| **Milvus Metrics**  | 9091       | 9091       | http://localhost:9091 | Milvus 监控指标      |
 
 ### 重要说明
 
@@ -85,15 +85,17 @@ smartDoc/
 ### 3.2 后端环境变量详解
 
 #### 数据库配置
+
 ```yaml
 DB_HOST: mysql              # MySQL 服务名或 IP（Docker 中使用服务名）
 DB_PORT: 3306              # MySQL 端口
-DB_NAME: smart_doc         # 数据库名
+DB_NAME: smart_rag_db         # 数据库名
 DB_USERNAME: root          # 数据库用户
 DB_PASSWORD: 123456        # 数据库密码（生产环境请修改）
 ```
 
 #### JWT 认证配置
+
 ```yaml
 JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
 # 用于签名 JWT Token，生产环境建议修改为强随机密钥
@@ -105,6 +107,7 @@ JWT_ISSUER_URI: http://backend:8080
 ```
 
 #### GitHub OAuth 配置（可选）
+
 ```yaml
 GITHUB_CLIENT_ID: your_github_client_id
 GITHUB_CLIENT_SECRET: your_github_client_secret
@@ -113,6 +116,7 @@ GITHUB_REDIRECT_URI: http://localhost:8080/api/auth/callback/github
 ```
 
 #### AI 模型配置
+
 ```yaml
 # 至少需要配置一个 AI 模型
 
@@ -127,6 +131,7 @@ GEMINI_API_KEY: your_gemini_api_key_here
 ```
 
 #### 嵌入模型配置
+
 ```yaml
 EMBEDDING_API_KEY: notnull
 EMBEDDING_BASE_URL: http://embedding-service:9997/v1/
@@ -136,6 +141,7 @@ EMBEDDING_MODEL_NAME: bge-m3
 ```
 
 #### 向量数据库配置（Milvus）
+
 ```yaml
 MILVUS_HOST: milvus-standalone
 MILVUS_PORT: 19530
@@ -144,6 +150,7 @@ MILVUS_PORT: 19530
 ```
 
 #### 对象存储配置（MinIO）
+
 ```yaml
 MINIO_ENDPOINT: http://minio:9000
 MINIO_ACCESS_KEY: root
@@ -167,6 +174,7 @@ backend:
 ```
 
 然后重新启动服务：
+
 ```bash
 docker compose down
 docker compose up -d
@@ -207,6 +215,7 @@ frontend:
 ```
 
 **重要**：修改 `REACT_APP_API_BASE` 需要重新构建镜像：
+
 ```bash
 docker compose build frontend
 docker compose up -d frontend
@@ -219,17 +228,17 @@ docker compose up -d frontend
 ### 4.1 前置准备
 
 1. **确保文件存在**：
+
    ```bash
    ls -la docker-compose.yml Dockerfile.backend
    ls -la frontend/Dockerfile.frontend frontend/nginx.conf
    ```
-
 2. **检查 Docker 安装**：
+
    ```bash
    docker --version
    docker compose version
    ```
-
 3. **可选：调整资源限制**
 
    如果 Docker 内存/CPU 不足，可以在 Docker Desktop 设置中增加分配的资源。
@@ -269,12 +278,12 @@ docker compose exec backend curl http://milvus-standalone:19530/
 
 ### 4.4 访问应用
 
-| 组件 | 访问地址 | 用途 |
-|------|--------|------|
-| 前端页面 | http://localhost:3000 | 用户交互界面 |
-| 后端 API | http://localhost:8080 | REST API 端点 |
+| 组件         | 访问地址              | 用途           |
+| ------------ | --------------------- | -------------- |
+| 前端页面     | http://localhost:3000 | 用户交互界面   |
+| 后端 API     | http://localhost:8080 | REST API 端点  |
 | MinIO 控制台 | http://localhost:9001 | 查看上传的文件 |
-| Milvus 监控 | http://localhost:9091 | 向量库监控指标 |
+| Milvus 监控  | http://localhost:9091 | 向量库监控指标 |
 
 ### 4.5 实时开发工作流
 
@@ -297,12 +306,13 @@ docker compose logs -f backend
 ### 5.1 前置要求
 
 1. **服务器环境**：
+
    - Linux 服务器（CentOS 7.x 或 Ubuntu 18.04+）
    - Docker >= 20.10
    - Docker Compose >= 2.0
    - 至少 4GB 内存、20GB 磁盘空间
-
 2. **网络配置**：
+
    - 开放对外端口：3000（前端）、8080（后端 API）、9001（MinIO 控制台，可选）
    - 建议使用防火墙隔离内部通信端口
 
@@ -316,18 +326,18 @@ ssh user@your-server-ip
 
 # 克隆项目（或上传代码）
 cd /root
-git clone https://github.com/your-org/smartDoc.git
+git clone https://github.com/your-org/smartRAG.git
 # 或
-scp -r ./smartDoc user@your-server-ip:/root/
+scp -r ./smartRAG user@your-server-ip:/root/
 
 # 进入项目目录
-cd /root/smartDoc
+cd /root/smartRAG
 
 # 构建后端和前端镜像
 docker compose build backend frontend
 
 # 确认镜像已构建
-docker images | grep smartdoc
+docker images | grep smartrag
 ```
 
 #### 方案 B：在开发机构建并导出
@@ -337,17 +347,17 @@ docker images | grep smartdoc
 docker compose build backend frontend
 
 # 导出镜像为 tar 文件
-docker save -o smartdoc-images.tar smartdoc-backend:latest smartdoc-frontend:latest
+docker save -o smartrag-images.tar smartrag-backend:latest smartrag-frontend:latest
 
 # 上传到服务器
-scp smartdoc-images.tar user@your-server-ip:/root/
+scp smartrag-images.tar user@your-server-ip:/root/
 
 # 在服务器上加载镜像
 ssh user@your-server-ip
-docker load -i smartdoc-images.tar
+docker load -i smartrag-images.tar
 
 # 验证镜像已加载
-docker images | grep smartdoc
+docker images | grep smartrag
 ```
 
 **注意**：如果开发机和服务器架构不同（如 ARM64 vs AMD64），不建议使用方案 B，应该在服务器上重新构建。
@@ -390,7 +400,7 @@ backend:
 ### 5.4 启动生产环境
 
 ```bash
-cd /root/smartDoc
+cd /root/smartRAG
 
 # 使用 runtime compose 启动（不再构建）
 docker compose -f docker-compose.runtime.yml up -d
@@ -424,7 +434,7 @@ docker compose -f docker-compose.runtime.yml exec mysql mysql -uroot -pYOUR_PASS
 使用 Nginx 或 Apache 作为反向代理，提升安全性和性能：
 
 ```nginx
-# /etc/nginx/sites-available/smartdoc
+# /etc/nginx/sites-available/smartrag
 server {
     listen 80;
     server_name your-domain.com;
@@ -478,12 +488,13 @@ RUN mvn -B package -DskipTests      # 编译打包
 # 运行阶段：OpenJDK 17
 FROM eclipse-temurin:17-jdk-jammy
 WORKDIR /app
-COPY --from=build /app/target/smartDoc-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/smartrag-3.0.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
 **构建特点**：
+
 - 多阶段构建：减小最终镜像大小
 - 第一阶段使用 Maven 编译，第二阶段只保留 JDK 和 jar
 - jar 文件在构建时被复制，容器内部不需要编译工具
@@ -510,6 +521,7 @@ CMD ["nginx", "-g", "daemon off;"]
 ```
 
 **构建特点**：
+
 - 多阶段构建：第一阶段构建，第二阶段只保留静态文件和 Nginx
 - 构建参数 `REACT_APP_API_BASE` 在构建时注入
 - Nginx 配置支持 SPA 前端路由和 API 代理
@@ -518,16 +530,16 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ```bash
 # 仅构建后端
-docker build -f Dockerfile.backend -t smartdoc-backend:latest .
+docker build -f Dockerfile.backend -t smartrag-backend:latest .
 
 # 仅构建前端（可以指定不同的 API 地址）
 docker build \
   --build-arg REACT_APP_API_BASE=http://api.your-domain.com:8080 \
   -f frontend/Dockerfile.frontend \
-  -t smartdoc-frontend:latest ./frontend
+  -t smartrag-frontend:latest ./frontend
 
 # 验证镜像已创建
-docker images | grep smartdoc
+docker images | grep smartrag
 ```
 
 ---
@@ -561,6 +573,7 @@ docker compose logs frontend | grep -i proxy
 ```
 
 **解决方案**：
+
 - 本地开发：确保 `REACT_APP_API_BASE=http://localhost:8080`
 - 生产环境：使用实际的域名或 IP，如 `http://api.your-domain.com` 或 `http://your-server-ip:8080`
 
@@ -587,6 +600,7 @@ docker compose exec backend env | grep DB_
 ```
 
 **解决方案**：
+
 - 确保 `docker-compose.yml` 中的数据库凭证正确
 - 确保 `DB_HOST=mysql`（服务名，不是 localhost）
 - 重新启动 MySQL：`docker compose restart mysql`
@@ -609,11 +623,12 @@ docker compose logs milvus-standalone | grep -i error
 
 # 4. 清理并重启 Milvus 及其依赖
 docker compose down
-docker volume rm smartdoc_milvus_etcd smartdoc_milvus_minio smartdoc_milvus_data
+docker volume rm smartrag_milvus_etcd smartrag_milvus_minio smartrag_milvus_data
 docker compose up -d milvus-etcd milvus-minio milvus-standalone
 ```
 
 **解决方案**：
+
 - 给 Milvus 足够的启动时间（通常需要 30-60 秒）
 - 确保有足够的磁盘空间
 - 检查 Docker 日志查看具体错误：`docker compose logs milvus-standalone`
@@ -640,6 +655,7 @@ docker compose exec backend env | grep MINIO_
 ```
 
 **解决方案**：
+
 - 确保 `MINIO_ENDPOINT=http://minio:9000`（容器内服务名）
 - 确保凭证与 docker-compose 中的配置一致
 - 重启 MinIO：`docker compose restart minio`
@@ -662,7 +678,7 @@ docker volume ls
 du -sh /var/lib/docker/volumes/*
 
 # 4. 删除不需要的卷
-docker volume rm smartdoc_mysql_data  # 谨慎操作，会丢失数据
+docker volume rm smartrag_mysql_data  # 谨慎操作，会丢失数据
 ```
 
 ### 7.6 端口已被占用
@@ -697,11 +713,11 @@ docker compose up -d
 
 ```bash
 # 方式 1：使用 mysqldump（推荐，可读性强）
-docker compose exec -T mysql mysqldump -uroot -p123456 smart_doc > smart_doc_backup.sql
+docker compose exec -T mysql mysqldump -uroot -p123456 smart_rag_db > smart_rag_db_backup.sql
 
 # 方式 2：备份整个卷
 docker run --rm \
-  -v smartdoc_mysql_data:/data \
+  -v smartrag_mysql_data:/data \
   -v $(pwd):/backup \
   alpine \
   sh -c "tar czf /backup/mysql_data.tar.gz -C /data ."
@@ -711,7 +727,7 @@ docker run --rm \
 
 ```bash
 docker run --rm \
-  -v smartdoc_minio_data:/data \
+  -v smartrag_minio_data:/data \
   -v $(pwd):/backup \
   alpine \
   sh -c "tar czf /backup/minio_data.tar.gz -C /data ."
@@ -721,7 +737,7 @@ docker run --rm \
 
 ```bash
 docker run --rm \
-  -v smartdoc_milvus_data:/data \
+  -v smartrag_milvus_data:/data \
   -v $(pwd):/backup \
   alpine \
   sh -c "tar czf /backup/milvus_data.tar.gz -C /data ."
@@ -736,11 +752,11 @@ docker run --rm \
 docker compose up -d mysql
 
 # 方式 1：从 SQL 文件恢复
-docker compose exec -T mysql mysql -uroot -p123456 smart_doc < smart_doc_backup.sql
+docker compose exec -T mysql mysql -uroot -p123456 smart_rag_db < smart_rag_db_backup.sql
 
 # 方式 2：从压缩包恢复
 docker run --rm \
-  -v smartdoc_mysql_data:/data \
+  -v smartrag_mysql_data:/data \
   -v $(pwd):/backup \
   alpine \
   sh -c "tar xzf /backup/mysql_data.tar.gz -C /data"
@@ -754,7 +770,7 @@ docker compose stop minio
 
 # 恢复数据卷
 docker run --rm \
-  -v smartdoc_minio_data:/data \
+  -v smartrag_minio_data:/data \
   -v $(pwd):/backup \
   alpine \
   sh -c "rm -rf /data/* && tar xzf /backup/minio_data.tar.gz -C /data"
@@ -778,12 +794,12 @@ echo "Starting backup at $(date)"
 
 # 备份 MySQL
 echo "Backing up MySQL..."
-docker compose exec -T mysql mysqldump -uroot -p123456 smart_doc | gzip > "$BACKUP_DIR/mysql_$DATE.sql.gz"
+docker compose exec -T mysql mysqldump -uroot -p123456 smart_rag_db | gzip > "$BACKUP_DIR/mysql_$DATE.sql.gz"
 
 # 备份 MinIO
 echo "Backing up MinIO..."
 docker run --rm \
-  -v smartdoc_minio_data:/data \
+  -v smartrag_minio_data:/data \
   -v $BACKUP_DIR:/backup \
   alpine \
   sh -c "tar czf /backup/minio_$DATE.tar.gz -C /data ."
@@ -801,7 +817,7 @@ chmod +x backup.sh
 ./backup.sh
 
 # 使用 cron 实现定期备份（每天凌晨 2 点）
-echo "0 2 * * * /root/smartDoc/backup.sh" | crontab -
+echo "0 2 * * * /root/smartRAG/backup.sh" | crontab -
 ```
 
 ---
@@ -853,7 +869,7 @@ docker compose build --no-cache backend frontend
 
 # 查看卷和磁盘用量
 docker volume ls
-docker volume inspect smartdoc_mysql_data
+docker volume inspect smartrag_mysql_data
 
 # 清理资源
 docker system prune -a        # 删除所有未使用的镜像和容器
@@ -888,7 +904,7 @@ docker images --format "table {{.Repository}}\t{{.Size}}"
 
 # 查看网络连接
 docker network ls
-docker network inspect smartdoc-net
+docker network inspect smartrag-net
 ```
 
 ### 联系与反馈

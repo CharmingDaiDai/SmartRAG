@@ -1,5 +1,5 @@
 /**
- * SmartDoc 客户端根组件 (React Root)
+ * SmartRAG 客户端根组件 (React Root)
  * 
  * 功能逻辑：
  * 1. 负责前端全局路由配置 (Routes & Route)，组合 `BasicLayout` 和各种业务页面。
