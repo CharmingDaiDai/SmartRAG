@@ -274,7 +274,7 @@ export const getMethodConfig = (method: string) => {
       key: "enableIntentRecognition",
       label: "意图识别",
       type: "switch",
-      defaultValue: false,
+      defaultValue: true,
     },
     {
       key: "enableQueryRewrite",
@@ -362,7 +362,7 @@ export const getMethodConfig = (method: string) => {
           min: 1,
           max: 20,
           step: 1,
-          defaultValue: 10,
+          defaultValue: 5,
         },
         ...commonSearchConfig,
       ],
@@ -379,7 +379,7 @@ export const getMethodConfig = (method: string) => {
           min: 1,
           max: 20,
           step: 1,
-          defaultValue: 10,
+          defaultValue: 5,
         },
         ...[
           // 开关类型
@@ -393,7 +393,7 @@ export const getMethodConfig = (method: string) => {
             key: "enableIntentRecognition",
             label: "意图识别",
             type: "switch",
-            defaultValue: false,
+            defaultValue: true,
           },
           // 选择类型
           {

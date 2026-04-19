@@ -337,6 +337,25 @@ const ChatPage: React.FC = () => {
       fetchHistorySessions(String(currentKbId));
   }, [currentKbId, fetchHistorySessions]);
 
+  // 切换到不同知识库时，重置当前会话上下文，避免跨库串话。
+  const previousKbIdRef = useRef<string | null>(null);
+  useEffect(() => {
+      const nextKbId = currentKbId ? String(currentKbId) : null;
+      const prevKbId = previousKbIdRef.current;
+
+      if (prevKbId && nextKbId && prevKbId !== nextKbId) {
+          if (isRequesting) {
+              abort();
+          }
+          setMessages([]);
+          setInput('');
+          setActiveHistoryId(null);
+          setHistoryList([]);
+      }
+
+      previousKbIdRef.current = nextKbId;
+  }, [currentKbId, isRequesting, abort, setMessages]);
+
   const wasRequestingRef = useRef(false);
   useEffect(() => {
       if (wasRequestingRef.current && !isRequesting && currentKbId) {
@@ -966,7 +985,7 @@ const ChatPage: React.FC = () => {
                         initialValues={{
                             topK: 5,
                             threshold: 0.0,
-                            maxTopK: 10
+                            maxTopK: 5
                         }}
                         size="small"
                     >
