@@ -1050,8 +1050,7 @@
   -webkit-backdrop-filter: none !important;
 }
 
-.liquid-glass-flow-layout .suggestion-card::before,
-.liquid-glass-flow-layout .suggestion-card::after {
+.liquid-glass-flow-layout .suggestion-card::before {
   content: none !important;
 }
 
@@ -1529,37 +1528,6 @@ html[data-performance='lite'] :where(
 
   .chat-messages-scroll {
     padding-bottom: 96px !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-ambient-orb,
-  .app-ambient-veil,
-  .app-ambient-caustic,
-  .app-ambient-bg::after,
-  .ant-select-dropdown,
-  .ant-dropdown-menu,
-  .ant-popover-inner,
-  .ant-picker-dropdown,
-  .ant-message-notice,
-  .ant-modal-mask,
-  .chat-input-bar::before,
-  .chat-input-bar .chat-sender-root.ant-sender-main::after,
-  .ant-btn-primary:not(:disabled)::after,
-  .ant-btn-primary:not(:disabled)::before,
-  .theme-icon-enter,
-  .icon-spin,
-  .loading-pulse {
-    animation: none !important;
-  }
-
-  .ant-card:hover,
-  .kb-card:hover,
-  .ant-btn-primary:not(:disabled):hover,
-  .ant-btn-default:not(:disabled):hover,
-  .ant-btn-dashed:not(:disabled):hover,
-  .suggestion-card:hover {
-    transform: none !important;
   }
 }
 
@@ -2054,9 +2022,7 @@ html[data-performance='lite'] :where(
 }
 
 .suggestion-card::before,
-.suggestion-card::after,
-.liquid-glass-flow-layout .suggestion-card::before,
-.liquid-glass-flow-layout .suggestion-card::after {
+.liquid-glass-flow-layout .suggestion-card::before {
   content: none !important;
 }
 
@@ -2116,4 +2082,322 @@ html[data-performance='lite'] :where(
 
 [data-theme='dark'] .documents-table .ant-table-thead > tr > th {
   background: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* ==================== Interaction Sweep Motion System ==================== */
+:root,
+[data-theme='light'] {
+  --fx-surface-glow: rgba(59, 130, 246, 0.42);
+  --fx-surface-edge: rgba(191, 219, 254, 0.9);
+  --fx-surface-sheen: rgba(125, 211, 252, 0.88);
+  --fx-action-glow: rgba(37, 99, 235, 0.38);
+  --fx-action-glow-strong: rgba(37, 99, 235, 0.55);
+  --fx-action-sheen: rgba(147, 197, 253, 0.94);
+  --fx-field-glow: rgba(37, 99, 235, 0.48);
+  --fx-field-sheen: rgba(125, 211, 252, 0.88);
+  --fx-suggestion-glow: rgba(14, 165, 233, 0.54);
+  --fx-suggestion-sheen: rgba(103, 232, 249, 0.98);
+  --fx-history-glow: rgba(79, 70, 229, 0.52);
+  --fx-history-sheen: rgba(165, 180, 252, 0.95);
+}
+
+[data-theme='dark'] {
+  --fx-surface-glow: rgba(125, 211, 252, 0.52);
+  --fx-surface-edge: rgba(191, 219, 254, 0.96);
+  --fx-surface-sheen: rgba(186, 230, 253, 0.96);
+  --fx-action-glow: rgba(125, 211, 252, 0.44);
+  --fx-action-glow-strong: rgba(167, 243, 208, 0.58);
+  --fx-action-sheen: rgba(196, 181, 253, 0.96);
+  --fx-field-glow: rgba(125, 211, 252, 0.56);
+  --fx-field-sheen: rgba(165, 243, 252, 0.94);
+  --fx-suggestion-glow: rgba(103, 232, 249, 0.62);
+  --fx-suggestion-sheen: rgba(165, 243, 252, 1);
+  --fx-history-glow: rgba(165, 180, 252, 0.56);
+  --fx-history-sheen: rgba(196, 181, 253, 0.96);
+}
+
+@keyframes fx-surface-glide {
+  0% {
+    opacity: 0;
+    transform: translate3d(-132%, 0, 0) skewX(-14deg);
+  }
+  22% {
+    opacity: 0.98;
+  }
+  58% {
+    opacity: 0.74;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(132%, 0, 0) skewX(-14deg);
+  }
+}
+
+@keyframes fx-action-sheen {
+  0% {
+    opacity: 0;
+    transform: translate3d(-138%, 40%, 0) rotate(-7deg) skewX(-20deg);
+  }
+  24% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.84;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(138%, -40%, 0) rotate(-7deg) skewX(-20deg);
+  }
+}
+
+@keyframes fx-field-focus {
+  0% {
+    opacity: 0;
+    transform: translate3d(-126%, 0, 0) skewX(-18deg);
+  }
+  30% {
+    opacity: 0.94;
+  }
+  74% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(126%, 0, 0) skewX(-18deg);
+  }
+}
+
+@keyframes fx-suggestion-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(-146%, 0, 0) skewX(-12deg) scaleX(0.9);
+  }
+  18% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.82;
+  }
+  54% {
+    opacity: 0;
+  }
+  68% {
+    opacity: 0.96;
+  }
+  84% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(146%, 0, 0) skewX(-12deg) scaleX(1.04);
+  }
+}
+
+@keyframes fx-history-beam {
+  0% {
+    opacity: 0.12;
+    background-position: 0 130%;
+    transform: scaleY(0.84);
+  }
+  24% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0.26;
+    background-position: 0 -42%;
+    transform: scaleY(1);
+  }
+}
+
+/* A. 面板/卡片类：宽幅斜切扫光 */
+:where(
+  .ant-card,
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card,
+  .documents-table-shell,
+  .ui-empty-panel
+) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: border-color 0.28s ease, outline-color 0.28s ease, transform 0.24s ease, box-shadow 0.32s ease !important;
+}
+
+:where(
+  .ant-card,
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card,
+  .documents-table-shell,
+  .ui-empty-panel
+)::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  background: linear-gradient(118deg, transparent 18%, rgba(255, 255, 255, 0.9) 40%, var(--fx-surface-sheen) 52%, rgba(255, 255, 255, 0.84) 63%, transparent 84%);
+  opacity: 0;
+  transform: translate3d(-132%, 0, 0) skewX(-14deg);
+  mix-blend-mode: screen;
+}
+
+:where(
+  .ant-card,
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card,
+  .documents-table-shell,
+  .ui-empty-panel
+):is(:hover, :focus-within) {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42) inset !important;
+}
+
+:where(
+  .ant-card,
+  .dashboard-stat-card.ant-card,
+  .dashboard-chart-card.ant-card,
+  .kb-grid-card.ant-card,
+  .documents-table-shell,
+  .ui-empty-panel
+):is(:hover, :focus-within)::after {
+  animation: fx-surface-glide 1.28s cubic-bezier(0.18, 0.9, 0.22, 1) 1 both;
+}
+
+/* B. 按钮类：高速斜向刀光 */
+:where(.ant-btn:not(:disabled)) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+:where(.ant-btn:not(:disabled))::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: linear-gradient(102deg, transparent 16%, rgba(255, 255, 255, 0.98) 44%, var(--fx-action-sheen) 52%, rgba(255, 255, 255, 0.98) 60%, transparent 84%);
+  opacity: 0;
+  transform: translate3d(-138%, 40%, 0) rotate(-7deg) skewX(-20deg);
+  mix-blend-mode: screen;
+}
+
+:where(.ant-btn-primary:not(:disabled)):is(:hover, :focus-visible),
+:where(.ant-btn-default:not(:disabled), .ant-btn-dashed:not(:disabled), .ant-btn-text:not(:disabled)):is(:hover, :focus-visible) {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.34) inset !important;
+}
+
+:where(.ant-btn-primary:not(:disabled)):is(:hover, :focus-visible) {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.44) inset !important;
+}
+
+:where(.ant-btn:not(:disabled)):is(:hover, :focus-visible)::after {
+  animation: fx-action-sheen 0.9s cubic-bezier(0.16, 0.88, 0.22, 1) 1 both;
+}
+
+/* C. 输入控件类：细窄轨迹扫光 */
+:where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number
+) {
+  transition: border-color 0.24s ease, background-color 0.24s ease, box-shadow 0.28s ease !important;
+}
+
+:where(.ant-input-affix-wrapper, .ant-select-selector, .ant-picker, .ant-input-number) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+:where(.ant-input-affix-wrapper, .ant-select-selector, .ant-picker, .ant-input-number)::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: linear-gradient(98deg, transparent 12%, rgba(255, 255, 255, 0.92) 44%, var(--fx-field-sheen) 52%, rgba(255, 255, 255, 0.92) 60%, transparent 88%);
+  opacity: 0;
+  transform: translate3d(-126%, 0, 0) skewX(-18deg);
+  mix-blend-mode: screen;
+}
+
+:where(
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select:hover .ant-select-selector,
+  .ant-picker,
+  .ant-input-number
+):is(:hover, :focus-within) {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42) inset !important;
+}
+
+.ant-input-affix-wrapper:is(:hover, :focus-within)::after,
+.ant-select:hover .ant-select-selector::after,
+.ant-select-focused .ant-select-selector::after,
+.ant-picker:is(:hover, :focus-within)::after,
+.ant-picker-focused::after,
+.ant-input-number:is(:hover, :focus-within)::after,
+.ant-input-number-focused::after {
+  animation: fx-field-focus 1.2s cubic-bezier(0.2, 0.86, 0.24, 1) 1 both;
+}
+
+/* D. 建议卡片类：双峰棱镜扫光（更大胆） */
+.suggestion-card,
+.liquid-glass-flow-layout .suggestion-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.suggestion-card::after,
+.liquid-glass-flow-layout .suggestion-card::after {
+  content: '' !important;
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  background: linear-gradient(114deg, transparent 0%, rgba(255, 255, 255, 0.98) 24%, var(--fx-suggestion-sheen) 44%, var(--fx-suggestion-glow) 52%, var(--fx-suggestion-sheen) 62%, rgba(255, 255, 255, 0.98) 76%, transparent 100%);
+  opacity: 0;
+  transform: translate3d(-146%, 0, 0) skewX(-12deg) scaleX(0.9);
+  mix-blend-mode: screen;
+}
+
+.suggestion-card:is(:hover, :focus-visible),
+.liquid-glass-flow-layout .suggestion-card:is(:hover, :focus-visible) {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.52) inset !important;
+}
+
+.suggestion-card:is(:hover, :focus-visible)::after,
+.liquid-glass-flow-layout .suggestion-card:is(:hover, :focus-visible)::after {
+  animation: fx-suggestion-sweep 0.92s cubic-bezier(0.18, 0.9, 0.2, 1) 1 both;
+}
+
+/* E. 历史项类：纵向轨道扫光 */
+.chat-history-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-history-item::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.92) 22%, var(--fx-history-sheen) 44%, var(--fx-history-glow) 62%, rgba(255, 255, 255, 0.9) 78%, transparent 100%);
+  background-size: 100% 230%;
+  background-position: 0 130%;
+  opacity: 0.12;
+  transform: scaleY(0.84);
+  transform-origin: center;
+}
+
+.chat-history-item:is(:hover, :focus-within)::before {
+  animation: fx-history-beam 0.84s linear 1 both;
 }
