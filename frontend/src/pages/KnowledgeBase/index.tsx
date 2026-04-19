@@ -1,3 +1,15 @@
+/**
+ * 知识库管理中心列表视图
+ * 
+ * 功能逻辑：
+ * 1. 列表展示：从 kbService 获取所有知识库列表信息（包含名称、索引策略、文档数量、状态等）。
+ * 2. 知识库的创建（支持选择不同的 RAG 索引策略如 Naive、HiSem Fast 等，支持绑定模型）。
+ * 3. 知识库的删除、清空和重命名操作。
+ * 4. 统计信息汇总：统计当前用户的总知识库数量和总收录文档数。
+ * 
+ * 影响范围：
+ * 所有的知识库生命周期管理。这里创建和配置的策略，将直接影响上传到此知识库中文档的向量化切分策略。
+ */
 import { Button, Tag, Space, Popconfirm, message, Modal, Form, Input, Select, Typography, Card, Row, Col, Spin, Slider, Switch, Tooltip, Dropdown, Empty, theme } from 'antd';
 import { useState, useEffect, MouseEvent } from 'react';
 import { PlusOutlined, MessageOutlined, FileTextOutlined, DeleteOutlined, QuestionCircleOutlined, SyncOutlined, EllipsisOutlined } from '@ant-design/icons';
@@ -11,6 +23,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { documentService } from '../../services/documentService';
 import { formatRelativeDateTime } from '../../utils/formatters';
 
+// 策略映射：前端 RAG_METHODS 枚举对应后端的实际策略大写枚举值
 const INDEX_STRATEGY_TYPE_MAP: Record<string, string> = {
     [RAG_METHODS.NAIVE]: 'NAIVE_RAG',
     [RAG_METHODS.HISEM_FAST]: 'HISEM_RAG_FAST',

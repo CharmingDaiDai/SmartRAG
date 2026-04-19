@@ -1,3 +1,17 @@
+/**
+ * 文档资源库总览页面 (DocumentsPage)
+ * 
+ * 功能逻辑：
+ * 1. 作为 SmartRAG 系统中所有已上传文件的上帝视角管理中心（包含所属知识库的分野概览）。
+ * 2. 具备复合型上传 Modal：在选择目标知识库之后，将动态拉取该知识库的解析策略 (Index Strategy)。
+ * 3. 动态准入控制：对于 Markdown-Only 的知识库策略，前端强制拒绝掉非 Markdown 文件的 Upload 预检以防后端索引报错。
+ * 4. 提供文档级操作：逐章删除、批量勾选删除、以及预览原文件 (依靠关联的 DocumentViewer)。
+ * 
+ * 涉及状态：
+ * - currentPage, pageSize: 前端路由同步的翻页状态记录。
+ * - filterKbId: 右上角全局知识库下拉筛选器。
+ * - uploadForm.kbId: 上传动作对应的目标受体，控制 uploadAccept 和拒绝提示。
+ */
 import { Button, Space, Popconfirm, Upload, Modal, Tag, Table, Input, Select, Form, Alert, Typography, Tooltip, App, Empty, theme } from 'antd';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { PlusOutlined, FilePdfOutlined, FileWordOutlined, FileTextOutlined, SearchOutlined, FileExcelOutlined, FilePptOutlined, FileMarkdownOutlined, FileImageOutlined, FileZipOutlined, CloseOutlined, InboxOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -22,6 +36,7 @@ import {
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
 
+/** 防止用户篡改 URL 传入失效参数，强转为合法的正整数分页 */
 const parsePositiveIntParam = (value: string | null, fallback: number) => {
     if (!value) return fallback;
 
@@ -33,6 +48,7 @@ const parsePositiveIntParam = (value: string | null, fallback: number) => {
     return parsed;
 };
 
+/** 简易文件拓展名到 Ant Design V5 图标和颜色的映射表 */
 const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
     const style = { fontSize: '20px' };
@@ -46,6 +62,7 @@ const getFileIcon = (fileName: string, primaryColor = '#6366f1') => {
     return <FileTextOutlined style={{ ...style, color: '#a8a29e' }} />;
 };
 
+/** 桥接 RcUpload 的 File 对象至原生的 BOM File */
 const toNativeFile = (file: UploadFile): File | null => {
     if (file.originFileObj instanceof File) return file.originFileObj;
     const possibleFile = file as unknown as File;
@@ -74,20 +91,23 @@ export default function DocumentsPage() {
     const [filterKbId, setFilterKbId] = useState<string | undefined>(() => searchParams.get('kbId') || undefined);
   const { currentKbId, setCurrentKbId } = useAppStore();
     const [uploadForm] = Form.useForm();
-                const uploadKbId = Form.useWatch('kbId', uploadForm);
-                const effectiveUploadKbId = uploadKbId ?? currentKbId;
-                const uploadTargetKb = kbs.find(kb => String(kb.id) === String(effectiveUploadKbId ?? ''));
-                const uploadStrategyType = uploadTargetKb?.indexStrategyType;
-                const uploadDescription = getUploadDescriptionByStrategy(uploadStrategyType);
-                const uploadAccept = getUploadAcceptByStrategy(uploadStrategyType);
-        const [fileList, setFileList] = useState<UploadFile[]>([]);
-        const [uploading, setUploading] = useState(false);
-        const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
-        const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
-        const [viewerOpen, setViewerOpen] = useState(false);
-        const [viewingDocument, setViewingDocument] = useState<DocumentItem | null>(null);
+                
+    // 【核心策略推导逻辑】通过动态监视上传表单中选择的目标知识库，计算出预设它的摄入支持策略
+    const uploadKbId = Form.useWatch('kbId', uploadForm);
+    const effectiveUploadKbId = uploadKbId ?? currentKbId;
+    const uploadTargetKb = kbs.find(kb => String(kb.id) === String(effectiveUploadKbId ?? ''));
+    const uploadStrategyType = uploadTargetKb?.indexStrategyType;
+    const uploadDescription = getUploadDescriptionByStrategy(uploadStrategyType);
+    const uploadAccept = getUploadAcceptByStrategy(uploadStrategyType);
 
-  // 动态计算表格滚动高度
+    const [fileList, setFileList] = useState<UploadFile[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [deletingDocIds, setDeletingDocIds] = useState<Record<string, boolean>>({});
+    const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewingDocument, setViewingDocument] = useState<DocumentItem | null>(null);
+
+  // 动态计算表格滚动高度（由于表格置于主列高度中，需要自适应剩余屏幕空间防止页面双滚动条）
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const [tableScrollY, setTableScrollY] = useState<number>(400);
 
@@ -100,7 +120,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
       calcTableHeight();
-      const obs = new ResizeObserver(calcTableHeight);
+      const obs = new ResizeObserver(calcTableHeight); // ResizeObserver 监听外层框架形变以动态适配
       if (tableWrapperRef.current) obs.observe(tableWrapperRef.current);
       return () => obs.disconnect();
   }, [calcTableHeight]);
@@ -129,21 +149,19 @@ export default function DocumentsPage() {
 
           let res: any;
           if (filterKbId) {
-              // 使用 listByKb 按知识库筛选
+              // 使用 listByKb 按知识库下钻获取该库专属下的所有文档文件
               res = await documentService.listByKb(String(filterKbId), params);
           } else {
-              // 获取所有文档
+              // 获取用户所有的文档
               res = await documentService.listAll(params);
           }
 
           if (res.code === 200) {
-              // Assuming the response structure for pagination is data: { content: [], totalElements: 0 }
-              // Adjust based on actual backend response structure if different
+              // 处理基于 Spring Data JPA Content 标准或裸数组两种结构回包防爆保障
               if (res.data && Array.isArray(res.data.content)) {
                   setData(res.data.content);
                   setTotal(res.data.totalElements);
               } else if (Array.isArray(res.data)) {
-                  // Fallback for non-paginated response or different structure
                   setData(res.data);
                   setTotal(res.data.length);
               }

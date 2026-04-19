@@ -1,3 +1,16 @@
+/**
+ * RAG 参考文档引用查看器 (ReferenceViewer)
+ * 
+ * 功能逻辑：
+ * 1. 接收大模型执行完毕后返回的 `references` (参考列表数据，含标题、相似度打分和原文块)。
+ * 2. 渲染一个折叠面板区域。折叠时展示数量，展开后展现前 5 条引用卡片。
+ * 3. 点击单条引用卡片时，弹出一个宽 Modal，内部使用 XMarkdown 能够渲染原汁原味的代码、图表。
+ * 4. Modal 底部提供「上一篇/下一篇」的分页轮播功能，方便用户核对大模型回答的准确性与事实来源。
+ * 
+ * 组件设计：
+ * - 引入 memo 避免对话流式输入阶段（每秒多次 render）导致本组件无意义重绘。
+ * - 动态注册的 Markdown 解析器，支持从后端抛出的包含 KaTeX 或 Mermaid 格式的文档块。
+ */
 import React, { useState, memo } from 'react';
 import { Modal, Space, Button, Typography, theme } from 'antd';
 import { FileTextOutlined, LeftOutlined, RightOutlined, EyeOutlined, CaretDownOutlined, CaretRightOutlined } from '@ant-design/icons';
@@ -6,17 +19,22 @@ import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown';
 import Latex from '@ant-design/x-markdown/plugins/Latex';
 import { useAppStore } from '../store/useAppStore';
 
+/** 后端反传出引用块的数据结构定义 */
 interface Reference {
-    title: string;
-    score: number;
-    content?: string;
-    id?: string | number;
+    title: string;          // 被引用的源文档名称
+    score: number;          // 向量距离评分 (0-1)
+    content?: string;       // Chunk 片段的原始文本内容
+    id?: string | number;   // 溯源 ID
 }
 
 interface ReferenceViewerProps {
     references: Reference[];
 }
 
+/** 
+ * 自定义的代码高亮插槽，当来源文档中包含程序代码时截获渲染
+ * 如果命中 mermaid 标记，就转交为流程图绘制器
+ */
 const Code: React.FC<ComponentProps> = (props) => {
     const { className, children } = props;
     const lang = className?.match(/language-(\w+)/)?.[1] || '';
@@ -27,31 +45,35 @@ const Code: React.FC<ComponentProps> = (props) => {
     return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>;
 };
 
+// 预先初始化 Markdown 的插件依赖防止组件内高频初始化
 const MD_CONFIG = { extensions: Latex({ katexOptions: { output: 'html' as const, throwOnError: false } }) };
 const MD_COMPONENTS = { code: Code };
 
 const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [expanded, setExpanded] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false); // 控制详细正文弹窗是否可见
+    const [currentIndex, setCurrentIndex] = useState(0);    // 当前在弹窗中正在阅读的引文下标
+    const [expanded, setExpanded] = useState(false);        // 控制卡片列表本身是合起还是展开
     const { themeMode } = useAppStore();
     const { token } = theme.useToken();
 
+    // 防御性拦截，如果没有资料提供支撑则直接隐形
     if (!references || references.length === 0) return null;
 
     const currentRef = references[currentIndex];
 
+    /** 通过点击小卡片唤出全屏弹层，并定位到对应的序列位置 */
     const handleItemClick = (idx: number) => {
         setCurrentIndex(idx);
         setIsModalOpen(true);
     };
 
+    // 翻页循环机制 (取模运转，无缝切换)
     const handleNext = () => setCurrentIndex((prev) => (prev + 1) % references.length);
     const handlePrev = () => setCurrentIndex((prev) => (prev - 1 + references.length) % references.length);
 
     return (
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${token.colorBorderSecondary}` }}>
-            {/* 标题行（点击展开/收缩） */}
+            {/* 折叠/展开控制头（包含三角号动画） */}
             <div
                 onClick={() => setExpanded(!expanded)}
                 style={{
@@ -78,9 +100,10 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) =>
                 </Typography.Text>
             </div>
 
-            {/* 文档列表（展开后显示） */}
+            {/* 当处于展开状态时绘制条目队列 */}
             {expanded && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {/* UI 保护：超过 5 条不渲染以防刷爆版面，用户可通过分页在弹窗里读 */}
                     {references.slice(0, 5).map((ref, idx) => (
                         <div
                             key={idx}
@@ -119,7 +142,7 @@ const ReferenceViewer: React.FC<ReferenceViewerProps> = memo(({ references }) =>
                 </div>
             )}
 
-            {/* 详情 Modal */}
+            {/* 包含分页器与详细文本高亮的阅读弹层 Modal */}
             <Modal
                 title={
                     <Space>

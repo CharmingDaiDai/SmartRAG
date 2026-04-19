@@ -1,3 +1,12 @@
+/**
+ * 核心基础嵌套布局组件
+ * 
+ * 功能逻辑：
+ * 1. 提供全局的三大金刚区域（Header 顶导, Sider 侧边栏/Drawer, Content 主内容区），除了登录/注册页外所有的子页面路由 (`<Outlet />`) 都在这里展开。
+ * 2. 处理适配响应式布局，提供了一个 `useIsMobile` 的自定义 Hook。如果在终端设备或小窗口上渲染，原侧边栏抽屉式收起，呈现为 Drawer 展开形态。
+ * 3. 顶层 Header 承载当前路径名显示、全局主题引擎 (`ThemePopover`) 和当前登录人头像管理（注销功能）。
+ * 4. 特化全屏模式：对 `/chat` (RAG功能界面) 进行特判 (`isFullPage`)，屏蔽传统业务页面的 Padding 与内阴影盒子，留出版心进行 Edge-to-Edge 的流式聊天设计。
+ */
 import { useState, useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, theme, Button, Typography, Drawer } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -19,6 +28,7 @@ import ThemePopover from '../components/ThemePopover';
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
+// 当前应用中所有的导航地址与顶层大标题的映射
 const PAGE_NAMES: Record<string, string> = {
   '/dashboard': '仪表盘',
   '/documents': '文档管理',
@@ -27,9 +37,12 @@ const PAGE_NAMES: Record<string, string> = {
   '/profile': '个人资料',
 };
 
-// Breakpoint: treat ≤768px as mobile
+// 预设移动端/小屏幕的分界阈值 (Breakpoint)
 const MOBILE_BREAKPOINT = 768;
 
+/**
+ * 监听视口 Resize 的钩子，判断当前是否为狭窄布局环境
+ */
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= MOBILE_BREAKPOINT);
   useEffect(() => {
@@ -40,7 +53,10 @@ function useIsMobile() {
   return isMobile;
 }
 
-// Shared sidebar nav content — used by both Sider (desktop) and Drawer (mobile)
+/**
+ * 提取后的边栏渲染物
+ * 无论是在桌面浏览器的固定版位中，还是在移动端的抽屉环境里，保持统一外观逻辑。
+ */
 function SidebarContent({
   collapsed,
   token,
@@ -54,7 +70,7 @@ function SidebarContent({
 }) {
   return (
     <>
-      {/* Logo 区域 */}
+      {/* 网站 Logo 图标与文案展示 */}
       <div style={{
         height: 68,
         display: 'flex',
@@ -75,6 +91,7 @@ function SidebarContent({
           }}
         />
         {!collapsed && (
+          // 基于 framer-motion 实现的展开折叠文字位移动画，避免生硬地跳字
           <motion.span
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
@@ -93,7 +110,7 @@ function SidebarContent({
         )}
       </div>
 
-      {/* 导航菜单 */}
+      {/* 使用 Ant Design Menu 进行导航项绑定 */}
       <Menu
         mode="inline"
         selectedKeys={[selectedKey]}
@@ -119,24 +136,27 @@ export default function BasicLayout() {
   const { token } = theme.useToken();
   const isMobile = useIsMobile();
 
-  // Close drawer on route change
+  // 当页面的路由变化时，如果是在移动端则顺手关掉左侧导航抽屉
   useEffect(() => {
     setMobileDrawerOpen(false);
   }, [location.pathname]);
 
-  // Auto-collapse sidebar on resize to small
+  // 当窗口收拢到指定范围触发 isMobile 响应，顺势收起固定菜单栏
   useEffect(() => {
     if (isMobile) {
       setCollapsed(true);
     }
   }, [isMobile]);
 
+  // 针对 Chat 界面的特判标志，后续决定是否让内容框贴着边缘 (100% 充满视口)
   const isFullPage = location.pathname === '/chat';
 
+  // 动态找出顶部的汉化名称
   const currentPageName = Object.entries(PAGE_NAMES).find(([key]) =>
     location.pathname === key || location.pathname.startsWith(key + '/')
   )?.[1] || '';
 
+  // Antd Menu 支持的声明式导航条目数组，`onClick` 用来发起单页跳转
   const makeMenuItems = (isDrawer = false) => [
     {
       type: 'group' as const,

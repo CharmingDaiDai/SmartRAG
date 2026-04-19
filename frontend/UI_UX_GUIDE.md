@@ -1,22 +1,20 @@
-# SmartDoc 前端 UI/UX 开发指南
+# SmartDoc 前端 UI/UX 与个性化主题开发指南
 
-> 面向后续开发者的说明文档，涵盖设计系统、动画、组件库的使用规范和修改方式。
+> 面向后续开发者的说明文档，涵盖设计系统、动画、组件库的使用规范、统一视觉风格和主题个性化的实现方式。
 
 ---
 
 ## 目录
 
 1. [技术栈总览](#1-技术栈总览)
-2. [设计系统：颜色与主题](#2-设计系统颜色与主题)
-3. [字体系统](#3-字体系统)
-4. [全局样式 CSS 变量](#4-全局样式-css-变量)
-5. [Ant Design 主题配置](#5-ant-design-主题配置)
-6. [Tailwind CSS 配置](#6-tailwind-css-配置)
-7. [动画系统（Framer Motion）](#7-动画系统framer-motion)
-8. [布局系统](#8-布局系统)
-9. [页面级说明](#9-页面级说明)
-10. [组件说明](#10-组件说明)
-11. [常见修改场景](#11-常见修改场景)
+2. [设计系统：颜色与主题核心](#2-设计系统颜色与主题核心)
+3. [字体系统与动态加载](#3-字体系统与动态加载)
+4. [个性化主题配置引擎 (ThemePopover)](#4-个性化主题配置引擎-themepopover)
+5. [全局样式 CSS 变量引擎](#5-全局样式-css-变量引擎)
+6. [Ant Design 主题配置 (CSS-in-JS)](#6-ant-design-主题配置-css-in-js)
+7. [Tailwind CSS 配套约束](#7-tailwind-css-配套约束)
+8. [动画系统 (Framer Motion)](#8-动画系统-framer-motion)
+9. [高定玻璃态特效 (LiquidGlass)](#9-高定玻璃态特效-liquidglass)
 
 ---
 
@@ -24,180 +22,143 @@
 
 | 类别 | 技术 | 版本 | 用途 |
 |------|------|------|------|
-| 框架 | React | 18.2 | 核心框架 |
-| 语言 | TypeScript | 5.x | 类型安全 |
-| 构建 | Vite | 7.2.4 | 开发/构建工具 |
-| 组件库 | Ant Design | 6.0 | 通用 UI 组件 |
-| AI 组件 | @ant-design/x | 2.2.2 | 对话气泡、输入框、Markdown 渲染 |
-| 动画 | Framer Motion | 12.x | 页面/元素动画 |
-| 样式 | Tailwind CSS | 4.x | 工具类样式 |
-| 状态管理 | Zustand | 5.x | 全局状态（主题、用户、知识库） |
-| 路由 | React Router | 6.x | 页面路由 |
-| 图标 | @ant-design/icons | 6.x | Ant Design 图标 |
-| Markdown | @ant-design/x-markdown | 2.x | AI 消息的 Markdown + 代码高亮 |
+| 框架 | React | 18.2 | 核心响应式框架 |
+| 语言 | TypeScript | 5.x | 类型安全与接口保证 |
+| 构建 | Vite | 7.2.4 | 开发构建与秒级热更新 |
+| 组件库 | Ant Design | 6.0 | 基础表单、弹窗与反馈组件 |
+| AI 场景 | @ant-design/x | 2.2.2 | 提供对话气泡、请求条、模型选择器 |
+| Markdown | @ant-design/x-markdown | 2.x | 提供代码高亮、KaTeX 数学公式、Mermaid 图表支持 |
+| 动画 | Framer Motion | 12.x | 页面路由过渡、元素连锁进场动画 |
+| 原子样式 | Tailwind CSS | 4.x | 高效的工具类样式堆叠 |
+| 状态管理 | Zustand | 5.x | 管理深色模式、用户设置及鉴权状态 |
+| 视觉层 | tsParticles | 3.x | `ThemeBackground.tsx` 中的 Canvas 动态粒子特效 |
 
 ---
 
-## 2. 设计系统：颜色与主题
+## 2. 设计系统：颜色与主题核心
 
 ### 设计理念
 
-整体风格为**温暖米白 + 靛紫主色**，参考 Notion/Bear 的极简质感。
-- 背景使用暖调灰（Stone 系列），非冷灰
-- 主色使用 Indigo（#6366f1），带紫色调，有书卷气
-- 两套主题（亮色/暗色）同等重视，均精心设计
+本系统默认出厂风格为 **科技蓝/极简质感**，但由于引入了完整的**个性化引擎（ThemePopover）**，所有的基础颜色由用户和运营方自由调配。
+系统内置支持的基础色板包括：
+- **科技蓝 (Tech Blue)**：默认主色系，沉稳专业。
+- **极简黑白 (Monochrome)**：专注内容的无彩色调。
+- **薄荷绿 (Mint Green)**：清新自然的色调。
+- **樱花紫 (Sakura Purple)**：温柔活泼的色调。
+- **日落橙 (Sunset Orange)**：温暖热情的色调。
 
-### 主色板（Indigo）
+### 状态色 (语义色锁死)
 
+为了保证报错与警告的识别度，语义状态颜色全局受保护，不随用户定义的品牌色（colorPrimary）变化而变化：
 ```
-#eef2ff  ← primary-50  背景色（极浅）
-#e0e7ff  ← primary-100 柔和背景
-#c7d2fe  ← primary-200
-#a5b4fc  ← primary-300
-#818cf8  ← primary-400 暗色模式主色
-#6366f1  ← primary-500 ★ 亮色模式主色（colorPrimary）
-#4f46e5  ← primary-600 hover 状态
-#4338ca  ← primary-700
-```
-
-### 中性色板（暖调灰 / Stone 系列）
-
-```
-#fafaf9  ← neutral-50  亮色页面背景
-#f5f5f4  ← neutral-100 次级背景、表格 header
-#e7e5e4  ← neutral-200 边框颜色
-#d6d3d1  ← neutral-300 滚动条（亮色）
-#a8a29e  ← neutral-400 次要文字
-#78716c  ← neutral-500
-#57534e  ← neutral-600 正文辅助色
-#44403c  ← neutral-700 滚动条（暗色）
-#292524  ← neutral-800 暗色次级背景
-#1c1917  ← neutral-900 暗色卡片背景
-#141210  ← neutral-950 暗色最底层背景
+success: #10b981 / #52c41a
+warning: #f59e0b / #faad14
+error:   #ef4444 / #ff4d4f
+info:    主题色衍生 (同 colorPrimary)
 ```
 
-### 状态色
+### 颜色如何被修改
 
-```
-success: #10b981 （Emerald）
-warning: #f59e0b （Amber）
-error:   #ef4444 （Red）
-info:    #6366f1 （Indigo，与主色一致）
-```
-
-### 如何修改颜色
-
-**修改主色**：打开 [src/App.tsx](src/App.tsx)，找到 `lightToken` 对象，修改 `colorPrimary` 值。暗色模式主色修改 `darkToken` 中对应字段（暗色建议更浅，如 `#818cf8`）。
-
-**修改背景色**：修改 `lightToken.colorBgLayout`（亮色页面底色）和 `darkToken.colorBgLayout`（暗色底色）。
+**工程级修改主色**：如果需要增加一种主题色，需要在 `src/config/themeConfig.ts` 中的 `COLOR_THEMES` 增加对应配置（含主题色 HEX 值及名称）。无需在各个组件中做任何处理，顶层 `ConfigProvider` 和 Zustand 的联动机制会自动把颜色下发。
 
 ---
 
-## 3. 字体系统
+## 3. 字体系统与动态加载
 
-### 字体配置
+### 字体配置库 (`src/config/themeConfig.ts`)
 
-| 用途 | 字体 | 加载方式 |
+为了满足阅读复杂 RAG 文档的不同需求，字体从硬编码改造为配置驱动。
+
+| 类别 | 预设字体 | fallback 策略 |
 |------|------|------|
-| 正文 / UI | LXGW WenKai Screen（霞鹜文楷）| CDN（jsdelivr） |
-| 降级 | PingFang SC → Noto Sans SC → system | 系统字体 |
-| 代码 | JetBrains Mono | Google Fonts |
+| 无衬线 (现代) | Inter / Roboto | `system-ui, -apple-system, sans-serif` |
+| 衬线 (传统阅读) | Merriweather / Noto Serif SC | `Georgia, serif` |
+| 手写排版 (文艺) | 霞鹜文楷 (LXGW) | `cursive` |
+| 代码/日志 | JetBrains Mono | `ui-monospace, Consolas, monospace` |
 
-### 字体在哪里配置
-
-**CDN 引入**：[index.html](index.html) 的 `<head>` 末尾
-
-```html
-<!-- JetBrains Mono（代码字体）-->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap">
-
-<!-- LXGW WenKai Screen（中文字体）-->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-web@1.1.0/lxgwwenkaiscreenr.css">
-```
-
-**Ant Design token**：[src/App.tsx](src/App.tsx) 的 `lightToken` 中
-
-```typescript
-fontFamily: "'LXGW WenKai Screen', 'PingFang SC', 'Noto Sans SC', -apple-system, sans-serif",
-fontFamilyCode: "'JetBrains Mono', ui-monospace, Consolas, monospace",
-```
-
-**Tailwind**：[tailwind.config.js](tailwind.config.js) 的 `theme.extend.fontFamily`
-
-```javascript
-fontFamily: {
-  sans: ["'LXGW WenKai Screen'", "'PingFang SC'", 'sans-serif'],
-  mono: ["'JetBrains Mono'", 'ui-monospace', 'Consolas'],
-},
-```
-
-### 如何修改字体
-
-1. 替换 `index.html` 中的 CDN 链接为新字体
-2. 同步修改 `src/App.tsx` 的 `fontFamily` token
-3. 同步修改 `tailwind.config.js` 的 `fontFamily`
+### 动态加载机制
+由于中文字体极大（如霞鹜文楷包体积过大），前端系统不再将字体静态打入产物中。
+替代方案为通过 `themeConfig` 的配置项联动 `<link>` 标签，或者在用户首次在控制面板选择新字体时，由浏览器动态获取外部 Web Font CDN (如 Google Fonts, JSDelivr)。
 
 ---
 
-## 4. 全局样式 CSS 变量
+## 4. 个性化主题配置引擎 (ThemePopover)
 
-**文件**：[src/index.css](src/index.css)
+本项目的一大特性即允许终端用户重塑 UI 感官。控制台代码详见：`src/components/ThemePopover.tsx`。
 
-所有颜色通过 CSS 变量系统管理，避免硬编码，主题切换时自动生效。
+### 核心管理项
+- **深浅模式 (ThemeMode)**：切换亮色或暗色。
+- **UI 外观 (UIStyle)**：
+  - `default`：拟物化、微立体阴影。
+  - `flat`：扁平化极简，去除大多数投影与圆角。
+  - `glass`：**独特毛玻璃特效**，对话区域和抽屉呈现半透磨砂材质。
+- **排版系统 (Typography)**：调节 `fontFamily` 与 `fontSize`。
+- **品牌色 (ColorTheme)**：改变按钮、光标、对话气泡的底色。
 
-### 变量定义
+### 持久化
+设置改变时会经由 `useAppStore` 自动将当前对象的序列化结果写入到 `localStorage` 的 `SmartRAG_personalization` 键中，进行用户侧的云端隔离。
 
+---
+
+## 5. 全局样式 CSS 变量引擎
+
+**入口**：`src/index.css` 及 `src/App.css`。
+
+系统使用了 CSS-in-JS + CSS Variables 混编的策略：
+对于标准组件使用 Antd Token，对于自定义的高定组件（比如边栏的特殊呼吸灯效果）则绑定到了 `<html>` 或 `body` 上的 CSS 变量。
+
+### 亮暗主题 CSS 隔离示例
 ```css
 :root, [data-theme='light'] {
   --color-bg-base: #fafaf9;        /* 页面底色 */
-  --color-bg-elevated: #ffffff;    /* 卡片、容器 */
-  --color-bg-muted: #f5f5f4;       /* 次级区块 */
   --color-border: #e7e5e4;         /* 主边框 */
-  --color-border-subtle: #f5f5f4;  /* 细边框 */
-  --color-text: #1c1917;           /* 主文字 */
-  --color-text-secondary: #57534e; /* 辅助文字 */
-  --color-text-muted: #a8a29e;     /* 次要文字 */
-  --color-primary: #6366f1;        /* 主色 */
-  --color-primary-hover: #4f46e5;  /* 主色 hover */
-  --color-primary-soft: rgba(99,102,241,0.08); /* 主色浅底 */
-  --color-primary-border: rgba(99,102,241,0.20); /* 主色边框 */
-  --scrollbar-thumb: #d6d3d1;
-  /* Markdown 样式变量 */
-  --md-table-border: #e7e5e4;
-  --md-code-bg: #f5f5f4;
-  --md-pre-bg: #f6f8fa;
-  /* 参考文档条目 */
-  --ref-item-bg: #ffffff;
-  --ref-item-border: #e7e5e4;
+  --md-code-bg: #f5f5f4;           /* Markdown 内部代码块背景 */
 }
 
 [data-theme='dark'] {
-  /* 对应的暗色值 */
-  --color-bg-base: #141210;
-  --color-primary: #818cf8;
-  /* ... */
+  --color-bg-base: #101014;
+  --color-border: #333333;
+  --md-code-bg: #1c1c1e;
 }
 ```
 
-### index.css 中还包含
+---
 
-- Markdown 表格样式（`.ant-markdown table`）
-- 代码块样式（`.x-markdown-light`, `.x-markdown-dark`）
-- 滚动条美化（`::-webkit-scrollbar`）
-- 流式输出光标动画（`.streaming-cursor::after`）
-- 主题过渡动画（`.ant-layout`, `.ant-card` 等）
-- 参考文档悬停样式（`.reference-item`）
+## 6. Ant Design 主题配置 (CSS-in-JS)
+
+**文件**：[src/App.tsx](src/App.tsx)
+通过 `ConfigProvider` 利用了最新的 Token 计算体系。
+
+### 覆盖最佳实践 
+**禁止！**直接使用类名在 css 中重写：
+```css
+/* 错误示范 */
+.ant-btn { background-color: red !important; }
+```
+
+**推荐！**在 `theme.components` 节点覆写：
+```tsx
+<ConfigProvider 
+  theme={{ 
+    token: { colorPrimary: '#...', borderRadius: 8 }, 
+    components: { Button: { controlHeight: 40 } } 
+  }}
+...
+```
 
 ---
 
-## 5. Ant Design 主题配置
+## 7. 高定玻璃态特效 (LiquidGlass)
 
-**文件**：[src/App.tsx](src/App.tsx)
+为了贴合 AI 工具的前沿调性，项目中特地开发了高耗能的炫酷材质——玻璃流态（Liquid Glass），通常用于 Dashboard 统计卡片和登录弹窗背景。
 
-这是整个 UI 风格的核心配置文件。通过 `ConfigProvider` 的 `theme` 属性注入全局 token。
+### 相关组件 
+- `src/components/common/LiquidGlassCard.tsx`
+- `src/components/common/LiquidGlassButton.tsx`
 
-### Ant Design v6 样式覆盖最佳实践 (CSS-in-JS)
+### 视觉特点与修改方式
+该特点融合了 `backdrop-filter: blur()` 与多层渐变 border。
+如果在低端机型上卡顿，或者在白主题下显示突兀，可以在 `useAppStore` 中把 `uiStyle` 强制切回 `default`。如果要修改其反光色泽，可编辑对应的 `tailwind` class 组合 `bg-white/10 border-white/20 shadow-[...]`。
 
 Ant Design v6 采用了 **CSS-in-JS** 架构，会在运行时动态生成带有 hash 的类名。
 **强烈不建议**在 `App.css` 中使用全局 CSS 类名（如 `.ant-card`）去强行覆盖样式，因为：

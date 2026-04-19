@@ -1,3 +1,14 @@
+/**
+ * 全局状态管理器 (Zustand 驱动)
+ * 
+ * 功能逻辑：
+ * 1. 集中管理用户的认证状态（userInfo, token）、当前选择的知识库（currentKbId）、以及系统配置（如大模型列表、Embedding模型列表）。
+ * 2. 负责主题个性化与样式配置项的维护，如 `themeMode`（深浅色模式）、`colorTheme`、`fontFamily` 及 `uiStyle`，并将其同步持久化到 localStorage 中以便刷新后保留配置。
+ * 3. 包含核心的基础 API 和交互方法，例如 `login`（登录挂载 Token），`logout`（清理认证状态），`initUser`（初始化用户信息），以及 `fetchModelLists`（异步获取模型配置）。
+ * 
+ * 影响范围：
+ * 作为 React 应用状态的中枢，其属性变更会立刻触发所有订阅此 Store 的组件重新渲染并应用最新上下文（比如切换应用主题、变更个人配置或全局鉴权登出）。
+ */
 import { create } from 'zustand';
 import { User } from '../types';
 import { userService } from '../services/userService';
@@ -9,24 +20,24 @@ import {
 } from '../config/themeConfig';
 
 interface LocalSettings {
-  defaultModel?: string;
-  defaultEmbedding?: string;
-  defaultRerank?: string;
+  defaultModel?: string;      // 记录默认大语言模型
+  defaultEmbedding?: string;  // 记录默认向量模型
+  defaultRerank?: string;     // 记录默认重排序模型
 }
 
 interface AppState {
-  userInfo: User | null;
-  currentKbId: string | null;
-  token: string | null;
-  llmModels: string[];
-  embeddingModels: string[];
-  rerankModels: string[];
-  localSettings: LocalSettings;
-  themeMode: 'light' | 'dark';
-  colorTheme: ColorTheme;
-  fontFamily: FontFamily;
-  fontSize: FontSize;
-  uiStyle: UIStyle;
+  userInfo: User | null;      // 用户信息
+  currentKbId: string | null; // 当前上下文打开的知识库 ID
+  token: string | null;       // 用户鉴权凭证 JWT
+  llmModels: string[];        // 服务端获取的支持的 LLM 列表
+  embeddingModels: string[];  // 服务端获取的支持的 Embedding 列表
+  rerankModels: string[];     // 服务端获取的支持的 Rerank 列表
+  localSettings: LocalSettings;   // 本地的选择偏好映射
+  themeMode: 'light' | 'dark';    // 系统的暗黑模式配置
+  colorTheme: ColorTheme;     // 主题调色盘风格（锁死默认避免碎片化）
+  fontFamily: FontFamily;     // 字体风格
+  fontSize: FontSize;         // 字号
+  uiStyle: UIStyle;           // UI外观模式
 
   setUserInfo: (user: User | null) => void;
   setCurrentKbId: (id: string | null) => void;
@@ -43,6 +54,10 @@ interface AppState {
   setUIStyle: (style: UIStyle) => void;
 }
 
+/**
+ * 个性化配置归一化函数
+ * 逻辑：在应用当前形态下，将视觉、色彩和字体进行基础回落处理以保持产品级纯净风格。
+ */
 const normalizePersonalization = (settings: PersonalizationSettings): PersonalizationSettings => {
     const normalized = { ...settings };
 
@@ -67,6 +82,10 @@ const normalizePersonalization = (settings: PersonalizationSettings): Personaliz
     return normalized;
 };
 
+/**
+ * 从 localStorage 中加载且校验个性化配置。
+ * 遇到不合理的（已下架或弃用）配置自动回滚到默认设置 (`DEFAULT_PERSONALIZATION`)。
+ */
 const loadPersonalization = (): PersonalizationSettings => {
   try {
     const raw = localStorage.getItem('SmartRAG_personalization');
@@ -83,11 +102,15 @@ const loadPersonalization = (): PersonalizationSettings => {
   return DEFAULT_PERSONALIZATION;
 };
 
+/**
+ * 局部更新视觉配置病持久化存储至 localStorage。
+ */
 const savePersonalization = (patch: Partial<PersonalizationSettings>) => {
   const current = loadPersonalization();
   localStorage.setItem('SmartRAG_personalization', JSON.stringify({ ...current, ...patch }));
 };
 
+// 立即读取已存放的视图配置为初始化数据
 const persisted = loadPersonalization();
 
 export const useAppStore = create<AppState>((set, get) => ({

@@ -1,3 +1,13 @@
+/**
+ * SmartDoc 客户端根组件 (React Root)
+ * 
+ * 功能逻辑：
+ * 1. 负责前端全局路由配置 (Routes & Route)，组合 `BasicLayout` 和各种业务页面。
+ * 2. 注入 `<ProtectedRoute>` 作为登录权限拦截器，未登录用户将被强制打回到 `/login`。
+ * 3. 作为所有 `Ant Design` 组件的核心样式派发中心。通过截获 Zustand (`useAppStore`) 内的个性化设置 (字体、字号、UI风格、深色模式等)，自动组装最新鲜的 `theme` Token 并利用 `<ConfigProvider>` 下发给整个组件树。
+ * 4. 执行浏览器性能嗅探 (`detectLitePerformance`) 优化低端机的动画持续时间。
+ * 5. 控制页面底层 Canvas 背景粒子特效组件 (`ThemeBackground`) 的挂载。
+ */
 import { useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, theme } from 'antd';
@@ -30,6 +40,10 @@ import ThemeBackground from './components/ThemeBackground';
 
 // ==================== Token 构建函数 ====================
 
+/**
+ * 将 16 进制色彩值转为 RGB 裸写数字 (如: "99,102,241")
+ * 逻辑：切片解析 hex 后转 10 进制。主要用来向 CSS 注入带透明度的色彩变量。
+ */
 function hexToRgb(hex: string): string {
   const h = hex.replace('#', '');
   const r = parseInt(h.substring(0, 2), 16);
@@ -42,6 +56,11 @@ type NavigatorWithDeviceMemory = Navigator & {
   deviceMemory?: number;
 };
 
+/**
+ * 客户端轻量模式嗅探器
+ * 逻辑：检查客户端的物理内存 (RAM <= 4GB) 或者 CPU核心数 (<= 4) 
+ * 若命中则强制为 `Lite` 表现，UI 构建 Token 时会关掉花里胡哨的特效和阴影，缩减动画时间。
+ */
 function detectLitePerformance(): boolean {
   if (typeof navigator === 'undefined') {
     return false;
@@ -54,24 +73,31 @@ function detectLitePerformance(): boolean {
   return memory <= 4 || cores <= 4;
 }
 
+/**
+ * Ant Design 核心 Token 构建器 
+ * 逻辑：接受当前应用配置（受 Zustand 数据派生），产出一份给 ConfigProvider 的超集配置字典
+ */
 function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: FontSizeDef, us: UIStyleDef) {
+  // 浅色模式的基础样式基底映射
   const base = {
     colorPrimary: ct.primary,
     colorSuccess: '#00b42a',
     colorWarning: '#ff7d00',
     colorError: '#dc2626',
-    colorInfo: ct.primary,
+    colorInfo: ct.primary,  // Info色 总是跟随核心品牌色
 
+    // --- 页面层级背景色系列定义 ---
     colorBgBase: '#f8fafc',
     colorBgContainer: '#ffffff',
     colorBgElevated: '#ffffff',
     colorBgLayout: '#f8fafc',
     colorBgSpotlight: '#f1f5f9',
-    colorBgMask: 'rgba(15, 23, 42, 0.45)',
+    colorBgMask: 'rgba(15, 23, 42, 0.45)', // 弹窗蒙层
 
     colorBorder: '#e2e8f0',
     colorBorderSecondary: '#e2e8f0',
 
+    // --- 文字对比度定义 ---
     colorText: '#1e293b',
     colorTextSecondary: '#64748b',
     colorTextTertiary: '#94a3b8',
@@ -82,6 +108,7 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     colorTextLabel: '#334155',
     colorTextPlaceholder: '#94a3b8',
 
+    // 面板内部元素填色 (如 Table Header, Dropdown 背景等)
     colorFill: '#eef3fa',
     colorFillSecondary: '#f5f8fd',
     colorFillTertiary: '#f8fafe',
@@ -90,12 +117,14 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
 
     colorSplit: '#dde5f0',
 
+    // 从 config/themeConfig 读入个性化圆角强度
     borderRadius: us.borderRadius,
     borderRadiusXS: us.borderRadiusXS,
     borderRadiusSM: us.borderRadiusSM,
     borderRadiusLG: us.borderRadiusLG,
     borderRadiusOuter: us.borderRadiusOuter,
 
+    // 读取个性化字体及代码字号
     fontFamily: ff.value,
     fontFamilyCode: FONT_FAMILY_CODE,
     fontSize: fs.base,
@@ -108,6 +137,7 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     fontSizeHeading4: 16,
     fontSizeHeading5: 14,
 
+    // 最佳实践的科学排版行高比例
     lineHeight: 1.7,
     lineHeightSM: 1.5,
     lineHeightLG: 1.75,
@@ -135,10 +165,12 @@ function buildToken(isDark: boolean, ct: ColorThemeDef, ff: FontFamilyDef, fs: F
     controlHeightSM: fs.controlHeightSM,
     controlHeightLG: fs.controlHeightLG,
 
+    // 默认摘除原生阴影改为 tailwind 接管或扁平风格
     boxShadow: 'none',
     boxShadowSecondary: 'none',
     boxShadowTertiary: 'none',
 
+    // 针对响应迟钝的主题，加速交互动效过渡时间
     motionDurationFast: us.motionSpeed === 'fast' ? '0.1s' : '0.15s',
     motionDurationMid: us.motionSpeed === 'fast' ? '0.15s' : '0.25s',
     motionDurationSlow: us.motionSpeed === 'fast' ? '0.2s' : '0.35s',
