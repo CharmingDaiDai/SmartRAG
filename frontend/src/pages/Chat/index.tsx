@@ -38,6 +38,7 @@ import {
   UserOutlined,
   RobotOutlined,
   ClearOutlined,
+    CopyOutlined,
   QuestionCircleOutlined,
   PlusOutlined,
   MessageOutlined,
@@ -61,7 +62,7 @@ import RetrievalTreeViewer from '../../components/RetrievalTreeViewer';
 import { TokenUsagePanel } from '../../components/TokenUsagePanel';
 import AnimatedThoughtChain from '../../components/rag/AnimatedThoughtChain';
 import { getMethodConfig, normalizeStrategyType, RAG_STRATEGIES } from '../../config/ragConfig';
-import { FadeIn, SlideInUp, StaggerContainer, StaggerItem } from '../../components/common/Motion';
+import { FadeIn, SlideInUp } from '../../components/common/Motion';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -129,7 +130,7 @@ const getDateGroup = (isoDate?: string): string => {
     return '更早';
 };
 
-/** 建议问题（空状态展示） */
+/** 建议问题（输入框悬浮快捷面板） */
 const SUGGESTION_QUESTIONS = [
     { icon: <SearchOutlined />, text: '主变压器安装的工艺标准是什么？' },
     { icon: <BookOutlined />, text: '中性点系统设备安装的关键工序控制？' },
@@ -137,6 +138,26 @@ const SUGGESTION_QUESTIONS = [
     { icon: <BookOutlined />, text: '第一章讲了什么内容？' },
     { icon: <BookOutlined />, text: '整个文档讲了什么内容？' },
 ];
+
+const copyTextToClipboard = async (text: string): Promise<boolean> => {
+    if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+    }
+
+    const fallbackInput = document.createElement('textarea');
+    fallbackInput.value = text;
+    fallbackInput.setAttribute('readonly', 'true');
+    fallbackInput.style.position = 'fixed';
+    fallbackInput.style.opacity = '0';
+    fallbackInput.style.pointerEvents = 'none';
+    document.body.appendChild(fallbackInput);
+    fallbackInput.select();
+
+    const copied = document.execCommand('copy');
+    document.body.removeChild(fallbackInput);
+    return copied;
+};
 
 const ChatPage: React.FC = () => {
   // ========== Ant Design 主题 Token ==========
@@ -452,6 +473,19 @@ const ChatPage: React.FC = () => {
 
       setInput('');
   };
+
+  const handleCopySuggestion = useCallback(async (text: string) => {
+      try {
+          const copied = await copyTextToClipboard(text);
+          if (copied) {
+              message.success('建议问题已复制，可先粘贴后修改再发送');
+          } else {
+              message.warning('复制失败，请手动复制问题');
+          }
+      } catch (e) {
+          message.warning('复制失败，请手动复制问题');
+      }
+  }, []);
 
   const handleNewChat = () => {
       if (isRequesting) {
@@ -787,7 +821,7 @@ const ChatPage: React.FC = () => {
             {/* 消息滚动区域 */}
             <div ref={scrollRef} className="chat-messages-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24, minHeight: 0, overscrollBehavior: 'contain' }}>
                 {messages.length === 0 ? (
-                    /* 空状态：欢迎界面 + 建议问题卡 */
+                    /* 空状态：欢迎界面 */
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -818,38 +852,12 @@ const ChatPage: React.FC = () => {
                             <Text style={{ color: token.colorTextSecondary, fontSize: 15, marginTop: 8, display: 'block' }}>
                                 {currentKb ? `正在使用「${currentKb.name}」知识库` : '请在右侧选择一个知识库开始对话'}
                             </Text>
+                            {currentKb && (
+                                <Text style={{ color: token.colorTextTertiary, fontSize: 13, marginTop: 10, display: 'block' }}>
+                                    将鼠标移入下方输入框可查看建议问题，支持一键发送或复制。
+                                </Text>
+                            )}
                         </div>
-
-                        {/* 建议问题卡片 */}
-                        {currentKb && (
-                            <StaggerContainer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 620 }}>
-                                {SUGGESTION_QUESTIONS.map((q, i) => (
-                                    <StaggerItem key={i}>
-                                        <button
-                                            type="button"
-                                            className="suggestion-card"
-                                            onClick={() => handleRequest(q.text)}
-                                            disabled={isRequesting}
-                                            aria-label={`使用建议问题：${q.text}`}
-                                            style={{ width: '100%', textAlign: 'left' }}
-                                        >
-                                            <div className="suggestion-card-content" style={{ color: token.colorText }}>
-                                                <span
-                                                    className="suggestion-card-icon"
-                                                    style={{
-                                                        background: `${token.colorPrimary}14`,
-                                                        color: token.colorPrimary,
-                                                    }}
-                                                >
-                                                    {q.icon}
-                                                </span>
-                                                <span>{q.text}</span>
-                                            </div>
-                                        </button>
-                                    </StaggerItem>
-                                ))}
-                            </StaggerContainer>
-                        )}
                     </div>
                 ) : (
                     <>
@@ -930,16 +938,59 @@ const ChatPage: React.FC = () => {
                 )}
             </div>
             {/* 输入框区域 */}
-            <div className="chat-input-bar" style={{ padding: '12px 20px 16px', flexShrink: 0 }}>
-                <Sender
-                    className="chat-sender-root"
-                    value={input}
-                    onChange={setInput}
-                    loading={isRequesting}
-                    onSubmit={handleRequest}
-                    onCancel={abort}
-                    placeholder="输入问题，Shift + Enter 换行"
-                />
+            <div className="chat-input-shell" style={{ flexShrink: 0 }}>
+                {currentKb && (
+                    <div className="chat-hover-suggestions" role="list" aria-label="建议问题">
+                        <div className="chat-hover-suggestions-title">建议问题</div>
+                        <div className="chat-hover-suggestions-list">
+                            {SUGGESTION_QUESTIONS.map((q) => (
+                                <div key={q.text} className="chat-hover-suggestion-item" role="listitem">
+                                    <button
+                                        type="button"
+                                        className="chat-hover-suggestion-trigger"
+                                        onClick={() => handleRequest(q.text)}
+                                        disabled={isRequesting}
+                                        aria-label={`发送建议问题：${q.text}`}
+                                    >
+                                        <span
+                                            className="chat-hover-suggestion-icon"
+                                            style={{
+                                                background: `${token.colorPrimary}14`,
+                                                color: token.colorPrimary,
+                                            }}
+                                        >
+                                            {q.icon}
+                                        </span>
+                                        <span className="chat-hover-suggestion-text">{q.text}</span>
+                                    </button>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        className="chat-hover-suggestion-copy"
+                                        icon={<CopyOutlined />}
+                                        onClick={() => {
+                                            void handleCopySuggestion(q.text);
+                                        }}
+                                        aria-label={`复制建议问题：${q.text}`}
+                                    >
+                                        复制
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                <div className="chat-input-bar" style={{ padding: '12px 20px 16px', flexShrink: 0 }}>
+                    <Sender
+                        className="chat-sender-root"
+                        value={input}
+                        onChange={setInput}
+                        loading={isRequesting}
+                        onSubmit={handleRequest}
+                        onCancel={abort}
+                        placeholder="输入问题，Shift + Enter 换行"
+                    />
+                </div>
             </div>
             </FadeIn>
         </Content>
