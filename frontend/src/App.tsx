@@ -317,6 +317,8 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const primaryRgb = hexToRgb(primary);
   const primaryHoverRgb = hexToRgb(primaryHover);
 
+  // 液态玻璃参数主入口：调这里会全局影响 App.css / LiquidGlassWrapper.css 的玻璃效果。
+  // 1) 底色与边框：决定玻璃“基底”的明暗和分层。
   const glassBg = isDark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.85)';
   const glassBgStrong = isDark ? 'rgba(17, 26, 43, 0.86)' : 'rgba(255, 255, 255, 0.9)';
   const glassBorder = isDark ? 'rgba(148, 163, 184, 0.28)' : 'rgba(226, 232, 240, 1)';
@@ -326,6 +328,8 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const glassSurfaceCard = isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.85)';
   const glassSurfaceNav = isDark ? 'rgba(15, 23, 42, 0.86)' : 'rgba(248, 250, 252, 0.9)';
   const glassSurfaceModal = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+
+  // 2) 棱镜与薄膜：决定液态玻璃的流光和氛围纹理。
   const glassPrismA = isDark ? 'rgba(241, 245, 249, 0.24)' : 'rgba(255, 255, 255, 0.58)';
   const glassPrismB = isDark ? 'rgba(203, 213, 225, 0.3)' : 'rgba(226, 232, 240, 0.28)';
   const glassPrismC = isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(203, 213, 225, 0.22)';
@@ -333,9 +337,13 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   const glassCausticOpacity = isDark ? '0.18' : '0.2';
   const glassEdgeStrong = isDark ? 'rgba(226, 232, 240, 0.54)' : 'rgba(255, 255, 255, 0.96)';
   const glassEdgeSoft = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(177, 191, 214, 0.56)';
+
+  // 3) 线条厚度：想加粗玻璃边框优先改这里（如改为 2px / 4px）。
   const glassBorderWidth = '1px';
   const glassEdgeWidth = '1px';
   const glassAmbientLine = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.16)';
+
+  // 4) 模糊强度：性能模式 data-performance='lite' 会自动使用更低模糊值。
   const glassBlurBg = isLite ? '1px' : '2px';
   const glassBlurCard = isLite ? '2px' : '4px';
   const glassBlurNav = isLite ? '2px' : '3px';
@@ -352,6 +360,7 @@ function syncCSSVariables(isDark: boolean, ct: ColorThemeDef, us: UIStyleDef) {
   root.style.setProperty('--color-primary-rgb', primaryRgb);
   root.style.setProperty('--color-primary-hover-rgb', primaryHoverRgb);
 
+  // 将液态玻璃参数写入 CSS 变量；App.css 中通过 var(--glass-*) 消费这些值。
   root.style.setProperty('--glass-bg', glassBg);
   root.style.setProperty('--glass-bg-strong', glassBgStrong);
   root.style.setProperty('--glass-border', glassBorder);

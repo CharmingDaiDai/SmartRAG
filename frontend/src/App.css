@@ -4,6 +4,7 @@
   min-height: 100vh;
 }
 
+/* 液态玻璃氛围层：通过 --glass-warm-rgb / --glass-prism-* / --glass-*-opacity 控制流光、噪点和薄膜感。 */
 .app-ambient-bg {
   position: fixed;
   inset: 0;
@@ -60,7 +61,7 @@
     conic-gradient(from 320deg at 80% 68%, transparent 0%, var(--glass-prism-c) 36%, transparent 72%);
   mix-blend-mode: screen;
   opacity: var(--glass-film-opacity, 0.56);
-  filter: blur(0.8px);
+  filter: blur(1px);
   transform-origin: 52% 46%;
   animation: ambient-prism-drift 36s linear infinite reverse;
 }
@@ -245,6 +246,7 @@
   .ant-notification-notice,
   .ant-message-notice-content
 ) {
+  /* 液态玻璃容器层：常用调参是边框厚度(--glass-border-width)、边框色(--glass-border)、模糊(--glass-blur-card)。 */
   position: relative;
   isolation: isolate;
   overflow: hidden;
