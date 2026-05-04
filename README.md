@@ -61,7 +61,7 @@ flowchart TB
 
 ```bash
 git clone https://github.com/CharmingDaiDai/SmartRAG.git
-cd smartRAG
+cd SmartRAG
 
 cp .env.example .env
 # 按需填写 .env（数据库、JWT、模型 Key 等）
@@ -88,11 +88,15 @@ mvn spring-boot:run
 
 前端（开发端口 3000，Vite 代理 /api 到 http://localhost:18080）：
 
+前端建议使用 Node.js 20+，项目基于 Vite 7。
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+说明：本地开发后端使用 `application-dev.yml` 中的 18080；Docker Compose 场景下 backend 对外端口是 8080。
 
 ## API 概览（按当前 Controller 实现）
 

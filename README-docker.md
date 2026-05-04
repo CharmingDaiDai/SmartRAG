@@ -25,13 +25,12 @@
 
 ```
 smartRAG/
-├── docker-compose.yml                 # 开发/构建用 compose（本地使用）
-├── docker-compose.runtime.yml         # 生产/运行时 compose（服务器使用）
+├── docker-compose.yml                 # 当前唯一的 Compose 文件（构建 + 启动）
 ├── Dockerfile.backend                 # 后端 Java 镜像构建文件
 ├── frontend/
 │   ├── Dockerfile.frontend            # 前端 React + Nginx 镜像构建文件
 │   └── nginx.conf                     # Nginx 反向代理配置（包含 API 代理）
-├── .env.example                       # 环境变量参考示例（仅供参考）
+├── .env.example                       # 环境变量参考模板
 └── src/                               # 后端 Java 源代码
     └── main/java/
 ```
@@ -40,12 +39,11 @@ smartRAG/
 
 | 文件                           | 用途                | 说明                                                     |
 | ------------------------------ | ------------------- | -------------------------------------------------------- |
-| `docker-compose.yml`         | 开发/构建用 compose | 自动构建后端/前端镜像，所有配置直接定义在文件中          |
-| `docker-compose.runtime.yml` | 生产/运行时 compose | 只使用预构建镜像，所有配置直接定义在文件中               |
-| `Dockerfile.backend`         | 后端镜像构建        | 多阶段构建：Maven → OpenJDK 运行时                      |
-| `Dockerfile.frontend`        | 前端镜像构建        | 多阶段构建：Node.js → Nginx                             |
+| `docker-compose.yml`         | 当前唯一 compose    | 自动构建后端/前端镜像，并定义端口、健康检查和数据挂载    |
+| `Dockerfile.backend`         | 后端镜像构建        | 多阶段构建：Maven → JRE 运行时                           |
+| `Dockerfile.frontend`        | 前端镜像构建        | 多阶段构建：Node.js → Nginx                              |
 | `nginx.conf`                 | Nginx 反向代理配置  | API 反向代理和 SSE 流式连接支持                          |
-| `.env.example`               | 环境变量参考        | 仅供参考，不参与部署，所有配置已在 docker-compose 中定义 |
+| `.env.example`               | 环境变量模板        | 复制为 `.env` 后使用，Compose 会自动读取                 |
 
 ---
 
@@ -57,7 +55,7 @@ smartRAG/
 | ------------------------- | ---------- | ---------- | --------------------- | -------------------- |
 | **Frontend**        | 80         | 3000       | http://localhost:3000 | 前端 Web 应用        |
 | **Backend**         | 8080       | 8080       | http://localhost:8080 | 后端 API             |
-| **MySQL**           | 3306       | 13306      | localhost:13306       | 关系型数据库         |
+| **MySQL**           | 3306       | 13306      | http://localhost:13306 | 关系型数据库         |
 | **MinIO (API)**     | 9000       | 9000       | http://localhost:9000 | 对象存储 API         |
 | **MinIO (Console)** | 9001       | 9001       | http://localhost:9001 | MinIO 管理控制台     |
 | **Milvus**          | 19530      | 19530      | localhost:19530       | 向量数据库 gRPC 服务 |
@@ -65,9 +63,9 @@ smartRAG/
 
 ### 重要说明
 
-- **后端端口**：开发和生产均使用 `8080`
-- **容器间通信**：容器内部使用服务名（如 `mysql`、`minio`、`backend`）而不是 `localhost`
-- **容器外访问**：在宿主机上使用 `localhost:宿主机端口` 访问
+- **后端端口**：Compose 场景使用 `8080`；本地 `mvn spring-boot:run` 使用 `application-dev.yml` 中的 `18080`
+- **容器间通信**：容器内部使用服务名（如 `mysql`、`minio`、`milvus`、`backend`）而不是 `localhost`
+- **容器外访问**：在宿主机上使用 `localhost:宿主机端口` 访问；MySQL 宿主机端口是 `13306`
 
 ---
 
@@ -75,12 +73,9 @@ smartRAG/
 
 ### 3.1 配置方式说明
 
-**所有环境变量现在都直接定义在 docker-compose 文件中的 `environment` 字段中**，无需额外的 `.env` 或 `.env.docker` 文件。这样做的优势：
+**推荐做法**：复制根目录的 `.env.example` 为 `.env`，然后按环境修改；`docker compose` 会自动读取项目根目录的 `.env`。`docker-compose.yml` 中虽然保留了部分默认值，但生产环境仍建议显式填写 `.env`，避免误用占位值。
 
-✅ 配置更加清晰，所有设置都在 compose 文件中可见
-✅ 避免了环境变量文件的复杂性
-✅ 与 Kubernetes 等容器编排工具更兼容
-✅ 易于通过环境变量覆盖（`export VAR=value` 或 `docker compose -e VAR=value`）
+补充说明：如果需要多套环境，可以使用 `docker compose --env-file .env.prod up -d`。
 
 ### 3.2 后端环境变量详解
 
@@ -89,9 +84,9 @@ smartRAG/
 ```yaml
 DB_HOST: mysql              # MySQL 服务名或 IP（Docker 中使用服务名）
 DB_PORT: 3306              # MySQL 端口
-DB_NAME: smart_rag_db         # 数据库名
-DB_USERNAME: root          # 数据库用户
-DB_PASSWORD: 123456        # 数据库密码（生产环境请修改）
+DB_NAME: smartrag_db       # 数据库名
+DB_USERNAME: smartrag_user # 数据库用户
+DB_PASSWORD: SmartRAG_user_2026!  # 数据库密码（生产环境请修改）
 ```
 
 #### JWT 认证配置
@@ -143,7 +138,7 @@ EMBEDDING_MODEL_NAME: bge-m3
 #### 向量数据库配置（Milvus）
 
 ```yaml
-MILVUS_HOST: milvus-standalone
+MILVUS_HOST: milvus
 MILVUS_PORT: 19530
 # 在 Docker Compose 中使用服务名
 # 在生产环境中可改为 Milvus 集群地址
@@ -153,8 +148,8 @@ MILVUS_PORT: 19530
 
 ```yaml
 MINIO_ENDPOINT: http://minio:9000
-MINIO_ACCESS_KEY: root
-MINIO_SECRET_KEY: 12345678
+MINIO_ACCESS_KEY: <your_minio_access_key>
+MINIO_SECRET_KEY: <your_minio_secret_key>
 # 用于存储用户上传的文档
 # 在 Docker Compose 中使用服务名
 # 在生产环境中可改为 AWS S3 或其他兼容服务
@@ -164,7 +159,7 @@ MINIO_SECRET_KEY: 12345678
 
 #### 方法 1：修改 docker-compose 文件（推荐）
 
-直接编辑 `docker-compose.yml` 或 `docker-compose.runtime.yml` 中的 `environment` 部分：
+直接编辑根目录 `.env`，或者按需调整 `docker-compose.yml` 中的默认值：
 
 ```yaml
 backend:
@@ -190,36 +185,11 @@ export GLM_API_KEY=your_actual_glm_key
 docker compose up -d
 ```
 
-#### 方法 3：使用 -e 参数（临时）
-
-```bash
-docker compose up -d -e DB_PASSWORD=your_new_password -e GLM_API_KEY=your_actual_glm_key
-```
-
 ### 3.4 前端环境变量
 
-前端是 Create React App（CRA），环境变量规则：
+前端当前是 Vite 项目，不是 CRA。API 请求统一使用 `/api`：开发时由 `frontend/vite.config.ts` 代理到 `http://localhost:18080`，生产时由 `frontend/nginx.conf` 代理到 `backend:8080`。
 
-- **只有 `REACT_APP_` 前缀**的变量会被注入到前端代码
-- **必须在构建时设置**，运行时修改无效
-- 在 `docker-compose.yml` 中通过 `build.args` 传递
-
-```yaml
-# docker-compose.yml 中的配置
-frontend:
-  build:
-    context: ./frontend
-    dockerfile: Dockerfile.frontend
-    args:
-      - REACT_APP_API_BASE=http://localhost:8080
-```
-
-**重要**：修改 `REACT_APP_API_BASE` 需要重新构建镜像：
-
-```bash
-docker compose build frontend
-docker compose up -d frontend
-```
+因此当前仓库不需要额外的前端构建参数；如果以后新增前端公共环境变量，请使用 `VITE_` 前缀。
 
 ---
 
@@ -263,17 +233,18 @@ docker compose logs -f
 等待约 30-60 秒，服务完全启动。然后验证：
 
 ```bash
-# 1. 检查后端健康状态
-curl http://localhost:8080/api/health
+# 1. 检查后端公开接口
+curl -I http://localhost:8080/v3/api-docs
 
 # 2. 检查前端页面
 curl http://localhost:3000
 
 # 3. 检查 MySQL 连接
-docker compose exec mysql mysql -uroot -p123456 -e "SELECT 1;"
+docker compose exec mysql mysql -u<MYSQL_USER> -p<MYSQL_PASSWORD> -e "SELECT 1;"
 
-# 4. 检查 Milvus 连接
-docker compose exec backend curl http://milvus-standalone:19530/
+# 4. 检查 Milvus 容器状态
+docker compose ps milvus
+docker compose logs --tail 50 milvus
 ```
 
 ### 4.4 访问应用
@@ -360,73 +331,56 @@ docker load -i smartrag-images.tar
 docker images | grep smartrag
 ```
 
-**注意**：如果开发机和服务器架构不同（如 ARM64 vs AMD64），不建议使用方案 B，应该在服务器上重新构建。
+**注意**：如果开发机和服务器架构不同（如 ARM64 vs AMD64），不建议使用方案 B，应该在服务器上重新构建。上面的导出命令依赖第 6.3 节中手动打标的镜像名；如果只执行了 `docker compose build`，请先补充 `docker tag`。
 
 ### 5.3 配置生产环境
 
-编辑 `docker-compose.runtime.yml` 中的 `environment` 部分，修改关键配置：
+编辑根目录 `.env`（由 `.env.example` 复制而来），修改关键配置：
 
 ```bash
 # 打开编辑器
-vi docker-compose.runtime.yml
+cp .env.example .env
+vi .env
 ```
 
 **必须修改的内容**：
 
-```yaml
-backend:
-  environment:
-    # 1. 数据库密码（使用强密码）
-    DB_PASSWORD: your-strong-password-here
-
-    # 2. JWT 密钥（使用强随机密钥）
-    JWT_SECRET: $(openssl rand -base64 32)
-
-    # 3. MinIO 凭证
-    MINIO_ACCESS_KEY: your-minio-access-key
-    MINIO_SECRET_KEY: your-strong-secret-key
-
-    # 4. AI 模型配置
-    GLM_API_KEY: your-production-glm-key
-    OPENAI_API_KEY: your-production-openai-key
-    # 其他模型密钥...
-
-    # 5. 数据库连接（如使用外部数据库）
-    DB_HOST: your-mysql-server-ip-or-domain
-    MILVUS_HOST: your-milvus-server-ip-or-domain
-    MINIO_ENDPOINT: http://your-minio-server-ip:9000
-```
+- `MYSQL_ROOT_PASSWORD` / `MYSQL_DATABASE` / `MYSQL_USER` / `MYSQL_PASSWORD`
+- `DB_PASSWORD` / `JWT_SECRET`
+- `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`
+- `GLM_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`
+- 如需外部服务，再改 `DB_HOST`、`MILVUS_HOST`、`MINIO_ENDPOINT`
 
 ### 5.4 启动生产环境
 
 ```bash
 cd /root/smartRAG
 
-# 使用 runtime compose 启动（不再构建）
-docker compose -f docker-compose.runtime.yml up -d
+# 构建并启动服务
+docker compose up -d --build
 
 # 检查所有容器状态
-docker compose -f docker-compose.runtime.yml ps
+docker compose ps
 
 # 查看后端日志（检查启动是否有错误）
-docker compose -f docker-compose.runtime.yml logs -f backend
+docker compose logs -f backend
 ```
 
 ### 5.5 健康检查和验证
 
 ```bash
 # 检查容器健康状态
-docker compose -f docker-compose.runtime.yml ps
-# Status 应该显示 "Up" 且没有 "(unhealthy)"
+docker compose ps
+# Status 应该显示 "Up"，backend 最好显示 healthy
 
 # 检查后端 API 是否响应
-curl -I http://localhost:8080/api/health
+curl -I http://localhost:8080/v3/api-docs
 
 # 检查前端是否加载
 curl -I http://localhost:3000
 
 # 检查数据库是否运行
-docker compose -f docker-compose.runtime.yml exec mysql mysql -uroot -pYOUR_PASSWORD -e "SELECT 1;"
+docker compose exec mysql mysql -u<MYSQL_USER> -p<MYSQL_PASSWORD> -e "SELECT 1;"
 ```
 
 ### 5.6 反向代理配置（可选但推荐）
@@ -485,9 +439,10 @@ RUN mvn -B dependency:go-offline    # 预下载依赖
 COPY src ./src
 RUN mvn -B package -DskipTests      # 编译打包
 
-# 运行阶段：OpenJDK 17
-FROM eclipse-temurin:17-jdk-jammy
+# 运行阶段：JRE 17
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/target/smartrag-3.0.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
@@ -496,7 +451,8 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 **构建特点**：
 
 - 多阶段构建：减小最终镜像大小
-- 第一阶段使用 Maven 编译，第二阶段只保留 JDK 和 jar
+- 第一阶段使用 Maven 编译，第二阶段只保留 JRE 和 jar
+- 运行镜像补了 `curl`，用于 backend 健康检查
 - jar 文件在构建时被复制，容器内部不需要编译工具
 
 ### 6.2 前端镜像构建（Dockerfile.frontend）
@@ -505,8 +461,6 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 # 构建阶段：Node.js + npm
 FROM node:20-bullseye AS build
 WORKDIR /app
-ARG REACT_APP_API_BASE=http://localhost:8080  # 接收构建参数
-ENV REACT_APP_API_BASE=${REACT_APP_API_BASE}  # 设置环境变量
 COPY package.json package-lock.json ./
 RUN npm install --prefer-offline --no-audit
 COPY . .
@@ -514,7 +468,7 @@ RUN npm run build                              # 构建 React 应用
 
 # 运行阶段：Nginx
 FROM nginx:1.27
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
@@ -523,7 +477,8 @@ CMD ["nginx", "-g", "daemon off;"]
 **构建特点**：
 
 - 多阶段构建：第一阶段构建，第二阶段只保留静态文件和 Nginx
-- 构建参数 `REACT_APP_API_BASE` 在构建时注入
+- Vite 默认输出目录是 `dist`
+- 当前前端不需要额外的构建参数，API 通过 `/api` 和 Nginx 反向代理处理
 - Nginx 配置支持 SPA 前端路由和 API 代理
 
 ### 6.3 手动构建镜像
@@ -532,11 +487,8 @@ CMD ["nginx", "-g", "daemon off;"]
 # 仅构建后端
 docker build -f Dockerfile.backend -t smartrag-backend:latest .
 
-# 仅构建前端（可以指定不同的 API 地址）
-docker build \
-  --build-arg REACT_APP_API_BASE=http://api.your-domain.com:8080 \
-  -f frontend/Dockerfile.frontend \
-  -t smartrag-frontend:latest ./frontend
+# 仅构建前端
+docker build -f frontend/Dockerfile.frontend -t smartrag-frontend:latest ./frontend
 
 # 验证镜像已创建
 docker images | grep smartrag
@@ -555,16 +507,15 @@ docker images | grep smartrag
 ```bash
 # 1. 检查后端容器是否运行
 docker compose ps | grep backend
-# 应该显示 "Up" 状态
 
-# 2. 检查后端服务是否响应
-curl http://localhost:8080/api/health
+# 2. 检查后端公开接口
+curl -I http://localhost:8080/v3/api-docs
 
-# 3. 检查前端配置的 API 地址
-# 在 docker-compose.yml 中查看 REACT_APP_API_BASE 是否正确
-grep -A5 "REACT_APP_API_BASE" docker-compose.yml
+# 3. 检查前端开发代理或生产 Nginx 配置
+grep -n "proxy" frontend/vite.config.ts
+grep -n "proxy_pass" frontend/nginx.conf
 
-# 4. 重新构建前端镜像（如果修改过 API 地址）
+# 4. 重新构建前端镜像（如果修改过 nginx.conf）
 docker compose build --no-cache frontend
 docker compose up -d frontend
 
@@ -574,8 +525,8 @@ docker compose logs frontend | grep -i proxy
 
 **解决方案**：
 
-- 本地开发：确保 `REACT_APP_API_BASE=http://localhost:8080`
-- 生产环境：使用实际的域名或 IP，如 `http://api.your-domain.com` 或 `http://your-server-ip:8080`
+- 本地开发：确保 `frontend/vite.config.ts` 中的 `/api` 代理指向 `http://localhost:18080`
+- 生产环境：确保 `frontend/nginx.conf` 中的 `/api` 代理指向 `http://backend:8080`
 
 ### 7.2 后端连接数据库失败
 
@@ -587,21 +538,19 @@ docker compose logs frontend | grep -i proxy
 # 1. 检查 MySQL 容器是否运行
 docker compose ps | grep mysql
 
-# 2. 进入后端容器测试 MySQL 连接
-docker compose exec backend sh
-ping mysql        # 检查网络连接
-telnet mysql 3306 # 检查端口是否开放
+# 2. 检查后端读取到的数据库环境变量
+docker compose exec backend env | grep DB_
 
 # 3. 验证 MySQL 用户和密码
-docker compose exec mysql mysql -uroot -p123456 -e "SELECT 1;"
+docker compose exec mysql mysql -u<MYSQL_USER> -p<MYSQL_PASSWORD> -e "SELECT 1;"
 
-# 4. 检查环境变量是否正确
-docker compose exec backend env | grep DB_
+# 4. 查看后端日志
+docker compose logs backend --tail 100
 ```
 
 **解决方案**：
 
-- 确保 `docker-compose.yml` 中的数据库凭证正确
+- 确保 `.env` 中的数据库凭证正确，并与 `docker-compose.yml` 的默认值一致
 - 确保 `DB_HOST=mysql`（服务名，不是 localhost）
 - 重新启动 MySQL：`docker compose restart mysql`
 
@@ -613,25 +562,23 @@ docker compose exec backend env | grep DB_
 
 ```bash
 # 1. 检查 Milvus 所有组件是否运行
-docker compose ps | grep milvus
+docker compose ps | grep -E 'milvus|etcd|minio'
 
-# 2. 检查 etcd 健康状态
-docker compose logs milvus-etcd | head -20
+# 2. 检查 etcd 和 milvus 日志
+docker compose logs --tail 50 etcd
+docker compose logs --tail 50 milvus
 
-# 3. 检查 Milvus 日志
-docker compose logs milvus-standalone | grep -i error
-
-# 4. 清理并重启 Milvus 及其依赖
+# 3. 清理并重启 Milvus 及其依赖
 docker compose down
-docker volume rm smartrag_milvus_etcd smartrag_milvus_minio smartrag_milvus_data
-docker compose up -d milvus-etcd milvus-minio milvus-standalone
+rm -rf ./data/etcd ./data/minio ./data/milvus
+docker compose up -d etcd minio milvus
 ```
 
 **解决方案**：
 
 - 给 Milvus 足够的启动时间（通常需要 30-60 秒）
 - 确保有足够的磁盘空间
-- 检查 Docker 日志查看具体错误：`docker compose logs milvus-standalone`
+- 检查 Docker 日志查看具体错误：`docker compose logs milvus`
 
 ### 7.4 MinIO 连接失败或文件上传失败
 
@@ -645,10 +592,10 @@ docker compose ps | grep minio
 
 # 2. 访问 MinIO 控制台
 # 浏览器打开 http://localhost:9001
-# 使用默认凭证登录：root / 12345678
+# 使用 .env 中配置的 MINIO_ACCESS_KEY / MINIO_SECRET_KEY
 
 # 3. 检查 MinIO API 响应
-curl http://localhost:9000/
+curl http://localhost:9000/minio/health/live
 
 # 4. 验证环境变量
 docker compose exec backend env | grep MINIO_
@@ -657,7 +604,7 @@ docker compose exec backend env | grep MINIO_
 **解决方案**：
 
 - 确保 `MINIO_ENDPOINT=http://minio:9000`（容器内服务名）
-- 确保凭证与 docker-compose 中的配置一致
+- 确保凭证与 `.env` 和 `docker-compose.yml` 中的配置一致
 - 重启 MinIO：`docker compose restart minio`
 
 ### 7.5 磁盘空间不足
@@ -673,12 +620,11 @@ df -h
 # 2. 清理 Docker 未使用的资源
 docker system prune -a
 
-# 3. 查看各卷的大小
-docker volume ls
-du -sh /var/lib/docker/volumes/*
+# 3. 查看本地数据目录大小
+du -sh ./data/*
 
-# 4. 删除不需要的卷
-docker volume rm smartrag_mysql_data  # 谨慎操作，会丢失数据
+# 4. 删除不需要的数据目录
+rm -rf ./data/<service>  # 谨慎操作，会丢失数据
 ```
 
 ### 7.6 端口已被占用
@@ -713,35 +659,23 @@ docker compose up -d
 
 ```bash
 # 方式 1：使用 mysqldump（推荐，可读性强）
-docker compose exec -T mysql mysqldump -uroot -p123456 smart_rag_db > smart_rag_db_backup.sql
+docker compose exec -T mysql mysqldump -u<MYSQL_USER> -p<MYSQL_PASSWORD> <DB_NAME> > smart_rag_db_backup.sql
 
-# 方式 2：备份整个卷
-docker run --rm \
-  -v smartrag_mysql_data:/data \
-  -v $(pwd):/backup \
-  alpine \
-  sh -c "tar czf /backup/mysql_data.tar.gz -C /data ."
+# 方式 2：备份数据目录（停服务后执行）
+tar czf mysql_data.tar.gz -C ./data mysql
 ```
 
 #### 备份 MinIO 数据
 
 ```bash
-docker run --rm \
-  -v smartrag_minio_data:/data \
-  -v $(pwd):/backup \
-  alpine \
-  sh -c "tar czf /backup/minio_data.tar.gz -C /data ."
+tar czf minio_data.tar.gz -C ./data minio
+tar czf etcd_data.tar.gz -C ./data etcd
+tar czf milvus_data.tar.gz -C ./data milvus
 ```
 
 #### 备份 Milvus 数据
 
-```bash
-docker run --rm \
-  -v smartrag_milvus_data:/data \
-  -v $(pwd):/backup \
-  alpine \
-  sh -c "tar czf /backup/milvus_data.tar.gz -C /data ."
-```
+这部分已经包含在上面的 `minio_data.tar.gz` / `etcd_data.tar.gz` / `milvus_data.tar.gz` 中。
 
 ### 8.2 恢复数据
 
@@ -752,31 +686,23 @@ docker run --rm \
 docker compose up -d mysql
 
 # 方式 1：从 SQL 文件恢复
-docker compose exec -T mysql mysql -uroot -p123456 smart_rag_db < smart_rag_db_backup.sql
+docker compose exec -T mysql mysql -u<MYSQL_USER> -p<MYSQL_PASSWORD> <DB_NAME> < smart_rag_db_backup.sql
 
-# 方式 2：从压缩包恢复
-docker run --rm \
-  -v smartrag_mysql_data:/data \
-  -v $(pwd):/backup \
-  alpine \
-  sh -c "tar xzf /backup/mysql_data.tar.gz -C /data"
+# 方式 2：从压缩包恢复数据目录（停服务后执行）
+tar xzf mysql_data.tar.gz -C ./data
+tar xzf minio_data.tar.gz -C ./data
+tar xzf etcd_data.tar.gz -C ./data
+tar xzf milvus_data.tar.gz -C ./data
 ```
 
 #### 恢复 MinIO 数据
 
 ```bash
-# 停止 MinIO 容器（重要：防止数据冲突）
-docker compose stop minio
+# 停止相关容器（重要：防止数据冲突）
+docker compose stop minio etcd milvus
 
-# 恢复数据卷
-docker run --rm \
-  -v smartrag_minio_data:/data \
-  -v $(pwd):/backup \
-  alpine \
-  sh -c "rm -rf /data/* && tar xzf /backup/minio_data.tar.gz -C /data"
-
-# 启动 MinIO
-docker compose up -d minio
+# 恢复后重新启动
+docker compose up -d minio etcd milvus
 ```
 
 ### 8.3 定期备份脚本
@@ -794,15 +720,13 @@ echo "Starting backup at $(date)"
 
 # 备份 MySQL
 echo "Backing up MySQL..."
-docker compose exec -T mysql mysqldump -uroot -p123456 smart_rag_db | gzip > "$BACKUP_DIR/mysql_$DATE.sql.gz"
+docker compose exec -T mysql mysqldump -u<MYSQL_USER> -p<MYSQL_PASSWORD> <DB_NAME> | gzip > "$BACKUP_DIR/mysql_$DATE.sql.gz"
 
 # 备份 MinIO
 echo "Backing up MinIO..."
-docker run --rm \
-  -v smartrag_minio_data:/data \
-  -v $BACKUP_DIR:/backup \
-  alpine \
-  sh -c "tar czf /backup/minio_$DATE.tar.gz -C /data ."
+tar czf "$BACKUP_DIR/minio_$DATE.tar.gz" -C ./data minio
+tar czf "$BACKUP_DIR/etcd_$DATE.tar.gz" -C ./data etcd
+tar czf "$BACKUP_DIR/milvus_$DATE.tar.gz" -C ./data milvus
 
 # 删除 7 天前的备份
 find $BACKUP_DIR -type f -mtime +7 -delete
@@ -827,13 +751,14 @@ echo "0 2 * * * /root/smartRAG/backup.sh" | crontab -
 部署前完整检查：
 
 - [ ] `docker-compose.yml` 存在且包含所有必需的 environment 配置
-- [ ] `docker-compose.runtime.yml` 存在且包含所有必需的 environment 配置
+- [ ] `.env.example` 已复制为 `.env` 并完成关键变量配置
 - [ ] `Dockerfile.backend` 和 `frontend/Dockerfile.frontend` 存在
 - [ ] `frontend/nginx.conf` 存在且包含 API 代理配置
 - [ ] Docker 和 Docker Compose 已安装
 - [ ] 宿主机磁盘空间 >= 20GB
 - [ ] 宿主机内存 >= 4GB（或 Docker 分配 >= 2GB）
 - [ ] 所有必需的端口未被占用
+- [ ] `./data` 目录可被 Docker 写入
 - [ ] 生产环境中的关键密码和 API Key 已修改
 
 ---
@@ -843,11 +768,9 @@ echo "0 2 * * * /root/smartRAG/backup.sh" | crontab -
 ```bash
 # 启动服务
 docker compose up -d
-docker compose -f docker-compose.runtime.yml up -d
 
 # 停止服务（保留数据）
 docker compose down
-docker compose -f docker-compose.runtime.yml down
 
 # 停止服务（删除数据卷，谨慎）
 docker compose down -v
@@ -862,14 +785,13 @@ docker compose logs backend --tail 100    # 最后 100 行
 
 # 进入容器
 docker compose exec backend sh
-docker compose exec mysql bash
+docker compose exec mysql sh
 
 # 重建镜像
 docker compose build --no-cache backend frontend
 
-# 查看卷和磁盘用量
-docker volume ls
-docker volume inspect smartrag_mysql_data
+# 查看数据目录用量
+du -sh ./data/*
 
 # 清理资源
 docker system prune -a        # 删除所有未使用的镜像和容器
@@ -904,7 +826,7 @@ docker images --format "table {{.Repository}}\t{{.Size}}"
 
 # 查看网络连接
 docker network ls
-docker network inspect smartrag-net
+docker network inspect smartrag_network
 ```
 
 ### 联系与反馈
@@ -918,5 +840,5 @@ docker network inspect smartrag-net
 
 ---
 
-**最后更新**：2025 年
-**版本**：v2.1（采用方案 A - 所有配置直接在 docker-compose 中定义）
+**最后更新**：2026 年
+**版本**：v2.2（单一 docker-compose 方案）

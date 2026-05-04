@@ -99,7 +99,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-./data}/mysql:/var/lib/mysql
     healthcheck:
@@ -163,10 +163,12 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
     networks:
       - smartrag-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v3/api-docs"]
       interval: 30s
       timeout: 10s
       retries: 3
