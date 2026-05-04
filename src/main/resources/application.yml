@@ -1,20 +1,19 @@
 spring:
   profiles:
-    active: dev # 激活开发环境配置
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: smart-rag
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:smartrag_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: ${DB_USERNAME:root}
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:smartrag_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USERNAME:smartrag_user}
     password: ${DB_PASSWORD:password}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
-#        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
   security:
     oauth2:
@@ -26,12 +25,7 @@ spring:
           client-id: ${GITHUB_CLIENT_ID:your_github_client_id}
           client-secret: ${GITHUB_CLIENT_SECRET:your_github_client_secret}
           redirectUri: ${GITHUB_REDIRECT_URI:http://localhost:8080/api/auth/callback/github}
-#          redirectUri: http://localhost:8080/dashboard
           scope: read:user,user:email
-  servlet:
-    multipart:
-      max-file-size: 200MB
-      max-request-size: 50MB
 
 server:
   port: 8080
@@ -40,119 +34,87 @@ server:
 logging:
   level:
     root: INFO
-    com.mtmn.smartrag: DEBUG
+    com.mtmn.smartrag: ${LOGGING_LEVEL:DEBUG}
 
-# 应用配置
 application:
   security:
     jwt:
       secret-key: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      expiration: 86400000 # 一天
+      expiration: 86400000 
       refresh-token:
-        expiration: 604800000 # 一周
+        expiration: 604800000 
   database:
-    initialize: false # 控制是否在启动时初始化数据库表和测试数据
+    initialize: ${DB_INITIALIZE:false}
 
-# 模型配置
 models:
-  # 当前激活的模型
+  # 当前激活的模型配置
   active:
-    llm: zhipuai@glm-4-flash
-    embedding: qwen@Qwen3-Embedding-4B
+    llm: ${ACTIVE_LLM:zhipuai@glm-4-flash}
+    embedding: ${ACTIVE_EMBEDDING:modelscope@Qwen/Qwen3-Embedding-4B}
   
-  # 缓存配置
-  cache:
-    enabled: true
-    max-size: 10
-    expire-after-access: 1h
-    
-  # 并发控制配置
-  concurrency:
-    enabled: true
-    default-max-concurrent-llm-requests: 1
-    default-max-concurrent-embedding-requests: 1
-    acquire-timeout: 30
-
-  # 模型提供商配置
   providers:
     zhipuai:
       type: zhipuai
       enabled: true
-      api-key: ${GLM_API_KEY:your_glm_api_key}
-      base-url: https://open.bigmodel.cn
-      timeout: 60s
-      max-retries: 3
+      api-key: ${GLM_API_KEY:not_set}
+      base-url: ${GLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
       llm-models:
-        - name: glm-4-flash
+        - name: ${GLM_MODEL_NAME:glm-4-flash}
           max-tokens: 32000
-        - name: GLM-4-7-Flash
-          max-tokens: 32000
-    
+
     openai:
       type: openai
       enabled: true
-      api-key: ${OPENAI_API_KEY:your-openai-api-key}
-      base-url: https://api.openai.com/v1
-      timeout: 60s
-      max-retries: 3
+      api-key: ${OPENAI_API_KEY:not_set}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
       llm-models:
-        - name: gpt-4
-          description: OpenAI GPT-4模型
-          
+        - name: ${OPENAI_MODEL_NAME:gpt-4}
+          max-tokens: 32000
+
     gemini:
       type: gemini
       enabled: true
-      api-key: ${GEMINI_API_KEY:your-gemini-api-key}
-      base-url: https://generativelanguage.googleapis.com
-      timeout: 60s
-      max-retries: 3
+      api-key: ${GEMINI_API_KEY:not_set}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
       llm-models:
-        - name: gemini-pro
-          description: Google Gemini Pro模型
+        - name: ${GEMINI_MODEL_NAME:gemini-pro}
+          max-tokens: 32000
           
     qwen:
       type: qwen
       enabled: true
-      api-key: ${Qwen_EMBEDDING_API_KEY:your-openai-api-key}
-      base-url: ${Qwen_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-      timeout: 60s
-      max-retries: 3
+      api-key: ${QWEN_API_KEY:not_set}
+      base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
       embedding-models:
-        - name: text-embedding-v4
-          description: 在线的 qwen embedding
-        - name: Qwen/Qwen3-Embedding-4B
-          description: 魔搭社区提供的Qwen3-Embedding-4B（2048维度）
+        - name: ${QWEN_EMBEDDING_MODEL:text-embedding-v4}
+          
+    modelscope:
+      type: openai # 魔搭兼容 OpenAI 格式
+      enabled: true
+      api-key: ${MODELSCOPE_API_KEY:not_set}
+      base-url: ${MODELSCOPE_BASE_URL:https://ms-api.example.com/v1}
+      embedding-models:
+        - name: ${MODELSCOPE_EMBEDDING_MODEL:Qwen/Qwen3-Embedding-4B}
           
     xinference:
       type: xinference
       enabled: true
-      api-key: ${EMBEDDING_API_KEY:notnull}
-      base-url: ${EMBEDDING_BASE_URL:http://localhost:9997/v1/}
-      timeout: 60s
-      max-retries: 3
+      api-key: ${XINFERENCE_API_KEY:notnull}
+      base-url: ${XINFERENCE_BASE_URL:http://127.0.0.1:9997/v1/}
       embedding-models:
-        - name: bge-m3
-          description: 支持 8K 长度的输入
+        - name: ${XINFERENCE_EMBEDDING_MODEL:bge-m3}
 
-# RAG 方法
 rag:
-  # 默认使用的 RAG 方法
   default-method: naive
-
-  # 普通的RAG方法
   naive:
     name: RAG
-    description: 普通的 RAG 方法
     index:
       chunkSize: 512
       chunkOverlap: 100
     search:
       topK: 5
-
-  # HiSem 快速版 基础配置
   hisem:
     name: HiSem-RAG-Fast
-    description: 层级语义驱动的 RAG 方法（不构建树）
     index:
       chunkSize: 2048
       titleEnhance: true
@@ -160,16 +122,11 @@ rag:
     search:
       maxRes: 10
     threshold:
-      beta: 0.95
-      gamma: 0.95
-      theta_min: 0.3
+      beta: 0.9
+      gamma: 0.85
       k_min: 1
-      k_max: 10
-
-  # HiSem-SADP 完整版
   hisem-sadp:
     name: HiSem-SADP-RAG
-    description: 完整的 HiSem-SADP-RAG 方法
     index:
       chunkSize: 2048
       titleEnhance: true
@@ -182,43 +139,14 @@ rag:
       k_min: 1
       k_max: 10
 
-# Milvus配置
 milvus:
-  uri: http://${MILVUS_HOST:localhost}:${MILVUS_PORT:19530}
-  host: ${MILVUS_HOST:localhost}
+  uri: http://${MILVUS_HOST:127.0.0.1}:${MILVUS_PORT:19530}
+  host: ${MILVUS_HOST:127.0.0.1}
   port: ${MILVUS_PORT:19530}
 
-# MinIO配置
 minio:
-  endpoint: ${MINIO_ENDPOINT:http://localhost:9000} #minio服务地址
-  accessKey: ${MINIO_ACCESS_KEY:minioadmin} #minio的用户名
-  secretKey: ${MINIO_SECRET_KEY:minioadmin} #minio的密码
+  endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+  accessKey: ${MINIO_ACCESS_KEY:minioadmin}
+  secretKey: ${MINIO_SECRET_KEY:minioadmin}
   bucket:
     files: smartrag
-
-# Knife4j 配置
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-    tags-sorter: alpha
-    operations-sorter: alpha
-  api-docs:
-    path: /v3/api-docs
-  group-configs:
-    - group: '默认分组'
-      paths-to-match: '/**'
-      packages-to-scan: com.mtmn.smartrag.controller
-  default-flat-param-object: true
-
-knife4j:
-  enable: true
-  setting:
-    language: zh-CN
-    swagger-model-name: 实体类列表
-    enable-swagger-models: true
-    enable-document-manage: true
-    enable-home-custom: false
-    enable-search: true
-    enable-footer: false
-    enable-footer-custom: true
-    footer-custom-content: Copyright © 2025 智能文档系统 | CharmingDaiDai

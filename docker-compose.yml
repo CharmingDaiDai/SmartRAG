@@ -116,44 +116,22 @@ services:
       dockerfile: Dockerfile.backend
     container_name: smartrag-backend
     restart: always
+    # 直接读取整个 .env 文件中的所有环境变量
+    env_file:
+      - .env
     environment:
-      # Database Configuration
+      # 以下变量用于覆盖 .env 中的本地配置，确保在 Docker 内部网络中能正确路由
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-smartrag_db}
-      DB_USERNAME: ${DB_USERNAME:-smartrag_user}
-      DB_PASSWORD: ${DB_PASSWORD:-SmartRAG_user_2026!}
-
-      # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER_URI: http://backend:8080
-
-      # GitHub OAuth Configuration (Optional)
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-your_github_client_id}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-your_github_client_secret}
-      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-http://localhost:8080/api/auth/callback/github}
-
-      # AI Model Configuration
-      GLM_API_KEY: ${GLM_API_KEY:-your_glm_api_key_here}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-your_openai_api_key_here}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-your_gemini_api_key_here}
-
-      # Embedding Model Configuration
-      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-notnull}
-      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-http://embedding-service:9997/v1/}
-      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-bge-m3}
-
-      # Milvus Vector Database Configuration
+      # 映射 DB 凭证 (因为你的 MySQL 容器用的是 MYSQL_DATABASE 这种标准变量)
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      
       MILVUS_HOST: milvus
       MILVUS_PORT: 19530
-
-      # MinIO Object Storage Configuration
+      
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-
-      # Spring Boot Server Configuration
-      SERVER_PORT: 8080
     depends_on:
       mysql:
         condition: service_healthy
@@ -162,7 +140,7 @@ services:
       milvus:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:8080"
     volumes:
       - ./logs:/app/logs
     networks:
