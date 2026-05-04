@@ -1,9 +1,10 @@
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: ${SPRING_PROFILES_ACTIVE:dev} # 允许通过环境变量切换环境
   application:
     name: smart-rag
   datasource:
+    # 开发环境通常直接写死本地数据库连接，或者使用特定的开发库
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:smartrag_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${DB_USERNAME:smartrag_user}
     password: ${DB_PASSWORD:password}
@@ -11,7 +12,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: ${JPA_SHOW_SQL:false}
+    show-sql: ${JPA_SHOW_SQL:false} # 开发环境开启 SQL 打印方便调试
     properties:
       hibernate:
         format_sql: true
@@ -25,41 +26,62 @@ spring:
           client-id: ${GITHUB_CLIENT_ID:your_github_client_id}
           client-secret: ${GITHUB_CLIENT_SECRET:your_github_client_secret}
           redirectUri: ${GITHUB_REDIRECT_URI:http://localhost:8080/api/auth/callback/github}
+#          redirectUri: http://localhost:8080/dashboard
           scope: read:user,user:email
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   address: 0.0.0.0
 
 logging:
   level:
     root: INFO
-    com.mtmn.smartrag: ${LOGGING_LEVEL:DEBUG}
+    com.mtmn.smartrag: ${LOGGING_LEVEL:DEBUG} # 开发环境开启详细日志
 
+# 应用配置
 application:
   security:
     jwt:
       secret-key: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-      expiration: 86400000 
+      expiration: 86400000 # 一天
       refresh-token:
-        expiration: 604800000 
+        expiration: 604800000 # 一周
   database:
-    initialize: ${DB_INITIALIZE:false}
+    initialize: ${DB_INITIALIZE:false} # 控制是否在启动时初始化数据库表和测试数据
 
+# 模型配置
 models:
-  # 当前激活的模型配置
+  # 当前激活的模型
   active:
     llm: ${ACTIVE_LLM:zhipuai@glm-4-flash}
     embedding: ${ACTIVE_EMBEDDING:modelscope@Qwen/Qwen3-Embedding-4B}
   
+  # 缓存配置
+  cache:
+    enabled: true
+    max-size: 10
+    expire-after-access: 1h
+    
+  # 并发控制配置
+  concurrency:
+    enabled: true
+    default-max-concurrent-llm-requests: 1
+    default-max-concurrent-embedding-requests: 1
+    acquire-timeout: 30
+
+  # 模型提供商配置
   providers:
     zhipuai:
       type: zhipuai
       enabled: true
       api-key: ${GLM_API_KEY:not_set}
       base-url: ${GLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+      timeout: 60s
+      max-retries: 3
       llm-models:
         - name: ${GLM_MODEL_NAME:glm-4-flash}
+          max-tokens: 32000
+        - name: GLM-4.7-Flash
           max-tokens: 32000
 
     openai:
@@ -67,8 +89,11 @@ models:
       enabled: true
       api-key: ${OPENAI_API_KEY:not_set}
       base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      timeout: 60s
+      max-retries: 3
       llm-models:
         - name: ${OPENAI_MODEL_NAME:gpt-4}
+          description: OpenAI GPT-4模型
           max-tokens: 32000
 
     gemini:
@@ -76,8 +101,11 @@ models:
       enabled: true
       api-key: ${GEMINI_API_KEY:not_set}
       base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      timeout: 60s
+      max-retries: 3
       llm-models:
         - name: ${GEMINI_MODEL_NAME:gemini-pro}
+          description: Google Gemini Pro模型
           max-tokens: 32000
           
     qwen:
@@ -85,36 +113,53 @@ models:
       enabled: true
       api-key: ${QWEN_API_KEY:not_set}
       base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      timeout: 60s
+      max-retries: 3
       embedding-models:
         - name: ${QWEN_EMBEDDING_MODEL:text-embedding-v4}
+          description: 在线的 qwen embedding
           
     modelscope:
       type: openai # 魔搭兼容 OpenAI 格式
       enabled: true
       api-key: ${MODELSCOPE_API_KEY:not_set}
-      base-url: ${MODELSCOPE_BASE_URL:https://ms-api.example.com/v1}
+      base-url: ${MODELSCOPE_BASE_URL:https://ms-YOUR_API_URL}
+      timeout: 60s
+      max-retries: 3
       embedding-models:
         - name: ${MODELSCOPE_EMBEDDING_MODEL:Qwen/Qwen3-Embedding-4B}
+          description: 魔搭社区提供的Qwen3-Embedding-4B（2048维度）
           
     xinference:
       type: xinference
       enabled: true
       api-key: ${XINFERENCE_API_KEY:notnull}
       base-url: ${XINFERENCE_BASE_URL:http://127.0.0.1:9997/v1/}
+      timeout: 60s
+      max-retries: 3
       embedding-models:
         - name: ${XINFERENCE_EMBEDDING_MODEL:bge-m3}
+          description: 支持 8K 长度的输入
 
+# RAG 方法
 rag:
+  # 默认使用的 RAG 方法
   default-method: naive
+
+  # 普通的RAG方法
   naive:
     name: RAG
+    description: 普通的 RAG 方法
     index:
       chunkSize: 512
       chunkOverlap: 100
     search:
       topK: 5
+
+  # HiSem 基础配置
   hisem:
     name: HiSem-RAG-Fast
+    description: 层级语义驱动的 RAG 方法（不构建树）
     index:
       chunkSize: 2048
       titleEnhance: true
@@ -125,8 +170,11 @@ rag:
       beta: 0.9
       gamma: 0.85
       k_min: 1
+
+  # HiSem-SADP
   hisem-sadp:
     name: HiSem-SADP-RAG
+    description: 完整的 HiSem-SADP-RAG 方法
     index:
       chunkSize: 2048
       titleEnhance: true
@@ -139,14 +187,43 @@ rag:
       k_min: 1
       k_max: 10
 
+# Milvus配置
 milvus:
   uri: http://${MILVUS_HOST:127.0.0.1}:${MILVUS_PORT:19530}
   host: ${MILVUS_HOST:127.0.0.1}
   port: ${MILVUS_PORT:19530}
 
+# MinIO配置
 minio:
-  endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
-  accessKey: ${MINIO_ACCESS_KEY:minioadmin}
-  secretKey: ${MINIO_SECRET_KEY:minioadmin}
+  endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000} #minio服务地址
+  accessKey: ${MINIO_ACCESS_KEY:minioadmin} #minio的用户名
+  secretKey: ${MINIO_SECRET_KEY:minioadmin} #minio的密码
   bucket:
     files: smartrag
+
+# Knife4j及Swagger 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: '默认分组'
+      paths-to-match: '/**'
+      packages-to-scan: com.mtmn.smartrag.controller
+  default-flat-param-object: true
+
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+    swagger-model-name: 实体类列表
+    enable-swagger-models: true
+    enable-document-manage: true
+    enable-home-custom: false
+    enable-search: true
+    enable-footer: false
+    enable-footer-custom: true
+    footer-custom-content: Copyright © 2025 智能文档系统 | CharmingDaiDai
