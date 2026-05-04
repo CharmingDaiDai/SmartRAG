@@ -51,6 +51,7 @@ public class SecurityConfig {
                     .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         // 不需要认证的路径
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         // Knife4j 和 Swagger 文档路径（完整配置）
                         .requestMatchers("/doc.html", "/doc.html/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**").permitAll()

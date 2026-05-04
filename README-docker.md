@@ -233,8 +233,8 @@ docker compose logs -f
 等待约 30-60 秒，服务完全启动。然后验证：
 
 ```bash
-# 1. 检查后端公开接口
-curl -I http://localhost:8080/v3/api-docs
+# 1. 检查后端健康接口
+curl -f http://localhost:8080/api/health
 
 # 2. 检查前端页面
 curl http://localhost:3000
@@ -373,8 +373,8 @@ docker compose logs -f backend
 docker compose ps
 # Status 应该显示 "Up"，backend 最好显示 healthy
 
-# 检查后端 API 是否响应
-curl -I http://localhost:8080/v3/api-docs
+# 检查后端健康接口是否响应
+curl -f http://localhost:8080/api/health
 
 # 检查前端是否加载
 curl -I http://localhost:3000
@@ -508,8 +508,8 @@ docker images | grep smartrag
 # 1. 检查后端容器是否运行
 docker compose ps | grep backend
 
-# 2. 检查后端公开接口
-curl -I http://localhost:8080/v3/api-docs
+# 2. 检查后端健康接口
+curl -f http://localhost:8080/api/health
 
 # 3. 检查前端开发代理或生产 Nginx 配置
 grep -n "proxy" frontend/vite.config.ts
